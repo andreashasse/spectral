@@ -1,0 +1,3 @@
+%{
+  "spectra": {:hex, :spectra, "0.1.9", "7dad0ea8ef625eb7c2ec0be3ca2e04b597cc30e4f6dcb35814f36b11a498bcf5", [:rebar3], [], "hexpm", "726b2c890528c19334e13cffd051a4d9084bc2ca8c78c744e57e1ebd1159d514"},
+}
