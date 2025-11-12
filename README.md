@@ -271,8 +271,6 @@ For JSON serialization and schema generation, the following Erlang/Elixir types 
 ## Related Projects
 
 - **[spectra](https://github.com/andreashasse/spectra)** - The underlying Erlang library that powers Spectral
-- **[elli_openapi](https://github.com/andreashasse/elli_openapi)** - Elli middleware for automatic OpenAPI spec generation using spectra
-- **[exdantic](https://github.com/andreashasse/exdantic)** - Alternative Elixir port of spectra
 
 ## Development Status
 
