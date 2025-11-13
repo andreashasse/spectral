@@ -210,7 +210,6 @@ IO.puts(IO.iodata_to_binary(openapi_spec))
 
 ## Requirements
 
-- **Elixir**: ~> 1.19
 - **Compilation**: Modules must be compiled with `debug_info` for Spectral to extract type information. This is enabled by default in Mix projects.
 
 ## Error Handling
