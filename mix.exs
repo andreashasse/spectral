@@ -19,7 +19,10 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.1.9"}
+      {:spectra, "~> 0.1.9"},
+      # Code quality tools
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false}
     ]
   end
 end

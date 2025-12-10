@@ -1,5 +1,13 @@
 defmodule Person do
+  @moduledoc """
+  Example module demonstrating Spectral usage with nested structs.
+  """
+
   defmodule Address do
+    @moduledoc """
+    Address struct representing a person's address.
+    """
+
     defstruct [:street, :city]
 
     @type t :: %Address{
@@ -16,11 +24,11 @@ defmodule Person do
           address: Address.t() | nil
         }
 
-  def testdata() do
+  def testdata do
     %Person{name: "Alice", age: 30}
   end
 
-  def testjson() do
+  def testjson do
     ~s({"name":"Alice","age":30})
   end
 end

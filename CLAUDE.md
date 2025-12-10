@@ -83,3 +83,4 @@ mix docs                    # Generate HTML documentation (requires ex_doc depen
 - When adding new wrapper functions, follow the existing pattern of simple delegation to `:spectra` or `:spectra_openapi`
 - Type specifications must be defined with `@type` for the library to work with structs
 - Nil values in structs are automatically omitted during JSON encoding (see test examples)
+- Always run make format and then make ci after a change

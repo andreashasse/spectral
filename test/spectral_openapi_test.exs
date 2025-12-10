@@ -106,9 +106,7 @@ defmodule Spectral.OpenAPITest do
           Spectral.OpenAPI.response(200, "User found")
           |> Spectral.OpenAPI.response_with_body(Person, :t)
         )
-        |> Spectral.OpenAPI.add_response(
-          Spectral.OpenAPI.response(404, "User not found")
-        )
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(404, "User not found"))
 
       assert map_size(endpoint.responses) == 2
       assert Map.has_key?(endpoint.responses, 200)
@@ -260,9 +258,7 @@ defmodule Spectral.OpenAPITest do
           Spectral.OpenAPI.response(200, "User found")
           |> Spectral.OpenAPI.response_with_body(Person, {:type, :t, 0})
         )
-        |> Spectral.OpenAPI.add_response(
-          Spectral.OpenAPI.response(404, "User not found")
-        ),
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(404, "User not found")),
 
         # POST /users - create user
         Spectral.OpenAPI.endpoint(:post, "/users")
@@ -271,9 +267,7 @@ defmodule Spectral.OpenAPITest do
           Spectral.OpenAPI.response(201, "User created")
           |> Spectral.OpenAPI.response_with_body(Person, {:type, :t, 0})
         )
-        |> Spectral.OpenAPI.add_response(
-          Spectral.OpenAPI.response(400, "Invalid input")
-        )
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(400, "Invalid input"))
       ]
 
       {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
