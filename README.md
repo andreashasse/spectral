@@ -21,7 +21,10 @@ end
 
 Here's how to use Spectral for JSON serialization and deserialization:
 
+**Note:** Spectral reads type information from compiled beam files, so modules must be defined in files (not in IEx).
+
 ```elixir
+# lib/person.ex
 defmodule Person do
   defmodule Address do
     defstruct [:street, :city]
@@ -40,7 +43,9 @@ defmodule Person do
           address: Address.t() | nil
         }
 end
+```
 
+```elixir
 # Encode a struct to JSON
 person = %Person{
   name: "Alice",
