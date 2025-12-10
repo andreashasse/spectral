@@ -255,8 +255,8 @@ defmodule Spectral.OpenAPI do
 
   ## Returns
 
-  - `{:ok, openapi_spec}` - Complete OpenAPI 3.0 specification as iodata
-  - `{:error, errors}` - List of errors if generation fails
+  - `{:ok, openapi_spec}` - Complete OpenAPI 3.0 specification as a map
+  - `{:error, [%Spectral.Error{}]}` - List of errors if generation fails
 
   ## Example
 
@@ -271,7 +271,18 @@ defmodule Spectral.OpenAPI do
 
       {:ok, openapi_spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
   """
+  @spec endpoints_to_openapi(map(), [term()]) ::
+          {:ok, map()} | {:error, [Spectral.Error.t()]}
   def endpoints_to_openapi(metadata, endpoints) do
-    :spectra_openapi.endpoints_to_openapi(metadata, endpoints)
+    metadata
+    |> :spectra_openapi.endpoints_to_openapi(endpoints)
+    |> convert_result()
+  end
+
+  # Private helper to convert Erlang results to Elixir
+  defp convert_result({:ok, result}), do: {:ok, result}
+
+  defp convert_result({:error, erlang_errors}) when is_list(erlang_errors) do
+    {:error, Spectral.Error.from_erlang_list(erlang_errors)}
   end
 end
