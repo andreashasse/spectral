@@ -31,7 +31,6 @@ release:
 	read -r -p "Did you update the README install instructions? (Y/N) " a && [ "$$a" = "Y" ] || { echo "Aborted."; exit 1; }; \
 	git tag "$$tag" && \
 	git push origin "$$tag" && \
-	rebar3 compile && \
-	rebar3 hex build && \
-	rebar3 hex publish && \
+	mix compile && \
+	mix hex.publish && \
 	echo "Released and tagged as $$tag"
