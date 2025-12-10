@@ -53,12 +53,28 @@ person = %Person{
 
 {:ok, json_iodata} = Spectral.encode(:json, Person, :t, person)
 json = IO.iodata_to_binary(json_iodata)
-# => "{\"address\":{\"city\":\"Berlin\",\"street\":\"Ystader Straße\"},\"age\":30,\"name\":\"Alice\"}"
+# => "{\"address\":{\"city\":\"Berlin\",
+#      \"street\":\"Ystader Straße\"},
+#      \"age\":30,\"name\":\"Alice\"}"
 
 # Decode JSON to a struct
-json_string = ~s({"name":"Alice","age":30,"address":{"street":"Ystader Straße","city":"Berlin"}})
-{:ok, decoded_person} = Spectral.decode(:json, Person, :t, json_string)
-# => {:ok, %Person{name: "Alice", age: 30, address: %Person.Address{street: "Ystader Straße", city: "Berlin"}}}
+json_string = ~s(
+  {"name":"Alice","age":30,
+   "address":{"street":"Ystader Straße",
+              "city":"Berlin"}}
+)
+
+{:ok, decoded_person} =
+  Spectral.decode(:json, Person, :t, json_string)
+# => {:ok,
+#     %Person{
+#       name: "Alice",
+#       age: 30,
+#       address: %Person.Address{
+#         street: "Ystader Straße",
+#         city: "Berlin"
+#       }
+#     }}
 
 # Generate a JSON schema
 {:ok, schema_iodata} = Spectral.schema(:json_schema, Person, :t)
@@ -77,8 +93,10 @@ IO.iodata_to_binary(json_iodata)
 # => "{\"name\":\"Alice\"}"  (age and address are omitted)
 
 # When decoding, missing fields become nil in structs and records
-{:ok, decoded} = Spectral.decode(:json, Person, :t, ~s({"name":"Alice"}))
-# => {:ok, %Person{name: "Alice", age: nil, address: nil}}
+{:ok, decoded} =
+  Spectral.decode(:json, Person, :t, ~s({"name":"Alice"}))
+# => {:ok,
+#     %Person{name: "Alice", age: nil, address: nil}}
 ```
 
 ### Data Serialization API
@@ -129,21 +147,41 @@ Responses are constructed using a builder pattern:
 Code.ensure_loaded!(Person)
 
 # Simple response
-user_not_found_response = Spectral.OpenAPI.response(404, "User not found")
+user_not_found_response =
+  Spectral.OpenAPI.response(404, "User not found")
 
 # Response with body
-user_found_response = Spectral.OpenAPI.response(200, "User found") |> Spectral.OpenAPI.response_with_body(Person, :t)
+user_found_response =
+  Spectral.OpenAPI.response(200, "User found")
+  |> Spectral.OpenAPI.response_with_body(Person, :t)
 
-user_created_response = Spectral.OpenAPI.response(201, "User created") |> Spectral.OpenAPI.response_with_body(Person, {:type, :t, 0})
+user_created_response =
+  Spectral.OpenAPI.response(201, "User created")
+  |> Spectral.OpenAPI.response_with_body(
+    Person,
+    {:type, :t, 0}
+  )
 
-users_found_response = Spectral.OpenAPI.response(200, "Users found") |> Spectral.OpenAPI.response_with_body(Person, {:type, :persons, 0})
+users_found_response =
+  Spectral.OpenAPI.response(200, "Users found")
+  |> Spectral.OpenAPI.response_with_body(
+    Person,
+    {:type, :persons, 0}
+  )
 
 # Response with response header
-response_with_headers = Spectral.OpenAPI.response(200, "Success") |> Spectral.OpenAPI.response_with_body(Person, :t) |> Spectral.OpenAPI.response_with_header("X-Rate-Limit", :t, %{
-    description: "Requests remaining",
-    required: false,
-    schema: :integer
-  })
+response_with_headers =
+  Spectral.OpenAPI.response(200, "Success")
+  |> Spectral.OpenAPI.response_with_body(Person, :t)
+  |> Spectral.OpenAPI.response_with_header(
+    "X-Rate-Limit",
+    :t,
+    %{
+      description: "Requests remaining",
+      required: false,
+      schema: :integer
+    }
+  )
 ```
 
 #### Building Endpoints
@@ -152,24 +190,37 @@ Endpoints are built by combining the endpoint definition with responses, request
 Responses are taken from the previous section.
 
 ```elixir
-user_get_endpoint = Spectral.OpenAPI.endpoint(:get, "/users/{id}") |> Spectral.OpenAPI.with_parameter(Person, %{
+user_get_endpoint =
+  Spectral.OpenAPI.endpoint(:get, "/users/{id}")
+  |> Spectral.OpenAPI.with_parameter(Person, %{
     name: "id",
     in: :path,
     required: true,
     schema: :string
-  }) |> Spectral.OpenAPI.add_response(user_found_response) |> Spectral.OpenAPI.add_response(user_not_found_response)
+  })
+  |> Spectral.OpenAPI.add_response(user_found_response)
+  |> Spectral.OpenAPI.add_response(user_not_found_response)
 
 
 # Add request body (for POST, PUT, PATCH)
-user_create_endpoint = Spectral.OpenAPI.endpoint(:post, "/users") |> Spectral.OpenAPI.with_request_body(Person, {:type, :t, 0}) |> Spectral.OpenAPI.add_response(user_created_response)
+user_create_endpoint =
+  Spectral.OpenAPI.endpoint(:post, "/users")
+  |> Spectral.OpenAPI.with_request_body(
+    Person,
+    {:type, :t, 0}
+  )
+  |> Spectral.OpenAPI.add_response(user_created_response)
 
 # Add parameters
-user_search_endpoint = Spectral.OpenAPI.endpoint(:get, "/users") |> Spectral.OpenAPI.with_parameter(Person, %{
+user_search_endpoint =
+  Spectral.OpenAPI.endpoint(:get, "/users")
+  |> Spectral.OpenAPI.with_parameter(Person, %{
     name: "search",
     in: :query,
     required: false,
     schema: :search
-  }) |> Spectral.OpenAPI.add_response(users_found_response)
+  })
+  |> Spectral.OpenAPI.add_response(users_found_response)
 ```
 
 #### Generating the OpenAPI Specification
@@ -189,7 +240,9 @@ endpoints = [
   #user_search_endpoint
 ]
 
-{:ok, openapi_spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+{:ok, openapi_spec} =
+  Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+
 IO.puts(IO.iodata_to_binary(openapi_spec))
 ```
 
