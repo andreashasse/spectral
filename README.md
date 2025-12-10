@@ -243,7 +243,7 @@ endpoints = [
 {:ok, openapi_spec} =
   Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
 
-IO.puts(IO.iodata_to_binary(openapi_spec))
+IO.inspect(openapi_spec, pretty: true)
 ```
 
 ## Requirements
