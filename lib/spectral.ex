@@ -39,16 +39,13 @@ defmodule Spectral do
 
   ## Examples
 
-      iex> %Person{name: "Alice", age: 30, address: %Person.Address{street: "Ystader Straße", city: "Berlin"}}
+      iex> {:ok, json} = %Person{name: "Alice", age: 30, address: %Person.Address{street: "Ystader Straße", city: "Berlin"}}
       ...> |> Spectral.encode(Person, :t)
-      ...> |> elem(1)
-      ...> |> IO.iodata_to_binary()
+      iex> IO.iodata_to_binary(json)
       ~s({"address":{"city":"Berlin","street":"Ystader Straße"},"age":30,"name":"Alice"})
 
-      iex> %Person{name: "Alice"}
-      ...> |> Spectral.encode(Person, :t)
-      ...> |> elem(1)
-      ...> |> IO.iodata_to_binary()
+      iex> {:ok, json} = %Person{name: "Alice"} |> Spectral.encode(Person, :t)
+      iex> IO.iodata_to_binary(json)
       ~s({"name":"Alice"})
   """
   @spec encode(term(), module(), atom(), atom()) ::
@@ -142,9 +139,8 @@ defmodule Spectral do
 
   ## Examples
 
-      iex> %Person{name: "Alice", age: 30}
-      ...> |> Spectral.encode!(Person, :t)
-      ...> |> IO.iodata_to_binary()
+      iex> json = %Person{name: "Alice", age: 30} |> Spectral.encode!(Person, :t)
+      iex> IO.iodata_to_binary(json)
       ~s({"age":30,"name":"Alice"})
   """
   @spec encode!(term(), module(), atom(), atom()) :: iodata()
