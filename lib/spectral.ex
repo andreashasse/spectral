@@ -54,6 +54,9 @@ defmodule Spectral do
     format
     |> :spectra.encode(module, type_ref, data)
     |> convert_result()
+  rescue
+    error in ErlangError ->
+      handle_erlang_error(error, :encode, module, type_ref)
   end
 
   @doc """
@@ -87,6 +90,9 @@ defmodule Spectral do
     format
     |> :spectra.decode(module, type_ref, data)
     |> convert_result()
+  rescue
+    error in ErlangError ->
+      handle_erlang_error(error, :decode, module, type_ref)
   end
 
   @doc """
@@ -115,6 +121,9 @@ defmodule Spectral do
     format
     |> :spectra.schema(module, type_ref)
     |> convert_result()
+  rescue
+    error in ErlangError ->
+      handle_erlang_error(error, :schema, module, type_ref)
   end
 
   @doc """
@@ -146,8 +155,12 @@ defmodule Spectral do
   @spec encode!(term(), module(), atom(), atom()) :: iodata()
   def encode!(data, module, type_ref, format \\ :json) do
     case encode(data, module, type_ref, format) do
-      {:ok, result} -> result
-      {:error, [error | _]} -> raise error
+      {:ok, result} ->
+        result
+
+      {:error, [error | _]} ->
+        # Call exception/1 to populate the message field
+        raise Spectral.Error.exception(error)
     end
   end
 
@@ -180,8 +193,12 @@ defmodule Spectral do
   @spec decode!(term(), module(), atom(), atom()) :: term()
   def decode!(data, module, type_ref, format \\ :json) do
     case decode(data, module, type_ref, format) do
-      {:ok, result} -> result
-      {:error, [error | _]} -> raise error
+      {:ok, result} ->
+        result
+
+      {:error, [error | _]} ->
+        # Call exception/1 to populate the message field
+        raise Spectral.Error.exception(error)
     end
   end
 
@@ -213,8 +230,12 @@ defmodule Spectral do
   @spec schema!(module(), atom(), atom()) :: iodata()
   def schema!(module, type_ref, format \\ :json_schema) do
     case schema(module, type_ref, format) do
-      {:ok, result} -> result
-      {:error, [error | _]} -> raise error
+      {:ok, result} ->
+        result
+
+      {:error, [error | _]} ->
+        # Call exception/1 to populate the message field
+        raise Spectral.Error.exception(error)
     end
   end
 
@@ -223,5 +244,27 @@ defmodule Spectral do
 
   defp convert_result({:error, erlang_errors}) when is_list(erlang_errors) do
     {:error, Spectral.Error.from_erlang_list(erlang_errors)}
+  end
+
+  # Handles Erlang errors from the spectra library and converts configuration
+  # errors to idiomatic Elixir ArgumentErrors
+  defp handle_erlang_error(%ErlangError{original: original} = error, operation, module, type_ref) do
+    case original do
+      {:module_types_not_found, ^module, _reason} ->
+        raise ArgumentError,
+              "module #{inspect(module)} not found, not loaded, or not compiled with debug_info (#{operation})"
+
+      {:type_or_record_not_found, ^type_ref} ->
+        raise ArgumentError,
+              "type #{inspect(type_ref)} not found in module #{inspect(module)} (#{operation})"
+
+      {:type_not_supported, type_info} ->
+        raise ArgumentError,
+              "type not supported: #{inspect(type_info)} (#{operation})"
+
+      _other ->
+        # Re-raise the original ErlangError if it's not a known configuration error
+        raise error
+    end
   end
 end
