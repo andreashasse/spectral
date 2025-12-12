@@ -43,7 +43,9 @@ defmodule Spectral.MixProject do
   defp package() do
     [
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/andreashasse/spectral"}
+      links: %{"GitHub" => "https://github.com/andreashasse/spectral"},
+      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
+      exclude_patterns: ["lib/person.ex"]
     ]
   end
 
