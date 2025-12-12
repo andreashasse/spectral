@@ -1,6 +1,6 @@
 # Spectral
 
-An Elixir wrapper for the Erlang [spectra](https://github.com/andreashasse/spectra) library. Spectral provides type-safe data serialization and deserialization for all Elixir types that can be converted to those types. Currently the focus is on JSON.
+Spectral provides type-safe data serialization and deserialization for Elixir types. Currently the focus is on JSON.
 
 - **Type-safe conversion**: Convert typed Elixir values to/from external formats such as JSON, ensuring data conforms to the type specification
 - **Detailed errors**: Get error messages with location information when validation fails
@@ -46,7 +46,7 @@ end
 ```
 
 ```elixir
-# Encode a struct to JSON (using with for error handling)
+# Encode a struct to JSON
 person = %Person{
   name: "Alice",
   age: 30,
@@ -61,15 +61,11 @@ with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
   # Returns: "{\"address\":{\"city\":\"Berlin\",\"street\":\"Ystader Straße\"},\"age\":30,\"name\":\"Alice\"}"
 end
 
-# Decode JSON to a struct (using with for error handling)
+# Decode JSON to a struct 
 json_string = ~s({"name":"Alice","age":30,"address":{"street":"Ystader Straße","city":"Berlin"}})
+{:ok, person} = Spectral.decode(json_string, Person, :t)
 
-with {:ok, person} <- Spectral.decode(json_string, Person, :t) do
-  process_person(person)
-  # person is: %Person{name: "Alice", age: 30, address: %Person.Address{...}}
-end
-
-# Generate a JSON schema (using with)
+# Generate a JSON schema 
 with {:ok, schema_iodata} <- Spectral.schema(Person, :t) do
   IO.iodata_to_binary(schema_iodata)
 end
@@ -80,18 +76,15 @@ end
 For convenience, Spectral provides bang versions (`!`) of all main functions that raise exceptions instead of returning error tuples:
 
 ```elixir
-# encode! raises Spectral.Error on failure
 json =
   person
   |> Spectral.encode!(Person, :t)
   |> IO.iodata_to_binary()
 
-# decode! raises Spectral.Error on failure
 person =
   json_string
   |> Spectral.decode!(Person, :t)
 
-# schema! raises Spectral.Error on failure
 schema =
   Person
   |> Spectral.schema!(:t)
@@ -114,10 +107,8 @@ with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
 end
 
 # When decoding, missing fields become nil in structs
-with {:ok, decoded} <- Spectral.decode(~s({"name":"Alice"}), Person, :t) do
-  decoded
-  # Returns: %Person{name: "Alice", age: nil, address: nil}
-end
+Spectral.decode(~s({"name":"Alice"}), Person, :t)
+# Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
 
 ### Data Serialization API
@@ -129,11 +120,11 @@ The main functions for JSON serialization and deserialization (pipe-friendly):
 Spectral.encode(data, module, type_ref, format \\ :json) ::
     {:ok, iodata()} | {:error, [%Spectral.Error{}]}
 
+Spectral.encode!(data, module, type_ref, format \\ :json) :: iodata()
+
 Spectral.decode(data, module, type_ref, format \\ :json) ::
     {:ok, term()} | {:error, [%Spectral.Error{}]}
 
-# Bang versions (raise on error)
-Spectral.encode!(data, module, type_ref, format \\ :json) :: iodata()
 Spectral.decode!(data, module, type_ref, format \\ :json) :: term()
 ```
 
@@ -148,11 +139,9 @@ Spectral.decode!(data, module, type_ref, format \\ :json) :: term()
 Generate schemas from your type definitions:
 
 ```elixir
-# Regular version (returns tuple)
 Spectral.schema(module, type_ref, format \\ :json_schema) ::
     {:ok, iodata()} | {:error, [%Spectral.Error{}]}
 
-# Bang version (raises on error)
 Spectral.schema!(module, type_ref, format \\ :json_schema) :: iodata()
 ```
 
@@ -282,50 +271,55 @@ IO.inspect(openapi_spec, pretty: true)
 
 ## Error Handling
 
-Spectral provides two approaches to error handling:
+Spectral provides two types of functions with different error handling strategies:
 
-### 1. Error Tuples (Default)
+### Normal Functions
 
-The standard functions return `{:ok, result}` or `{:error, [%Spectral.Error{}]}` tuples. Use `with` for clean error handling:
+The standard functions (`encode/3-4`, `decode/3-4`, `schema/2-3`) use a dual error handling approach:
+
+**Data validation errors** return `{:error, [%Spectral.Error{}]}` tuples:
+- Type mismatches (e.g., string when integer expected)
+- Missing required fields
+- Invalid data structure
+- Decoding failures
+
+Use `with` for clean error handling:
 
 ```elixir
 bad_json = ~s({"name":"Alice","age":"not a number"})
 
 with {:ok, person} <- Spectral.decode(bad_json, Person, :t) do
   process_person(person)
-else
-  {:error, errors} ->
-    # Handle validation errors
-    for error <- errors do
-      IO.puts("Error at #{Enum.join(error.location, ".")}: #{error.type}")
-    end
 end
 ```
 
-### 2. Bang Functions (Exceptions)
+**Type and configuration errors** raise exceptions:
+- Module not found, unloaded, or compiled without `debug_info`
+- Type not found in the specified module
+- Unsupported types used (e.g., `pid()`, `port()`, `tuple()`)
 
-Use bang versions (`encode!`, `decode!`, `schema!`) with pipes to raise `Spectral.Error` exceptions:
+These exceptions indicate problems with your application's configuration or type definitions, not with the data being processed.
+
+### Bang Functions
+
+The bang versions (`encode!/3-4`, `decode!/3-4`, `schema!/2-3`) always raise exceptions for any error:
 
 ```elixir
-try do
-  person =
-    bad_json
-    |> Spectral.decode!(Person, :t)
-    |> process_person()
-rescue
-  e in Spectral.Error ->
-    Logger.error("Failed to decode: #{Exception.message(e)}")
-    # e.errors contains the list of detailed errors
-end
+person =
+  bad_json
+  |> Spectral.decode!(Person, :t)
+  |> process_person()
 ```
+
+Use bang functions when you want to propagate all errors as exceptions, simplifying pipelines but requiring try/rescue for error handling.
 
 ### Error Structure
 
-`Spectral.Error` exceptions contain:
+`Spectral.Error` exceptions contain detailed information:
 - `message` - Human-readable error message (auto-generated)
 - `errors` - List of detailed error information, each with:
   - `location` - Path showing where the error occurred (e.g., `["user", "age"]`)
-  - `type` - Error type: `:type_mismatch`, `:no_match`, `:missing_data`, `:decode_error`, etc.
+  - `type` - Error type: `:type_mismatch`, `:no_match`, `:missing_data`, `:missing_type`, `:type_not_supported`, etc.
   - `context` - Additional context information about the error
 
 Example error:
@@ -341,15 +335,6 @@ Example error:
   ]
 }
 ```
-
-### Configuration Errors
-
-Configuration and structural errors raise exceptions. These occur when:
-- Module not found or not loaded
-- Type not found in module
-- Unsupported type used (e.g., `pid()`, `port()`, `tuple()`)
-
-These errors indicate a problem with your application's configuration or type definitions, not with the data being processed.
 
 ## Special Handling
 
