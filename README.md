@@ -1,6 +1,6 @@
 # Spectral
 
-An Elixir wrapper for the Erlang [spectra](https://github.com/andreashasse/spectra) library. Spectral provides type-safe data serialization and deserialization for all Elixir types that can be converted to those types. Currently the focus is on JSON.
+Spectral provides type-safe data serialization and deserialization for Elixir types. Currently the focus is on JSON.
 
 - **Type-safe conversion**: Convert typed Elixir values to/from external formats such as JSON, ensuring data conforms to the type specification
 - **Detailed errors**: Get error messages with location information when validation fails
@@ -17,7 +17,7 @@ def deps do
   ]
 end
 ```
-### Basic Usage
+## Usage
 
 Here's how to use Spectral for JSON serialization and deserialization:
 
@@ -56,35 +56,42 @@ person = %Person{
   }
 }
 
-{:ok, json_iodata} = Spectral.encode(:json, Person, :t, person)
-json = IO.iodata_to_binary(json_iodata)
-# => "{\"address\":{\"city\":\"Berlin\",
-#      \"street\":\"Ystader Straße\"},
-#      \"age\":30,\"name\":\"Alice\"}"
+with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
+  IO.iodata_to_binary(json_iodata)
+  # Returns: "{\"address\":{\"city\":\"Berlin\",\"street\":\"Ystader Straße\"},\"age\":30,\"name\":\"Alice\"}"
+end
 
 # Decode JSON to a struct
-json_string = ~s(
-  {"name":"Alice","age":30,
-   "address":{"street":"Ystader Straße",
-              "city":"Berlin"}}
-)
-
-{:ok, decoded_person} =
-  Spectral.decode(:json, Person, :t, json_string)
-# => {:ok,
-#     %Person{
-#       name: "Alice",
-#       age: 30,
-#       address: %Person.Address{
-#         street: "Ystader Straße",
-#         city: "Berlin"
-#       }
-#     }}
+json_string = ~s({"name":"Alice","age":30,"address":{"street":"Ystader Straße","city":"Berlin"}})
+{:ok, person} = Spectral.decode(json_string, Person, :t)
 
 # Generate a JSON schema
-{:ok, schema_iodata} = Spectral.schema(:json_schema, Person, :t)
-schema = IO.iodata_to_binary(schema_iodata)
+with {:ok, schema_iodata} <- Spectral.schema(Person, :t) do
+  IO.iodata_to_binary(schema_iodata)
+end
 ```
+
+### Bang Functions
+
+For convenience, Spectral provides bang versions (`!`) of all main functions that raise exceptions instead of returning error tuples:
+
+```elixir
+json =
+  person
+  |> Spectral.encode!(Person, :t)
+  |> IO.iodata_to_binary()
+
+person =
+  json_string
+  |> Spectral.decode!(Person, :t)
+
+schema =
+  Person
+  |> Spectral.schema!(:t)
+  |> IO.iodata_to_binary()
+```
+
+Use bang functions when you want exceptions instead of explicit error handling.
 
 ### Nil Value Handling
 
@@ -93,48 +100,55 @@ Spectral automatically omits `nil` values from JSON output for optional struct f
 ```elixir
 # Only required fields
 person = %Person{name: "Alice"}
-{:ok, json_iodata} = Spectral.encode(:json, Person, :t, person)
-IO.iodata_to_binary(json_iodata)
-# => "{\"name\":\"Alice\"}"  (age and address are omitted)
 
-# When decoding, missing fields become nil in structs and records
-{:ok, decoded} =
-  Spectral.decode(:json, Person, :t, ~s({"name":"Alice"}))
-# => {:ok,
-#     %Person{name: "Alice", age: nil, address: nil}}
+with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
+  IO.iodata_to_binary(json_iodata)
+  # Returns: "{\"name\":\"Alice\"}" (age and address are omitted)
+end
+
+# When decoding, missing fields become nil in structs
+Spectral.decode(~s({"name":"Alice"}), Person, :t)
+# Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
 
 ### Data Serialization API
 
-The main functions for JSON serialization and deserialization:
+The main functions for JSON serialization and deserialization (pipe-friendly):
 
 ```elixir
-Spectral.encode(format, module, type_ref, value) ::
-    {:ok, iodata()} | {:error, [error()]}
+# Regular versions (return tuples)
+Spectral.encode(data, module, type_ref, format \\ :json) ::
+    {:ok, iodata()} | {:error, [%Spectral.Error{}]}
 
-Spectral.decode(format, module, type_ref, data) ::
-    {:ok, value} | {:error, [error()]}
+Spectral.encode!(data, module, type_ref, format \\ :json) :: iodata()
+
+Spectral.decode(data, module, type_ref, format \\ :json) ::
+    {:ok, term()} | {:error, [%Spectral.Error{}]}
+
+Spectral.decode!(data, module, type_ref, format \\ :json) :: term()
 ```
 
 **Parameters:**
-- `format` - The data format: `:json`, `:binary_string`, or `:string`
+- `data` - The data to encode/decode (Elixir value for encode, binary/string for decode)
 - `module` - The module where the type is defined (e.g., `Person`)
 - `type_ref` - The type reference, typically an atom like `:t` for the `@type t` definition
-- `value` / `data` - The Elixir value to encode or the binary data to decode
+- `format` - (optional) The data format: `:json` (default), `:binary_string`, or `:string`
 
 ### Schema API
 
 Generate schemas from your type definitions:
 
 ```elixir
-Spectral.schema(format, module, type_ref) ::
-    {:ok, iodata()} | {:error, [error()]}
+Spectral.schema(module, type_ref, format \\ :json_schema) ::
+    {:ok, iodata()} | {:error, [%Spectral.Error{}]}
+
+Spectral.schema!(module, type_ref, format \\ :json_schema) :: iodata()
 ```
 
 **Parameters:**
-- `format` - Currently supports `:json_schema`
 - `module` - The module where the type is defined
 - `type_ref` - The type reference
+- `format` - (optional) Schema format, currently supports `:json_schema` (default)
 
 ## OpenAPI Specification
 
@@ -257,31 +271,68 @@ IO.inspect(openapi_spec, pretty: true)
 
 ## Error Handling
 
-Spectral uses Elixir-style error tuples for validation errors:
+Spectral provides two types of functions with different error handling strategies:
 
-### Validation Errors
+### Normal Functions
 
-Data validation errors are returned as `{:error, [error]}` tuples. These occur when input data doesn't match the expected type during encoding/decoding.
+The standard functions (`encode/3-4`, `decode/3-4`, `schema/2-3`) use a dual error handling approach:
+
+**Data validation errors** return `{:error, [%Spectral.Error{}]}` tuples:
+- Type mismatches (e.g., string when integer expected)
+- Missing required fields
+- Invalid data structure
+- Decoding failures
+
+Use `with` for clean error handling:
 
 ```elixir
 bad_json = ~s({"name":"Alice","age":"not a number"})
-{:error, errors} = Spectral.decode(:json, Person, :t, bad_json)
-# Returns a list of error structures with location and type information
+
+with {:ok, person} <- Spectral.decode(bad_json, Person, :t) do
+  process_person(person)
+end
 ```
 
-Error structures contain:
-- `location` - Path showing where the error occurred
-- `type` - Error type: `:type_mismatch`, `:no_match`, `:missing_data`, etc.
-- `ctx` - Context information about the error
+**Type and configuration errors** raise exceptions:
+- Module not found, unloaded, or compiled without `debug_info`
+- Type not found in the specified module
+- Unsupported types used (e.g., `pid()`, `port()`, `tuple()`)
 
-### Configuration Errors
+These exceptions indicate problems with your application's configuration or type definitions, not with the data being processed.
 
-Configuration and structural errors raise exceptions. These occur when:
-- Module not found or not loaded
-- Type not found in module
-- Unsupported type used (e.g., `pid()`, `port()`, `tuple()`)
+### Bang Functions
 
-These errors indicate a problem with your application's configuration or type definitions, not with the data being processed.
+The bang versions (`encode!/3-4`, `decode!/3-4`, `schema!/2-3`) always raise exceptions for any error:
+
+```elixir
+person =
+  bad_json
+  |> Spectral.decode!(Person, :t)
+  |> process_person()
+```
+
+Use bang functions when you want to propagate all errors as exceptions, simplifying pipelines but requiring try/rescue for error handling.
+
+### Error Structure
+
+Each `Spectral.Error` struct represents a single error with the following fields:
+- `location` - Path showing where the error occurred (e.g., `["user", "age"]`)
+- `type` - Error type: `:decode_error`, `:type_mismatch`, `:no_match`, `:missing_data`, `:not_matched_fields`
+- `context` - Additional context information about the error
+- `message` - Human-readable error message (auto-generated)
+
+Functions return `{:error, [%Spectral.Error{}]}` - a list of error structs:
+
+```elixir
+{:error, [
+  %Spectral.Error{
+    location: ["user", "age"],
+    type: :type_mismatch,
+    context: %{expected: :integer, got: "not a number"},
+    message: "type_mismatch at user.age"
+  }
+]}
+```
 
 ## Special Handling
 
