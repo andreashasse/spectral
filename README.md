@@ -315,25 +315,23 @@ Use bang functions when you want to propagate all errors as exceptions, simplify
 
 ### Error Structure
 
-`Spectral.Error` exceptions contain detailed information:
+Each `Spectral.Error` struct represents a single error with the following fields:
+- `location` - Path showing where the error occurred (e.g., `["user", "age"]`)
+- `type` - Error type: `:decode_error`, `:type_mismatch`, `:no_match`, `:missing_data`, `:not_matched_fields`
+- `context` - Additional context information about the error
 - `message` - Human-readable error message (auto-generated)
-- `errors` - List of detailed error information, each with:
-  - `location` - Path showing where the error occurred (e.g., `["user", "age"]`)
-  - `type` - Error type: `:type_mismatch`, `:no_match`, `:missing_data`, `:missing_type`, `:type_not_supported`, etc.
-  - `context` - Additional context information about the error
 
-Example error:
+Functions return `{:error, [%Spectral.Error{}]}` - a list of error structs:
+
 ```elixir
-%Spectral.Error{
-  message: "type_mismatch at user.age",
-  errors: [
-    %{
-      location: ["user", "age"],
-      type: :type_mismatch,
-      context: %{expected: :integer, got: :string}
-    }
-  ]
-}
+{:error, [
+  %Spectral.Error{
+    location: ["user", "age"],
+    type: :type_mismatch,
+    context: %{expected: :integer, got: "not a number"},
+    message: "type_mismatch at user.age"
+  }
+]}
 ```
 
 ## Special Handling
