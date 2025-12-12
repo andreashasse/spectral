@@ -61,11 +61,11 @@ with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
   # Returns: "{\"address\":{\"city\":\"Berlin\",\"street\":\"Ystader Straße\"},\"age\":30,\"name\":\"Alice\"}"
 end
 
-# Decode JSON to a struct 
+# Decode JSON to a struct
 json_string = ~s({"name":"Alice","age":30,"address":{"street":"Ystader Straße","city":"Berlin"}})
 {:ok, person} = Spectral.decode(json_string, Person, :t)
 
-# Generate a JSON schema 
+# Generate a JSON schema
 with {:ok, schema_iodata} <- Spectral.schema(Person, :t) do
   IO.iodata_to_binary(schema_iodata)
 end
