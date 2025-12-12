@@ -5,21 +5,18 @@ defmodule Spectral do
   Provides idiomatic Elixir interfaces for encoding, decoding, and schema generation
   based on type specifications.
 
-  ## Pipe-Friendly API
+  ## API
 
-  All functions are designed to work well with Elixir's pipe operator:
+  All functions are designed to work well with Elixir's pipe and with operators:
 
       %Person{name: "Alice", age: 30}
-      |> Spectral.encode(Person, :t)
-      |> case do
-        {:ok, json} -> IO.iodata_to_binary(json)
-        {:error, errors} -> handle_errors(errors)
+      |> Spectral.encode!(Person, :t)
+      |> send_response()
+
+      with {:ok, json} <- Spectral.encode(%Person{name: "Alice"}, Person, :t) do
+        send_response(json)
       end
 
-  ## Error Handling
-
-  All functions return `{:ok, result}` or `{:error, [%Spectral.Error{}]}`.
-  Errors are converted from Erlang records to Elixir structs for better usability.
   """
 
   @doc """
@@ -39,9 +36,10 @@ defmodule Spectral do
 
   ## Examples
 
-      iex> {:ok, json} = %Person{name: "Alice", age: 30, address: %Person.Address{street: "Ystader Straße", city: "Berlin"}}
-      ...> |> Spectral.encode(Person, :t)
-      iex> IO.iodata_to_binary(json)
+      iex> person = %Person{name: "Alice", age: 30, address: %Person.Address{street: "Ystader Straße", city: "Berlin"}}
+      ...> with {:ok, json} <- Spectral.encode(person, Person, :t) do
+      ...>  IO.iodata_to_binary(json)
+      ...> end
       ~s({"address":{"city":"Berlin","street":"Ystader Straße"},"age":30,"name":"Alice"})
 
       iex> {:ok, json} = %Person{name: "Alice"} |> Spectral.encode(Person, :t)
@@ -51,8 +49,7 @@ defmodule Spectral do
   @spec encode(term(), module(), atom(), atom()) ::
           {:ok, iodata()} | {:error, [Spectral.Error.t()]}
   def encode(data, module, type_ref, format \\ :json) do
-    format
-    |> :spectra.encode(module, type_ref, data)
+    :spectra.encode(format, module, type_ref, data)
     |> convert_result()
   rescue
     error in ErlangError ->
@@ -87,8 +84,7 @@ defmodule Spectral do
   @spec decode(term(), module(), atom(), atom()) ::
           {:ok, term()} | {:error, [Spectral.Error.t()]}
   def decode(data, module, type_ref, format \\ :json) do
-    format
-    |> :spectra.decode(module, type_ref, data)
+    :spectra.decode(format, module, type_ref, data)
     |> convert_result()
   rescue
     error in ErlangError ->
@@ -118,8 +114,7 @@ defmodule Spectral do
   @spec schema(module(), atom(), atom()) ::
           {:ok, iodata()} | {:error, [Spectral.Error.t()]}
   def schema(module, type_ref, format \\ :json_schema) do
-    format
-    |> :spectra.schema(module, type_ref)
+    :spectra.schema(format, module, type_ref)
     |> convert_result()
   rescue
     error in ErlangError ->
@@ -148,8 +143,9 @@ defmodule Spectral do
 
   ## Examples
 
-      iex> json = %Person{name: "Alice", age: 30} |> Spectral.encode!(Person, :t)
-      iex> IO.iodata_to_binary(json)
+      iex> %Person{name: "Alice", age: 30}
+      ...> |> Spectral.encode!(Person, :t)
+      ...> |> IO.iodata_to_binary()
       ~s({"age":30,"name":"Alice"})
   """
   @spec encode!(term(), module(), atom(), atom()) :: iodata()
@@ -159,7 +155,6 @@ defmodule Spectral do
         result
 
       {:error, [error | _]} ->
-        # Call exception/1 to populate the message field
         raise Spectral.Error.exception(error)
     end
   end
@@ -197,7 +192,6 @@ defmodule Spectral do
         result
 
       {:error, [error | _]} ->
-        # Call exception/1 to populate the message field
         raise Spectral.Error.exception(error)
     end
   end
@@ -223,9 +217,9 @@ defmodule Spectral do
 
   ## Examples
 
-      iex> schemadata = Spectral.schema!(Person, :t)
-      iex> is_binary(IO.iodata_to_binary(schemadata))
-      true
+      iex> schemadata = Spectral.schema!(Person.Address, :t)
+      iex> IO.iodata_to_binary(schemadata)
+      ~s({"type":"object","required":["street","city"],"additionalProperties":false,"properties":{"city":{"type":"string"},"street":{"type":"string"}}})
   """
   @spec schema!(module(), atom(), atom()) :: iodata()
   def schema!(module, type_ref, format \\ :json_schema) do
