@@ -17,7 +17,7 @@ def deps do
   ]
 end
 ```
-### Basic Usage
+## Usage
 
 Here's how to use Spectral for JSON serialization and deserialization:
 
