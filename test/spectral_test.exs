@@ -2,54 +2,42 @@ defmodule SpectralTest do
   use ExUnit.Case
   doctest Spectral
 
+  def encode_to_binary(data, module, type) do
+    with {:ok, iodata} <- Spectral.encode(data, module, type) do
+      {:ok, IO.iodata_to_binary(iodata)}
+    end
+  end
+
   test "encode json" do
-    {:ok, jsondata} = Spectral.encode(%Person{name: "Alice", age: 30}, Person, :t)
-    assert IO.iodata_to_binary(jsondata) == ~s({"age":30,"name":"Alice"})
+    assert {:ok, ~s({"age":30,"name":"Alice"})} ==
+             encode_to_binary(%Person{name: "Alice", age: 30}, Person, :t)
   end
 
   test "encode json missing nil value" do
-    {:ok, jsondata} = Spectral.encode(%Person{name: "Alice"}, Person, :t)
-    assert IO.iodata_to_binary(jsondata) == ~s({"name":"Alice"})
-  end
-
-  test "encode with pipe" do
-    result =
-      %Person{name: "Alice", age: 30}
-      |> Spectral.encode(Person, :t)
-
-    assert {:ok, _jsondata} = result
+    assert {:ok, ~s({"name":"Alice"})} == encode_to_binary(%Person{name: "Alice"}, Person, :t)
   end
 
   test "decode json" do
-    {:ok, person} = Spectral.decode(~s({"name":"Alice","age":30}), Person, :t)
-    assert person == %Person{name: "Alice", age: 30, address: nil}
-  end
-
-  test "decode with pipe" do
-    result =
-      ~s({"name":"Alice","age":30})
-      |> Spectral.decode(Person, :t)
-
-    assert {:ok, %Person{name: "Alice", age: 30}} = result
+    assert {:ok, %Person{name: "Alice", age: 30, address: nil}} ==
+             Spectral.decode(~s({"name":"Alice","age":30}), Person, :t)
   end
 
   test "encode! returns result directly" do
-    result =
-      %Person{name: "Alice", age: 30}
-      |> Spectral.encode!(Person, :t)
-      |> IO.iodata_to_binary()
-
-    assert result == ~s({"age":30,"name":"Alice"})
+    assert ~s({"age":30,"name":"Alice"}) ==
+             %Person{name: "Alice", age: 30}
+             |> Spectral.encode!(Person, :t)
+             |> IO.iodata_to_binary()
   end
 
   test "decode! returns result directly" do
-    person = Spectral.decode!(~s({"name":"Alice","age":30}), Person, :t)
-    assert person == %Person{name: "Alice", age: 30, address: nil}
+    assert %Person{name: "Alice", age: 30, address: nil} ==
+             Spectral.decode!(~s({"name":"Alice","age":30}), Person, :t)
   end
 
   test "schema! returns result directly" do
-    schema = Spectral.schema!(Person, :t)
-    assert is_binary(IO.iodata_to_binary(schema))
+    assert ~s({"type":"object","required":["street","city"],"additionalProperties":false,"properties":{"city":{"type":"string"},"street":{"type":"string"}}}) ==
+             Spectral.schema!(Person.Address, :t)
+             |> IO.iodata_to_binary()
   end
 
   # Error handling tests - data validation errors
@@ -145,13 +133,11 @@ defmodule SpectralTest do
     assert {:error,
             [
               %Spectral.Error{
-                context: %{type: type, value: value}
+                location: [:age],
+                type: :no_match,
+                context: %{type: _type, value: "not a number"}
               }
             ]} = Spectral.decode(bad_json, Person, :t)
-
-    # Context should contain the type spec and the invalid value
-    assert value == "not a number"
-    assert type != nil
   end
 
   test "encode returns error for invalid data type" do
@@ -161,15 +147,14 @@ defmodule SpectralTest do
     assert {:error,
             [
               %Spectral.Error{
-                location: location,
-                type: error_type,
-                context: context
+                location: [],
+                type: :type_mismatch,
+                context: %{
+                  value: %{name: "Alice", age: "thirty"},
+                  expected_struct: Person
+                }
               }
             ]} = Spectral.encode(invalid_person, Person, :t)
-
-    assert is_list(location)
-    assert is_atom(error_type)
-    assert context != nil
   end
 
   # Error handling tests - bang functions
@@ -189,8 +174,6 @@ defmodule SpectralTest do
              context: %{value: "not a number"}
            } = exception
 
-    # Message is auto-generated when raised as exception
-    assert is_binary(exception.message)
     assert exception.message =~ "age"
   end
 
@@ -202,7 +185,6 @@ defmodule SpectralTest do
         Spectral.decode!(bad_json, Person, :t)
       end
 
-    # Message should be in format "type at location"
     assert exception.message == "no_match at age"
   end
 
@@ -214,16 +196,11 @@ defmodule SpectralTest do
         Spectral.encode!(invalid_person, Person, :t)
       end
 
-    # Verify the error structure
     assert %Spectral.Error{
-             location: location,
-             type: type
+             location: [],
+             type: :type_mismatch,
+             message: "type_mismatch at root"
            } = exception
-
-    assert is_list(location)
-    assert is_atom(type)
-    # Message is auto-generated when raised as exception
-    assert is_binary(exception.message)
   end
 
   # Configuration error tests - these raise ArgumentError
