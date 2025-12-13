@@ -13,8 +13,13 @@ jobs:
 
     strategy:
       matrix:
-        elixir: ['1.19']
-        otp: ['28.2']
+        include:
+          - elixir: "1.17"
+            otp: "26.2"
+          - elixir: "1.18"
+            otp: "27.3"
+          - elixir: "1.19"
+            otp: "28.3"
 
     steps:
       - name: Checkout code
