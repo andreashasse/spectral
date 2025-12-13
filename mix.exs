@@ -44,7 +44,7 @@ defmodule Spectral.MixProject do
     [
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/andreashasse/spectral"},
-      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
+      files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md),
       exclude_patterns: ["lib/person.ex"]
     ]
   end
