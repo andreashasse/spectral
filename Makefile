@@ -33,4 +33,5 @@ release:
 	mix compile && \
 	mix hex.publish && \
 	git push origin "$$tag" && \
-	echo "Released and tagged as $$tag"
+	gh release create "$$tag" --title "v$$tag" --notes "$$(sed -n "/## \[$$tag\]/,/## \[/p" CHANGELOG.md | sed '$$d' | tail -n +2)" && \
+	echo "Released and tagged as $$tag with GitHub release"
