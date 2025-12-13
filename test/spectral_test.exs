@@ -22,6 +22,16 @@ defmodule SpectralTest do
              Spectral.decode(~s({"name":"Alice","age":30}), Person, :t)
   end
 
+  test "decode json with missing optional fields" do
+    assert {:ok, %Person{name: "Alice", age: nil, address: nil}} ==
+             Spectral.decode(~s({"name":"Alice"}), Person, :t)
+  end
+
+  test "decode json with explicit null for optional fields" do
+    assert {:ok, %Person{name: "Alice", age: nil, address: nil}} ==
+             Spectral.decode(~s({"name":"Alice","age":null,"address":null}), Person, :t)
+  end
+
   test "encode! returns result directly" do
     assert ~s({"age":30,"name":"Alice"}) ==
              %Person{name: "Alice", age: 30}

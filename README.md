@@ -106,8 +106,11 @@ with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
   # Returns: "{\"name\":\"Alice\"}" (age and address are omitted)
 end
 
-# When decoding, missing fields become nil in structs
+# When decoding, both missing fields and explicit null values become nil in structs
 Spectral.decode(~s({"name":"Alice"}), Person, :t)
+# Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
+
+Spectral.decode(~s({"name":"Alice","age":null,"address":null}), Person, :t)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
 

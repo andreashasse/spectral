@@ -4,7 +4,7 @@ defmodule Spectral.MixProject do
   def project do
     [
       app: :spectral,
-      version: "0.1.3",
+      version: "0.1.4",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       description: description(),
@@ -24,7 +24,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.1.9"},
+      {:spectra, "~> 0.1.10"},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
@@ -44,7 +44,7 @@ defmodule Spectral.MixProject do
     [
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/andreashasse/spectral"},
-      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
+      files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md),
       exclude_patterns: ["lib/person.ex"]
     ]
   end
