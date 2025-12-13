@@ -4,8 +4,8 @@ defmodule Spectral.MixProject do
   def project do
     [
       app: :spectral,
-      version: "0.1.1",
-      elixir: "~> 1.19",
+      version: "0.1.3",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),
@@ -43,7 +43,9 @@ defmodule Spectral.MixProject do
   defp package() do
     [
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/andreashasse/spectral"}
+      links: %{"GitHub" => "https://github.com/andreashasse/spectral"},
+      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
+      exclude_patterns: ["lib/person.ex"]
     ]
   end
 

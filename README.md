@@ -13,7 +13,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.1.1"}
+    {:spectral, "~> 0.1.3"}
   ]
 end
 ```
