@@ -32,6 +32,38 @@ defmodule SpectralTest do
              Spectral.decode(~s({"name":"Alice","age":null,"address":null}), Person, :t)
   end
 
+  test "decode json ignores extra fields in root object" do
+    assert {:ok, %Person{name: "Alice", age: 30, address: nil}} ==
+             Spectral.decode(
+               ~s({"name":"Alice","age":30,"extra_field":"ignored","another_field":123}),
+               Person,
+               :t
+             )
+  end
+
+  test "decode json ignores extra fields in nested objects" do
+    assert {:ok,
+            %Person{
+              name: "Alice",
+              age: 30,
+              address: %Person.Address{street: "Main St", city: "Berlin"}
+            }} ==
+             Spectral.decode(
+               ~s({"name":"Alice","age":30,"address":{"street":"Main St","city":"Berlin","extra":"ignored"}}),
+               Person,
+               :t
+             )
+  end
+
+  test "decode json ignores extra fields with all types" do
+    # Test that extra fields of various types (string, number, boolean, null, object, array) are all ignored
+    json =
+      ~s({"name":"Alice","age":30,"string_field":"extra","number_field":999,"bool_field":true,"null_field":null,"object_field":{"nested":"value"},"array_field":[1,2,3]})
+
+    assert {:ok, %Person{name: "Alice", age: 30, address: nil}} ==
+             Spectral.decode(json, Person, :t)
+  end
+
   test "encode! returns result directly" do
     assert ~s({"age":30,"name":"Alice"}) ==
              %Person{name: "Alice", age: 30}

@@ -80,6 +80,10 @@ defmodule Spectral do
       iex> ~s({"name":"Alice"})
       ...> |> Spectral.decode(Person, :t)
       {:ok, %Person{age: nil, name: "Alice", address: nil}}
+
+      iex> ~s({"name":"Alice","age":30,"extra_field":"ignored"})
+      ...> |> Spectral.decode(Person, :t)
+      {:ok, %Person{age: 30, name: "Alice", address: nil}}
   """
   @spec decode(term(), module(), atom(), atom()) ::
           {:ok, term()} | {:error, [Spectral.Error.t()]}
