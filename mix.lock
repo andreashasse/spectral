@@ -11,5 +11,5 @@
   "makeup_elixir": {:hex, :makeup_elixir, "1.0.1", "e928a4f984e795e41e3abd27bfc09f51db16ab8ba1aebdba2b3a575437efafc2", [:mix], [{:makeup, "~> 1.0", [hex: :makeup, repo: "hexpm", optional: false]}, {:nimble_parsec, "~> 1.2.3 or ~> 1.3", [hex: :nimble_parsec, repo: "hexpm", optional: false]}], "hexpm", "7284900d412a3e5cfd97fdaed4f5ed389b8f2b4cb49efc0eb3bd10e2febf9507"},
   "makeup_erlang": {:hex, :makeup_erlang, "1.0.2", "03e1804074b3aa64d5fad7aa64601ed0fb395337b982d9bcf04029d68d51b6a7", [:mix], [{:makeup, "~> 1.0", [hex: :makeup, repo: "hexpm", optional: false]}], "hexpm", "af33ff7ef368d5893e4a267933e7744e46ce3cf1f61e2dccf53a111ed3aa3727"},
   "nimble_parsec": {:hex, :nimble_parsec, "1.4.2", "8efba0122db06df95bfaa78f791344a89352ba04baedd3849593bfce4d0dc1c6", [:mix], [], "hexpm", "4b21398942dda052b403bbe1da991ccd03a053668d147d53fb8c4e0efe09c973"},
-  "spectra": {:hex, :spectra, "0.1.10", "e23003ef1ffaa99425084014dee1f17bd4c1ed18f076f6f0cf2d8b370c38a9b7", [:rebar3], [], "hexpm", "644243687faaab930294f654f2f09fd7b4ad348fca7e986e7a38d4d28e8cdb35"},
+  "spectra": {:hex, :spectra, "0.2.0", "aa953b7a0f795a089daee353b60ccdd7ffe1b770e8f4c929c7b5aa1438ef3e6a", [:rebar3], [], "hexpm", "e7bfaab819f4f58aeecb0a7bf0e3638c255bce760a47f1166bd8aca30d90c20c"},
 }
