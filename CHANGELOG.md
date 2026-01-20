@@ -1,9 +1,18 @@
-# Changelog
+ # Changelog
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.3.0] - 2026-01-20
+
+### Changed
+- Upgraded spectra dependency from 0.2.0 to 0.3.0
+- JSON Schema generation now uses JSON Schema 2020-12 (previously draft-07)
+- OpenAPI specification generation now produces OpenAPI 3.1 (previously 3.0)
+- Improved error messages and handling of remote types in enums and parameterized types
+- Better documentation of null/optional field handling
 
 ## [0.2.0] - 2025-12-15
 
