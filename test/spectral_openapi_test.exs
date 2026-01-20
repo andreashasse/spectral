@@ -205,7 +205,7 @@ defmodule Spectral.OpenAPITest do
 
       {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
 
-      assert spec["openapi"] == "3.0.0"
+      assert spec["openapi"] == "3.1.0"
       assert spec["info"]["title"] == "Test API"
       assert spec["info"]["version"] == "1.0.0"
       assert Map.has_key?(spec, "paths")
@@ -273,7 +273,7 @@ defmodule Spectral.OpenAPITest do
       {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
 
       # Verify structure
-      assert spec["openapi"] == "3.0.0"
+      assert spec["openapi"] == "3.1.0"
       assert spec["info"]["title"] == "User Management API"
       assert map_size(spec["paths"]) == 2
       assert is_map_key(spec["paths"], "/users")

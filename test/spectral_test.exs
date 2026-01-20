@@ -77,7 +77,7 @@ defmodule SpectralTest do
   end
 
   test "schema! returns result directly" do
-    assert ~s({"type":"object","required":["street","city"],"additionalProperties":false,"properties":{"city":{"type":"string"},"street":{"type":"string"}}}) ==
+    assert ~s({"type":"object","required":["street","city"],"additionalProperties":false,"properties":{"city":{"type":"string"},"street":{"type":"string"}},"$schema":"https://json-schema.org/draft/2020-12/schema"}) ==
              Spectral.schema!(Person.Address, :t)
              |> IO.iodata_to_binary()
   end
@@ -118,7 +118,12 @@ defmodule SpectralTest do
               %Spectral.Error{
                 location: [:name],
                 type: :missing_data,
-                context: :undefined
+                context: %{
+                  type:
+                    {:literal_map_field, :exact, :name, "name",
+                     {:sp_remote_type, {String, :t, []}}},
+                  value: %{}
+                }
               }
             ]} = Spectral.decode(bad_json, Person, :t)
   end
@@ -192,8 +197,15 @@ defmodule SpectralTest do
                 location: [],
                 type: :type_mismatch,
                 context: %{
-                  value: %{name: "Alice", age: "thirty"},
-                  expected_struct: Person
+                  message: ~c"Struct mismatch",
+                  type:
+                    {:sp_map,
+                     [
+                       {:literal_map_field, :exact, :address, "address", _},
+                       {:literal_map_field, :exact, :age, "age", _},
+                       {:literal_map_field, :exact, :name, "name", _}
+                     ], Person},
+                  value: %{name: "Alice", age: "thirty"}
                 }
               }
             ]} = Spectral.encode(invalid_person, Person, :t)

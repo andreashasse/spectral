@@ -223,7 +223,7 @@ defmodule Spectral do
 
       iex> schemadata = Spectral.schema!(Person.Address, :t)
       iex> IO.iodata_to_binary(schemadata)
-      ~s({"type":"object","required":["street","city"],"additionalProperties":false,"properties":{"city":{"type":"string"},"street":{"type":"string"}}})
+      ~s({"type":"object","required":["street","city"],"additionalProperties":false,"properties":{"city":{"type":"string"},"street":{"type":"string"}},"$schema":"https://json-schema.org/draft/2020-12/schema"})
   """
   @spec schema!(module(), atom(), atom()) :: iodata()
   def schema!(module, type_ref, format \\ :json_schema) do
