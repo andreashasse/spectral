@@ -26,7 +26,7 @@ You are tasked with updating the `spectra` Erlang library dependency to the late
      - Bug fixes that might affect behavior
 
 4. **Update Dependencies**
-   - Update the version constraint in `mix.exs` (line 27: `{:spectra, "~> X.Y.Z"}`)
+   - In `mix.exs`, locate the `:spectra` dependency entry (for example, a line starting with `{:spectra, ...}`) and update its version constraint to the desired `~> X.Y.Z` value
    - Update the installation example in `README.md` if the major/minor version changes
    - Run `mix deps.get` to fetch the new version
    - Run `mix deps.update spectra` to ensure the dependency is updated
