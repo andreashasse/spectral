@@ -114,6 +114,21 @@ Spectral.decode(~s({"name":"Alice","age":null,"address":null}), Person, :t)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
 
+### Extra Fields Handling
+
+When decoding JSON into Elixir structs, extra fields that are not defined in the type specification are **silently ignored**. This enables forward compatibility and flexible API evolution:
+
+```elixir
+# JSON with extra fields not in the Person type
+json = ~s({"name":"Alice","age":30,"unknown_field":"ignored"})
+
+Spectral.decode(json, Person, :t)
+# Returns: {:ok, %Person{name: "Alice", age: 30, address: nil}}
+# Extra fields are discarded without errors
+```
+
+This permissive behavior allows your application to accept JSON from newer API versions without breaking, as long as all required fields are present.
+
 ### Data Serialization API
 
 The main functions for JSON serialization and deserialization (pipe-friendly):

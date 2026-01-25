@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Upgraded spectra dependency from 0.3.1 to 0.3.2
 - Added Erlang/OTP 27+ requirement to documentation (required by spectra)
+- Added documentation section explaining extra fields handling during JSON decoding
 
 ## [0.3.1] - 2026-01-25
 
