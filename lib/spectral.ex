@@ -46,7 +46,7 @@ defmodule Spectral do
       iex> IO.iodata_to_binary(json)
       ~s({"name":"Alice"})
   """
-  @spec encode(term(), module(), atom(), atom()) ::
+  @spec encode(dynamic(), module(), atom(), atom()) ::
           {:ok, iodata()} | {:error, [Spectral.Error.t()]}
   def encode(data, module, type_ref, format \\ :json) do
     :spectra.encode(format, module, type_ref, data)
@@ -68,7 +68,7 @@ defmodule Spectral do
 
   ## Returns
 
-  - `{:ok, term()}` - Decoded data on success
+  - `{:ok, dynamic()}` - Decoded data on success
   - `{:error, [%Spectral.Error{}]}` - List of errors on failure
 
   ## Examples
@@ -85,8 +85,8 @@ defmodule Spectral do
       ...> |> Spectral.decode(Person, :t)
       {:ok, %Person{age: 30, name: "Alice", address: nil}}
   """
-  @spec decode(term(), module(), atom(), atom()) ::
-          {:ok, term()} | {:error, [Spectral.Error.t()]}
+  @spec decode(binary(), module(), atom(), atom()) ::
+          {:ok, dynamic()} | {:error, [Spectral.Error.t()]}
   def decode(data, module, type_ref, format \\ :json) do
     :spectra.decode(format, module, type_ref, data)
     |> convert_result()
@@ -152,7 +152,7 @@ defmodule Spectral do
       ...> |> IO.iodata_to_binary()
       ~s({"age":30,"name":"Alice"})
   """
-  @spec encode!(term(), module(), atom(), atom()) :: iodata()
+  @spec encode!(dynamic(), module(), atom(), atom()) :: iodata()
   def encode!(data, module, type_ref, format \\ :json) do
     case encode(data, module, type_ref, format) do
       {:ok, result} ->
@@ -177,7 +177,7 @@ defmodule Spectral do
 
   ## Returns
 
-  - `term()` - Decoded data on success
+  - `dynamic()` - Decoded data on success
 
   ## Raises
 
@@ -189,7 +189,7 @@ defmodule Spectral do
       ...> |> Spectral.decode!(Person, :t)
       %Person{age: 30, name: "Alice", address: nil}
   """
-  @spec decode!(term(), module(), atom(), atom()) :: term()
+  @spec decode!(binary(), module(), atom(), atom()) :: dynamic()
   def decode!(data, module, type_ref, format \\ :json) do
     case decode(data, module, type_ref, format) do
       {:ok, result} ->
