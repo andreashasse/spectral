@@ -13,7 +13,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.3.0"}
+    {:spectral, "~> 0.3.2"}
   ]
 end
 ```
@@ -113,6 +113,21 @@ Spectral.decode(~s({"name":"Alice"}), Person, :t)
 Spectral.decode(~s({"name":"Alice","age":null,"address":null}), Person, :t)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
+
+### Extra Fields Handling
+
+When decoding JSON into Elixir structs, extra fields that are not defined in the type specification are **silently ignored**. This enables forward compatibility and flexible API evolution:
+
+```elixir
+# JSON with extra fields not in the Person type
+json = ~s({"name":"Alice","age":30,"unknown_field":"ignored"})
+
+Spectral.decode(json, Person, :t)
+# Returns: {:ok, %Person{name: "Alice", age: 30, address: nil}}
+# Extra fields are discarded without errors
+```
+
+This permissive behavior allows your application to accept JSON from newer API versions without breaking, as long as all required fields are present.
 
 ### Data Serialization API
 
@@ -270,6 +285,7 @@ IO.inspect(openapi_spec, pretty: true)
 
 ## Requirements
 
+- **Erlang/OTP 27+**: Spectral requires Erlang/OTP version 27 or later (required by the underlying spectra library)
 - **Compilation**: Modules must be compiled with `debug_info` for Spectral to extract type information. This is enabled by default in Mix projects.
 
 ## Error Handling
