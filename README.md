@@ -13,7 +13,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.3.0"}
+    {:spectral, "~> 0.3.2"}
   ]
 end
 ```
@@ -270,6 +270,7 @@ IO.inspect(openapi_spec, pretty: true)
 
 ## Requirements
 
+- **Erlang/OTP 27+**: Spectral requires Erlang/OTP version 27 or later (required by the underlying spectra library)
 - **Compilation**: Modules must be compiled with `debug_info` for Spectral to extract type information. This is enabled by default in Mix projects.
 
 ## Error Handling
