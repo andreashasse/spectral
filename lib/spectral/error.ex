@@ -11,7 +11,7 @@ defmodule Spectral.Error do
 
   - `:location` - Path to where the error occurred (list of strings or atoms)
   - `:type` - Type of error (`:decode_error`, `:type_mismatch`, `:no_match`, `:missing_data`, `:not_matched_fields`)
-  - `:context` - Additional context information about the error (any term)
+  - `:context` - Additional context information about the error (runtime-determined type)
   - `:message` - Human-readable error message (auto-generated for exceptions)
 
   ## Example
@@ -29,7 +29,7 @@ defmodule Spectral.Error do
   @type t :: %__MODULE__{
           location: [String.t() | atom()],
           type: error_type(),
-          context: term(),
+          context: dynamic(),
           message: String.t()
         }
 

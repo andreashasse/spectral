@@ -4,7 +4,7 @@ defmodule Spectral.MixProject do
   def project do
     [
       app: :spectral,
-      version: "0.3.0",
+      version: "0.3.1",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       description: description(),

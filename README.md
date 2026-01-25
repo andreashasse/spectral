@@ -126,9 +126,9 @@ Spectral.encode(data, module, type_ref, format \\ :json) ::
 Spectral.encode!(data, module, type_ref, format \\ :json) :: iodata()
 
 Spectral.decode(data, module, type_ref, format \\ :json) ::
-    {:ok, term()} | {:error, [%Spectral.Error{}]}
+    {:ok, dynamic()} | {:error, [%Spectral.Error{}]}
 
-Spectral.decode!(data, module, type_ref, format \\ :json) :: term()
+Spectral.decode!(data, module, type_ref, format \\ :json) :: dynamic()
 ```
 
 **Parameters:**
@@ -353,9 +353,11 @@ Example:
 }
 ```
 
-### `term()` and `any()`
+### `dynamic()`, `term()` and `any()`
 
-When using types with `term()` or `any()`, Spectral will not reject any data, which means it can return data that may not be valid JSON.
+When using types with `dynamic()`, `term()`, or `any()` in your type specifications, Spectral will not reject any data, which means it can return data that may not be valid JSON.
+
+Note: Spectral uses `dynamic()` for runtime-determined types in its own API, following Erlang's gradual typing conventions.
 
 ### Unsupported Types
 

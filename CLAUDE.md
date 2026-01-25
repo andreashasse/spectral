@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Spectral is an Elixir wrapper library for the Erlang `spectra` library (v0.1.9). It provides idiomatic Elixir interfaces for:
+Spectral is an Elixir wrapper library for the Erlang `spectra` library. It provides idiomatic Elixir interfaces for:
 - **Data encoding/decoding**: Convert Elixir structs to/from JSON using type specifications
 - **Schema generation**: Generate JSON schemas from Elixir type definitions
 - **OpenAPI specification**: Generate OpenAPI 3.0 specifications from type definitions

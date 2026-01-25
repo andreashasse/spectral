@@ -271,7 +271,7 @@ defmodule Spectral.OpenAPI do
 
       {:ok, openapi_spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
   """
-  @spec endpoints_to_openapi(map(), [term()]) ::
+  @spec endpoints_to_openapi(map(), [dynamic()]) ::
           {:ok, map()} | {:error, [Spectral.Error.t()]}
   def endpoints_to_openapi(metadata, endpoints) do
     metadata
