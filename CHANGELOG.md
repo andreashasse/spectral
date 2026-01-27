@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-01-27
+
+### Changed
+- Upgraded spectra dependency from 0.3.2 to 0.4.0
+- **BREAKING CHANGE**: `Spectral.schema/3` now returns `iodata()` directly instead of `{:ok, iodata()}` tuple, matching the new spectra 0.4.0 API
+
+### Removed
+- **BREAKING CHANGE**: Removed `Spectral.schema!/3` function as it's no longer needed (schema/3 now returns directly)
+
 ## [0.3.2] - 2026-01-25
 
 ### Changed

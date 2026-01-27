@@ -13,7 +13,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.3.2"}
+    {:spectral, "~> 0.4.0"}
   ]
 end
 ```
@@ -66,9 +66,8 @@ json_string = ~s({"name":"Alice","age":30,"address":{"street":"Ystader Straße",
 {:ok, person} = Spectral.decode(json_string, Person, :t)
 
 # Generate a JSON schema
-with {:ok, schema_iodata} <- Spectral.schema(Person, :t) do
-  IO.iodata_to_binary(schema_iodata)
-end
+schema_iodata = Spectral.schema(Person, :t)
+IO.iodata_to_binary(schema_iodata)
 ```
 
 ### Bang Functions
@@ -87,7 +86,7 @@ person =
 
 schema =
   Person
-  |> Spectral.schema!(:t)
+  |> Spectral.schema(:t)
   |> IO.iodata_to_binary()
 ```
 
@@ -157,10 +156,7 @@ Spectral.decode!(data, module, type_ref, format \\ :json) :: dynamic()
 Generate schemas from your type definitions:
 
 ```elixir
-Spectral.schema(module, type_ref, format \\ :json_schema) ::
-    {:ok, iodata()} | {:error, [%Spectral.Error{}]}
-
-Spectral.schema!(module, type_ref, format \\ :json_schema) :: iodata()
+Spectral.schema(module, type_ref, format \\ :json_schema) :: iodata()
 ```
 
 **Parameters:**
@@ -294,7 +290,7 @@ Spectral provides two types of functions with different error handling strategie
 
 ### Normal Functions
 
-The standard functions (`encode/3-4`, `decode/3-4`, `schema/2-3`) use a dual error handling approach:
+The encoding and decoding functions (`encode/3-4`, `decode/3-4`) use a dual error handling approach:
 
 **Data validation errors** return `{:error, [%Spectral.Error{}]}` tuples:
 - Type mismatches (e.g., string when integer expected)
@@ -321,7 +317,7 @@ These exceptions indicate problems with your application's configuration or type
 
 ### Bang Functions
 
-The bang versions (`encode!/3-4`, `decode!/3-4`, `schema!/2-3`) always raise exceptions for any error:
+The bang versions (`encode!/3-4`, `decode!/3-4`) always raise exceptions for any error:
 
 ```elixir
 person =
@@ -331,6 +327,17 @@ person =
 ```
 
 Use bang functions when you want to propagate all errors as exceptions, simplifying pipelines but requiring try/rescue for error handling.
+
+### Schema Generation
+
+The `schema/2-3` function returns the schema directly as `iodata()` without wrapping it in a result tuple:
+
+```elixir
+schema = Spectral.schema(Person, :t)
+IO.iodata_to_binary(schema)
+```
+
+Schema generation may still raise exceptions for type and configuration errors (module not found, type not found, etc.).
 
 ### Error Structure
 
