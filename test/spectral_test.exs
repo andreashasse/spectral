@@ -76,9 +76,9 @@ defmodule SpectralTest do
              Spectral.decode!(~s({"name":"Alice","age":30}), Person, :t)
   end
 
-  test "schema! returns result directly" do
+  test "schema returns result directly" do
     assert ~s({"type":"object","required":["street","city"],"additionalProperties":false,"properties":{"city":{"type":"string"},"street":{"type":"string"}},"$schema":"https://json-schema.org/draft/2020-12/schema"}) ==
-             Spectral.schema!(Person.Address, :t)
+             Spectral.schema(Person.Address, :t)
              |> IO.iodata_to_binary()
   end
 

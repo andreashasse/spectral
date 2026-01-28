@@ -106,20 +106,17 @@ defmodule Spectral do
 
   ## Returns
 
-  - `{:ok, iodata()}` - Generated schema on success
-  - `{:error, [%Spectral.Error{}]}` - List of errors on failure
+  - `iodata()` - Generated schema
 
   ## Examples
 
-      iex> {:ok, schemadata} = Spectral.schema(Person, :t)
+      iex> schemadata = Spectral.schema(Person, :t)
       iex> is_binary(IO.iodata_to_binary(schemadata))
       true
   """
-  @spec schema(module(), atom(), atom()) ::
-          {:ok, iodata()} | {:error, [Spectral.Error.t()]}
+  @spec schema(module(), atom(), atom()) :: iodata()
   def schema(module, type_ref, format \\ :json_schema) do
     :spectra.schema(format, module, type_ref)
-    |> convert_result()
   rescue
     error in ErlangError ->
       handle_erlang_error(error, :schema, module, type_ref)
@@ -196,43 +193,6 @@ defmodule Spectral do
         result
 
       {:error, [error | _]} ->
-        raise Spectral.Error.exception(error)
-    end
-  end
-
-  @doc """
-  Generates a schema for the specified type, raising on error.
-
-  Like `schema/3` but raises `Spectral.Error` instead of returning an error tuple.
-
-  ## Parameters
-
-  - `module` - Module containing the type definition
-  - `type_ref` - Type reference (typically an atom like `:t`)
-  - `format` - Schema format (default: `:json_schema`)
-
-  ## Returns
-
-  - `iodata()` - Generated schema on success
-
-  ## Raises
-
-  - `Spectral.Error` - If schema generation fails
-
-  ## Examples
-
-      iex> schemadata = Spectral.schema!(Person.Address, :t)
-      iex> IO.iodata_to_binary(schemadata)
-      ~s({"type":"object","required":["street","city"],"additionalProperties":false,"properties":{"city":{"type":"string"},"street":{"type":"string"}},"$schema":"https://json-schema.org/draft/2020-12/schema"})
-  """
-  @spec schema!(module(), atom(), atom()) :: iodata()
-  def schema!(module, type_ref, format \\ :json_schema) do
-    case schema(module, type_ref, format) do
-      {:ok, result} ->
-        result
-
-      {:error, [error | _]} ->
-        # Call exception/1 to populate the message field
         raise Spectral.Error.exception(error)
     end
   end
