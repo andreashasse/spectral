@@ -24,11 +24,12 @@ defmodule Spectral do
 
   When you `use Spectral`, a `@spectra` module attribute is registered as an
   accumulating attribute, and a `__spectra__/0` function is injected into your module
-  via `@before_compile`. Place `@spectra %{type: {:t, 0}, title: ..., description: ...}`
-  before a `@type` definition to include those fields in the generated JSON Schema.
+  via `@before_compile`. Place `@spectra %{title: ..., description: ...}` immediately
+  before a `@type` definition to associate the documentation with that type.
 
-  The `type` key identifies which type the documentation applies to, using
-  `{name, arity}` format (e.g., `{:t, 0}`).
+  Each `@spectra` attribute is automatically paired with the `@type` that follows it
+  (by definition order). The number of `@spectra` attributes must match the number
+  of `@type` definitions.
 
   Supported documentation fields:
   - `title` - A short title for the type (binary)
@@ -45,7 +46,7 @@ defmodule Spectral do
 
         defstruct [:name]
 
-        @spectra %{type: {:t, 0}, title: "My Struct", description: "A documented struct"}
+        @spectra %{title: "My Struct", description: "A documented struct"}
         @type t :: %MyStruct{name: String.t()}
       end
 
@@ -54,13 +55,31 @@ defmodule Spectral do
   """
   defmacro __using__(_opts) do
     quote do
-      Module.register_attribute(__MODULE__, :spectra, persist: true)
+      Module.register_attribute(__MODULE__, :spectra, accumulate: true)
       @before_compile Spectral
     end
   end
 
   @doc false
-  defmacro __before_compile__(_env) do
+  defmacro __before_compile__(env) do
+    spectra_attrs = Module.get_attribute(env.module, :spectra) |> Enum.reverse()
+    type_attrs = (Module.get_attribute(env.module, :type) || []) |> Enum.reverse()
+
+    type_refs =
+      Enum.map(type_attrs, fn
+        {:type, {:"::", _, [{name, _, nil}, _]}, _} -> {name, 0}
+        {:type, {:"::", _, [{name, _, args}, _]}, _} when is_list(args) -> {name, length(args)}
+      end)
+
+    paired = Enum.zip(spectra_attrs, type_refs)
+
+    Module.delete_attribute(env.module, :spectra)
+    Module.register_attribute(env.module, :spectra, persist: true)
+
+    for {doc, type_ref} <- paired do
+      Module.put_attribute(env.module, :spectra, Map.put(doc, :type, type_ref))
+    end
+
     quote do
       def __spectra__ do
         :spectra_abstract_code.types_in_module(__MODULE__)
