@@ -132,6 +132,8 @@ defmodule Spectral do
   end
 
   @doc false
+  # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
+  # credo:disable-for-this-file Credo.Check.Refactor.Nesting
   defmacro __before_compile__(env) do
     spectral_attrs = Module.get_attribute(env.module, :spectral) || []
     type_attrs = Module.get_attribute(env.module, :type) || []
