@@ -24,6 +24,9 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
+      # Temporary git-branch dependency for JSON Schema/OpenAPI documentation support.
+      # TODO: Replace with a released :spectra version from Hex (or a tagged release)
+      # once the required functionality is available upstream.
       {:spectra, github: "andreashasse/spectra", branch: "json-schema-doc-support-with-elixir"},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
@@ -45,7 +48,13 @@ defmodule Spectral.MixProject do
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/andreashasse/spectral"},
       files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md),
-      exclude_patterns: ["lib/person.ex"]
+      exclude_patterns: [
+        "lib/person.ex",
+        "lib/multi_type_module.ex",
+        "lib/multi_type_module_reversed.ex",
+        "lib/multi_type_module_first_missing.ex",
+        "lib/semantic_pairing_test_module.ex"
+      ]
     ]
   end
 
@@ -54,7 +63,14 @@ defmodule Spectral.MixProject do
       main: "readme",
       extras: ["README.md"],
       filter_modules: fn module, _metadata ->
-        module not in [Person, Person.Address]
+        module not in [
+          Person,
+          Person.Address,
+          MultiTypeModule,
+          MultiTypeModuleReversed,
+          MultiTypeModuleFirstMissing,
+          SemanticPairingTestModule
+        ]
       end
     ]
   end

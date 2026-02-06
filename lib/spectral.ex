@@ -102,8 +102,26 @@ defmodule Spectral do
         @type internal_id :: non_neg_integer()
       end
 
-  The `__spectra__/0` function returns type information for all types in the module,
-  including documentation for types that have `spectral` calls.
+  ## The `__spectra__/0` Function
+
+  The injected `__spectra__/0` function returns detailed type information for the module.
+  It calls `:spectra_abstract_code.types_in_module/1` and returns a tuple with the structure:
+
+      {:type_info, types_map, docs_map, specs_map, callbacks_map}
+
+  Where:
+  - `types_map` - Map of `{type_name, arity}` to type AST information
+  - `docs_map` - Map containing documentation from `spectral` calls (title, description, etc.)
+  - `specs_map` - Map of function specs
+  - `callbacks_map` - Map of callback specs
+
+  Example:
+
+      Person.__spectra__()
+      # => {:type_info, %{{:t, 0} => ...}, %{title: "Person", ...}, %{}, %{}}
+
+  This function is primarily used internally by Spectral's encoding, decoding, and schema
+  generation functions, but can be called directly for introspection purposes.
   """
   defmacro __using__(_opts) do
     quote do
@@ -125,10 +143,17 @@ defmodule Spectral do
     types_with_lines =
       type_attrs
       |> Enum.reverse()
-      |> Enum.map(fn {:type, {:"::", meta, [{name, _, args_or_nil}, _]}, _} ->
-        arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
-        line = Keyword.get(meta, :line, 0)
-        {line, {name, arity}}
+      |> Enum.map(fn
+        {:type, {:"::", meta, [{name, _, args_or_nil}, _]}, _} ->
+          arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
+          line = Keyword.get(meta, :line, 0)
+          {line, {name, arity}}
+
+        other_ast ->
+          raise ArgumentError,
+                "Spectral.__before_compile__/1 encountered unsupported @type AST in " <>
+                  "#{inspect(env.module)}: #{inspect(other_ast)}. " <>
+                  "Please report this as a bug at https://github.com/andreashasse/spectral/issues"
       end)
 
     # Semantic pairing: match each @spectral with the @type that comes immediately after it

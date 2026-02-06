@@ -389,16 +389,16 @@ defmodule SpectralTest do
     assert schema["description"] == "A postal address"
   end
 
-  test "schema for type without @spectral has no title or description" do
-    # Person.Address has @spectral with title/description, but we verify that
-    # the schema structure is correct and docs only appear when defined
+  test "schema for type without spectral has no title or description" do
+    # MultiTypeModule.other_type has NO spectral documentation
+    # Verify that the schema has no title/description fields
     schema =
-      Spectral.schema(Person.Address, :t)
+      Spectral.schema(MultiTypeModule, :other_type)
       |> IO.iodata_to_binary()
       |> Jason.decode!()
 
-    assert schema["title"] == "Address"
-    assert schema["description"] == "A postal address"
+    refute Map.has_key?(schema, "title")
+    refute Map.has_key?(schema, "description")
     assert schema["type"] == "object"
   end
 
