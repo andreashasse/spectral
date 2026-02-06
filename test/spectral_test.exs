@@ -495,7 +495,7 @@ defmodule SpectralTest do
   test "semantic pairing: documentation assigned to type AFTER spectral call, not by index" do
     # This test validates the critical bug fix: documentation should be paired
     # based on line position (semantic), not array index (positional).
-    # 
+    #
     # Before the fix, documentation would be incorrectly assigned by index:
     #   spectral[0] → type[0], even if spectral[0] appeared after type[0] in source
     #
