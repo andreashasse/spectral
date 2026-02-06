@@ -20,6 +20,39 @@ defmodule Spectral do
   """
 
   @doc """
+  Sets up the `@spectra` attribute for JSON Schema documentation.
+
+  When you `use Spectral`, a `@spectra` module attribute is registered as an
+  accumulating attribute. Place `@spectra %{type: {:t, 0}, title: ..., description: ...}`
+  before a `@type` definition to include those fields in the generated JSON Schema.
+
+  The `type` key identifies which type the documentation applies to, using
+  `{name, arity}` format (e.g., `{:t, 0}`).
+
+  Supported documentation fields:
+  - `title` - A short title for the type (binary)
+  - `description` - A longer description (binary)
+  - `examples` - A list of example values
+
+  ## Example
+
+      defmodule MyStruct do
+        use Spectral
+
+        defstruct [:name]
+
+        @spectra %{type: {:t, 0}, title: "My Struct", description: "A documented struct"}
+        @type t :: %MyStruct{name: String.t()}
+      end
+
+  """
+  defmacro __using__(_opts) do
+    quote do
+      Module.register_attribute(__MODULE__, :spectra, persist: true)
+    end
+  end
+
+  @doc """
   Encodes data to the specified format.
 
   ## Parameters

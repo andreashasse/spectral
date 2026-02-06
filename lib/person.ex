@@ -2,14 +2,17 @@ defmodule Person do
   @moduledoc """
   Example module demonstrating Spectral usage with nested structs.
   """
+  use Spectral
 
   defmodule Address do
     @moduledoc """
     Address struct representing a person's address.
     """
+    use Spectral
 
     defstruct [:street, :city]
 
+    @spectra %{type: {:t, 0}, title: "Address", description: "A postal address"}
     @type t :: %Address{
             street: String.t(),
             city: String.t()
@@ -18,6 +21,7 @@ defmodule Person do
 
   defstruct [:name, :age, :address]
 
+  @spectra %{type: {:t, 0}, title: "Person", description: "A person with name and age"}
   @type t :: %Person{
           name: String.t(),
           age: non_neg_integer() | nil,

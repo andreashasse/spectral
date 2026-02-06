@@ -24,7 +24,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.4.0"},
+      {:spectra, github: "andreashasse/spectra", branch: "json-schema-doc-support-with-elixir"},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
