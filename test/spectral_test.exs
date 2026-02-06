@@ -335,6 +335,38 @@ defmodule SpectralTest do
     assert exception.message =~ "not found"
   end
 
+  # __spectra__/0 function tests
+
+  test "Person.__spectra__ returns type_info tuple" do
+    result = Person.__spectra__()
+    assert {:type_info, _types, _records, _functions, _docs, _record_docs} = result
+  end
+
+  test "Person.__spectra__ docs contain title and description" do
+    {:type_info, _types, _records, _functions, docs, _record_docs} = Person.__spectra__()
+    assert is_map(docs)
+    assert Map.has_key?(docs, {:t, 0})
+
+    doc = docs[{:t, 0}]
+    assert doc.title == "Person"
+    assert doc.description == "A person with name and age"
+  end
+
+  test "Person.Address.__spectra__ returns type_info tuple" do
+    result = Person.Address.__spectra__()
+    assert {:type_info, _types, _records, _functions, _docs, _record_docs} = result
+  end
+
+  test "Person.Address.__spectra__ docs contain title and description" do
+    {:type_info, _types, _records, _functions, docs, _record_docs} = Person.Address.__spectra__()
+    assert is_map(docs)
+    assert Map.has_key?(docs, {:t, 0})
+
+    doc = docs[{:t, 0}]
+    assert doc.title == "Address"
+    assert doc.description == "A postal address"
+  end
+
   # Schema doc tests - @spectra attribute support
 
   test "schema includes title and description from @spectra attribute" do

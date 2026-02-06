@@ -20,10 +20,11 @@ defmodule Spectral do
   """
 
   @doc """
-  Sets up the `@spectra` attribute for JSON Schema documentation.
+  Sets up the `@spectra` attribute for JSON Schema documentation and injects `__spectra__/0`.
 
   When you `use Spectral`, a `@spectra` module attribute is registered as an
-  accumulating attribute. Place `@spectra %{type: {:t, 0}, title: ..., description: ...}`
+  accumulating attribute, and a `__spectra__/0` function is injected into your module
+  via `@before_compile`. Place `@spectra %{type: {:t, 0}, title: ..., description: ...}`
   before a `@type` definition to include those fields in the generated JSON Schema.
 
   The `type` key identifies which type the documentation applies to, using
@@ -33,6 +34,9 @@ defmodule Spectral do
   - `title` - A short title for the type (binary)
   - `description` - A longer description (binary)
   - `examples` - A list of example values
+
+  The injected `__spectra__/0` function returns type information for the module,
+  including any documentation from `@spectra` attributes.
 
   ## Example
 
@@ -45,10 +49,22 @@ defmodule Spectral do
         @type t :: %MyStruct{name: String.t()}
       end
 
+      MyStruct.__spectra__()  # Returns type_info tuple with docs
+
   """
   defmacro __using__(_opts) do
     quote do
       Module.register_attribute(__MODULE__, :spectra, persist: true)
+      @before_compile Spectral
+    end
+  end
+
+  @doc false
+  defmacro __before_compile__(_env) do
+    quote do
+      def __spectra__ do
+        :spectra_abstract_code.types_in_module(__MODULE__)
+      end
     end
   end
 
