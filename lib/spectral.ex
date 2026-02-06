@@ -120,7 +120,7 @@ defmodule Spectral do
     end
 
     quote do
-      def __spectra__() do
+      def __spectra__ do
         :spectra_abstract_code.types_in_module(__MODULE__)
       end
     end
