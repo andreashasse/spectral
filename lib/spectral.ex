@@ -20,95 +20,145 @@ defmodule Spectral do
   """
 
   @doc """
-  Sets up the `@spectral` attribute for JSON Schema documentation and injects `__spectra__/0`.
+  Adds documentation metadata for a type.
 
-  When you `use Spectral`, a `@spectral` module attribute is registered as an
-  accumulating attribute, and a `__spectra__/0` function is injected into your module
-  via `@before_compile`.
-
-  ## Usage
-
-  Place `@spectral` immediately before each `@type` definition. For types you want to document,
-  include title and description. For types without documentation, use an empty map:
-
-      @spectral %{title: "Person", description: "A person record"}
-      @type t :: %Person{name: String.t()}
-      
-      @spectral %{}  # No documentation for this internal type
-      @type internal_id :: non_neg_integer()
-
-  **Important:** You must have one `@spectral` attribute for each `@type` definition, even if
-  some types don't need documentation. Use `@spectral %{}` for undocumented types.
-
-  Types without title/description fields (empty `@spectral %{}`) will not have those fields
-  in their JSON schemas.
-
-  Supported documentation fields:
-  - `title` - A short title for the type (binary)
-  - `description` - A longer description (binary)
-  - `examples` - A list of example values
-
-  The injected `__spectra__/0` function returns type information for the module,
-  including any documentation from `@spectral` attributes.
+  Use this macro immediately before a `@type` definition to document it.
+  The line number is automatically captured to pair the documentation
+  with the correct type.
 
   ## Example
 
-      defmodule MyStruct do
+      defmodule Person do
         use Spectral
-
-        defstruct [:name, :id]
-
-        @spectral %{title: "My Struct", description: "A documented struct"}
-        @type t :: %MyStruct{name: String.t()}
         
-        @spectral %{}  # Internal type, no docs needed
-        @type internal :: atom()
+        spectral title: "Person", description: "A person record"
+        @type t :: %Person{name: String.t()}
       end
 
-      MyStruct.__spectra__()  # Returns type_info tuple with docs
+  ## Supported Fields
 
+  - `title` - A short title for the type
+  - `description` - A detailed description
+  - `examples` - Example values (list, not yet fully supported)
+  """
+  defmacro spectral(metadata) when is_list(metadata) do
+    line = __CALLER__.line
+
+    quote do
+      @spectral {unquote(line), Map.new(unquote(metadata))}
+    end
+  end
+
+  defmacro spectral(metadata) do
+    line = __CALLER__.line
+
+    quote do
+      @spectral {unquote(line), unquote(metadata)}
+    end
+  end
+
+  @doc """
+  Sets up the Spectral macros and injects `__spectra__/0` function.
+
+  When you `use Spectral`, the following happens:
+  - The `spectral/1` macro is imported for documenting types
+  - A `__spectra__/0` function is injected that returns type information
+  - The `@spectral` attribute is registered (used internally by the `spectral/1` macro)
+
+  ## Usage
+
+  Use the `spectral/1` macro to document types. Place it immediately before a `@type` definition:
+
+      defmodule Person do
+        use Spectral
+
+        defstruct [:name, :age]
+
+        spectral title: "Person", description: "A person record"
+        @type t :: %Person{name: String.t(), age: non_neg_integer()}
+      end
+
+  Types without a `spectral` call will not have title/description in their JSON schemas.
+
+  ## Documentation Fields
+
+  The `spectral` macro accepts the following fields:
+  - `title` - A short title for the type (string)
+  - `description` - A detailed description (string)
+  - `examples` - Example values (list, not fully supported yet)
+
+  ## Multiple Types
+
+  You can have multiple types in a module. Only document the ones you want:
+
+      defmodule MyModule do
+        use Spectral
+
+        # Public API type - documented
+        spectral title: "Public API", description: "The public interface"
+        @type public_api :: map()
+
+        # Internal type - no documentation needed
+        @type internal_id :: non_neg_integer()
+      end
+
+  The `__spectra__/0` function returns type information for all types in the module,
+  including documentation for types that have `spectral` calls.
   """
   defmacro __using__(_opts) do
     quote do
-      Module.register_attribute(__MODULE__, :spectral, accumulate: true)
+      Module.register_attribute(__MODULE__, :spectral, accumulate: true, persist: true)
+      import Spectral, only: [spectral: 1]
       @before_compile Spectral
     end
   end
 
   @doc false
   defmacro __before_compile__(env) do
-    spectral_attrs = Module.get_attribute(env.module, :spectral)
+    spectral_attrs = Module.get_attribute(env.module, :spectral) || []
     type_attrs = Module.get_attribute(env.module, :type) || []
 
-    # Reverse to get source order
-    spectral_attrs_in_order = Enum.reverse(spectral_attrs)
+    # Both attributes accumulate in reverse order (LIFO), so reverse to get source order
+    spectral_in_order = Enum.reverse(spectral_attrs)
 
-    types_in_order =
+    # Extract types with their line numbers from the AST metadata
+    types_with_lines =
       type_attrs
       |> Enum.reverse()
-      |> Enum.map(fn {:type, {:"::", _, [{name, _, args_or_nil}, _]}, _} ->
+      |> Enum.map(fn {:type, {:"::", meta, [{name, _, args_or_nil}, _]}, _} ->
         arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
-        {name, arity}
+        line = Keyword.get(meta, :line, 0)
+        {line, {name, arity}}
       end)
 
-    # Simple pairing: spectral[i] with type[i]
-    # This works when @spectral immediately precedes its @type
+    # Semantic pairing: match each @spectral with the @type that comes immediately after it
+    # For each @spectral, find the first @type defined on a later line
     paired_docs =
-      spectral_attrs_in_order
-      |> Enum.with_index()
-      |> Enum.map(fn {doc, index} ->
-        case Enum.at(types_in_order, index) do
-          type_ref when not is_nil(type_ref) ->
-            Map.put(doc, :type, type_ref)
+      Enum.map(spectral_in_order, fn spectral_doc ->
+        # Extract line number if stored with the attribute, or try to infer from context
+        {spectral_line, doc} =
+          case spectral_doc do
+            {line, map} when is_integer(line) and is_map(map) -> {line, map}
+            # Fallback: no line info
+            map when is_map(map) -> {-1, map}
+          end
+
+        # Find the first type defined after this @spectral
+        case Enum.find(types_with_lines, fn {type_line, _} -> type_line > spectral_line end) do
+          {_type_line, type_ref} ->
+            # Only include if doc has meaningful content (not just empty map)
+            if map_size(doc) > 0 do
+              Map.put(doc, :type, type_ref)
+            else
+              nil
+            end
 
           nil ->
+            # No type found after this @spectral - skip it
             nil
         end
       end)
       |> Enum.reject(&is_nil/1)
-
-    # Clean up the accumulating @spectral attribute
-    Module.delete_attribute(env.module, :spectral)
 
     # Register @spectra (note: different name) as a persisted attribute
     # The underlying Erlang library expects the attribute to be named :spectra

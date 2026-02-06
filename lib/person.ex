@@ -12,7 +12,8 @@ defmodule Person do
 
     defstruct [:street, :city]
 
-    @spectral %{title: "Address", description: "A postal address"}
+    spectral(title: "Address", description: "A postal address")
+
     @type t :: %Address{
             street: String.t(),
             city: String.t()
@@ -21,7 +22,8 @@ defmodule Person do
 
   defstruct [:name, :age, :address]
 
-  @spectral %{title: "Person", description: "A person with name and age"}
+  spectral(title: "Person", description: "A person with name and age")
+
   @type t :: %Person{
           name: String.t(),
           age: non_neg_integer() | nil,
