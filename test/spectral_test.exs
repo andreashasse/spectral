@@ -491,4 +491,41 @@ defmodule SpectralTest do
     assert schema_second["description"] == "This is the documented second type"
     assert schema_second["type"] == "object"
   end
+
+  test "semantic pairing: documentation assigned to type AFTER spectral call, not by index" do
+    # This test validates the critical bug fix: documentation should be paired
+    # based on line position (semantic), not array index (positional).
+    # 
+    # Before the fix, documentation would be incorrectly assigned by index:
+    #   spectral[0] → type[0], even if spectral[0] appeared after type[0] in source
+    #
+    # After the fix, documentation is correctly assigned:
+    #   each spectral call documents the first @type defined after it
+
+    attrs = SemanticPairingTestModule.__info__(:attributes)[:spectra]
+
+    # Should have exactly 1 doc entry for :documented type
+    assert length(attrs) == 1
+
+    assert [%{type: {:documented, 0}, title: "Documented", description: "This type has docs"}] =
+             attrs
+
+    # Verify schema for undocumented type has NO title/description
+    schema_undoc =
+      Spectral.schema(SemanticPairingTestModule, :undocumented)
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    refute Map.has_key?(schema_undoc, "title")
+    refute Map.has_key?(schema_undoc, "description")
+
+    # Verify schema for documented type HAS title/description
+    schema_doc =
+      Spectral.schema(SemanticPairingTestModule, :documented)
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    assert schema_doc["title"] == "Documented"
+    assert schema_doc["description"] == "This type has docs"
+  end
 end
