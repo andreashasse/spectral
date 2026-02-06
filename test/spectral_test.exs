@@ -367,9 +367,9 @@ defmodule SpectralTest do
     assert doc.description == "A postal address"
   end
 
-  # Schema doc tests - @spectra attribute support
+  # Schema doc tests - @spectral attribute support
 
-  test "schema includes title and description from @spectra attribute" do
+  test "schema includes title and description from @spectral attribute" do
     schema =
       Spectral.schema(Person, :t)
       |> IO.iodata_to_binary()
@@ -379,7 +379,7 @@ defmodule SpectralTest do
     assert schema["description"] == "A person with name and age"
   end
 
-  test "schema includes title and description for nested type with @spectra" do
+  test "schema includes title and description for nested type with @spectral" do
     schema =
       Spectral.schema(Person.Address, :t)
       |> IO.iodata_to_binary()
@@ -389,8 +389,8 @@ defmodule SpectralTest do
     assert schema["description"] == "A postal address"
   end
 
-  test "schema for type without @spectra has no title or description" do
-    # Person.Address has @spectra with title/description, but we verify that
+  test "schema for type without @spectral has no title or description" do
+    # Person.Address has @spectral with title/description, but we verify that
     # the schema structure is correct and docs only appear when defined
     schema =
       Spectral.schema(Person.Address, :t)
@@ -400,5 +400,95 @@ defmodule SpectralTest do
     assert schema["title"] == "Address"
     assert schema["description"] == "A postal address"
     assert schema["type"] == "object"
+  end
+
+  test "module with two types where only one has @spectral attribute" do
+    # MultiTypeModule has two types: main_type (with @spectral) and other_type (without @spectral)
+    # This verifies that both types work correctly, but only the documented one has title/description
+
+    # Schema for type with @spectral should have title and description
+    schema_with_docs =
+      Spectral.schema(MultiTypeModule, :main_type)
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    assert schema_with_docs["title"] == "Main Type"
+    assert schema_with_docs["description"] == "This is the documented type"
+    assert schema_with_docs["type"] == "object"
+
+    # Schema for type without @spectral should not have title or description
+    schema_without_docs =
+      Spectral.schema(MultiTypeModule, :other_type)
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    refute Map.has_key?(schema_without_docs, "title")
+    refute Map.has_key?(schema_without_docs, "description")
+    assert schema_without_docs["type"] == "object"
+
+    # Both types should still work for encoding/decoding
+    data_main = %MultiTypeModule{id: 1, value: "test"}
+    assert {:ok, _} = Spectral.encode(data_main, MultiTypeModule, :main_type)
+
+    data_other = %MultiTypeModule{id: nil, value: nil}
+    assert {:ok, _} = Spectral.encode(data_other, MultiTypeModule, :other_type)
+  end
+
+  test "module with two types where @spectral is on the second type" do
+    # MultiTypeModuleReversed has two types with two @spectral attributes:
+    # first_type has empty @spectral %{} and second_type has full documentation
+    # This verifies that empty @spectral doesn't add title/description fields
+
+    # Schema for first type with empty @spectral should not have title or description
+    schema_without_docs =
+      Spectral.schema(MultiTypeModuleReversed, :first_type)
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    refute Map.has_key?(schema_without_docs, "title")
+    refute Map.has_key?(schema_without_docs, "description")
+    assert schema_without_docs["type"] == "object"
+
+    # Schema for second type with full @spectral should have title and description
+    schema_with_docs =
+      Spectral.schema(MultiTypeModuleReversed, :second_type)
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    assert schema_with_docs["title"] == "Second Type"
+    assert schema_with_docs["description"] == "This is the documented second type"
+    assert schema_with_docs["type"] == "object"
+
+    # Both types should still work for encoding/decoding
+    data_first = %MultiTypeModuleReversed{id: 1, value: "test"}
+    assert {:ok, _} = Spectral.encode(data_first, MultiTypeModuleReversed, :first_type)
+
+    data_second = %MultiTypeModuleReversed{id: nil, value: nil}
+    assert {:ok, _} = Spectral.encode(data_second, MultiTypeModuleReversed, :second_type)
+  end
+
+  test "module where first type has empty @spectral and second type has @spectral with docs" do
+    # MultiTypeModuleFirstMissing has empty @spectral for first type, docs for second
+    # This verifies the pairing works correctly: spectral[i] pairs with type[i]
+
+    # Schema for first type with empty @spectral should NOT have title or description
+    schema_first =
+      Spectral.schema(MultiTypeModuleFirstMissing, :first_type)
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    refute Map.has_key?(schema_first, "title")
+    refute Map.has_key?(schema_first, "description")
+    assert schema_first["type"] == "object"
+
+    # Schema for second type with docs SHOULD have title and description
+    schema_second =
+      Spectral.schema(MultiTypeModuleFirstMissing, :second_type)
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    assert schema_second["title"] == "Second Type"
+    assert schema_second["description"] == "This is the documented second type"
+    assert schema_second["type"] == "object"
   end
 end
