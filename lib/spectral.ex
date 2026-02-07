@@ -162,43 +162,65 @@ defmodule Spectral do
     # For each @spectral, find the first @type defined on a later line
     paired_docs =
       Enum.map(spectral_in_order, fn spectral_doc ->
-        # Extract line number if stored with the attribute, or try to infer from context
+        # Extract line number and doc - crash if format is unexpected
         {spectral_line, doc} =
           case spectral_doc do
-            {line, map} when is_integer(line) and is_map(map) -> {line, map}
-            # Fallback: no line info
-            map when is_map(map) -> {-1, map}
+            {line, map} when is_integer(line) and is_map(map) ->
+              {line, map}
+
+            other ->
+              raise ArgumentError,
+                    "spectral macro must be called with keyword list or map, got: #{inspect(other)} in #{inspect(env.module)}"
           end
 
-        # Find the first type defined after this @spectral
-        case Enum.find(types_with_lines, fn {type_line, _} -> type_line > spectral_line end) do
-          {_type_line, type_ref} ->
-            # Only include if doc has meaningful content (not just empty map)
-            if map_size(doc) > 0 do
-              Map.put(doc, :type, type_ref)
-            else
-              nil
-            end
+        # Find the first type defined after this @spectral - crash if not found
+        {_type_line, type_ref} =
+          Enum.find(types_with_lines, fn {type_line, _} -> type_line > spectral_line end) ||
+            raise ArgumentError,
+                  "spectral call on line #{spectral_line} in #{inspect(env.module)} has no corresponding @type definition after it"
 
-          nil ->
-            # No type found after this @spectral - skip it
-            nil
-        end
+        Map.put(doc, :type, type_ref)
       end)
-      |> Enum.reject(&is_nil/1)
 
-    # Register @spectra (note: different name) as a persisted attribute
-    # The underlying Erlang library expects the attribute to be named :spectra
-    Module.register_attribute(env.module, :spectra, persist: true)
-
-    # Store docs under the :spectra attribute name for the Erlang library
-    for doc <- paired_docs do
-      Module.put_attribute(env.module, :spectra, doc)
-    end
+    # Prepare docs for injection into the __spectra__ function
+    # Convert paired_docs into a list of {name, arity, doc} tuples
+    docs_to_add =
+      Enum.map(paired_docs, fn doc ->
+        # Extract type name and arity from the :type field
+        {type_name, type_arity} = doc[:type]
+        # Remove the :type field from the doc map (it's metadata, not part of the doc)
+        doc_without_type = Map.delete(doc, :type)
+        {type_name, type_arity, doc_without_type}
+      end)
 
     quote do
       def __spectra__ do
-        :spectra_abstract_code.types_in_module(__MODULE__)
+        # Get the beam file path for this module
+        beam_path =
+          case :code.which(__MODULE__) do
+            :cover_compiled ->
+              {_, _, path} = :code.get_object_code(__MODULE__)
+              path
+
+            path when is_list(path) ->
+              path
+
+            error ->
+              raise ArgumentError,
+                    "Cannot find beam file for module #{inspect(__MODULE__)}: #{inspect(error)}"
+          end
+
+        # Load type info from the beam file
+        type_info = :spectra_abstract_code.types_in_module_path(beam_path)
+
+        # Add each doc to the type_info using :spectra_type_info.add_doc/4
+        Enum.reduce(
+          unquote(Macro.escape(docs_to_add)),
+          type_info,
+          fn {name, arity, doc}, acc_type_info ->
+            :spectra_type_info.add_doc(acc_type_info, name, arity, doc)
+          end
+        )
       end
     end
   end
