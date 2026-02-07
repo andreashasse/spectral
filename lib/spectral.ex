@@ -321,8 +321,12 @@ defmodule Spectral do
       true
   """
   @spec schema(module(), atom(), atom()) :: iodata()
-  def schema(module, type_ref, format \\ :json_schema) do
-    :spectra.schema(format, module, type_ref)
+  def schema(module, type_ref, format \\ :json_schema) when is_atom(type_ref) do
+    # Convert atom type_ref to tuple to preserve type reference for documentation
+    # This is a workaround for spectra.erl converting atoms to type structures
+    # which bypasses documentation lookup in to_schema
+    type_ref_tuple = {:type, type_ref, 0}
+    :spectra.schema(format, module, type_ref_tuple)
   rescue
     error in ErlangError ->
       handle_erlang_error(error, :schema, module, type_ref)
@@ -419,6 +423,10 @@ defmodule Spectral do
               "module #{inspect(module)} not found, not loaded, or not compiled with debug_info (#{operation})"
 
       {:type_or_record_not_found, ^type_ref} ->
+        raise ArgumentError,
+              "type #{inspect(type_ref)} not found in module #{inspect(module)} (#{operation})"
+
+      {:type_not_found, type_name, _arity} when type_name == type_ref ->
         raise ArgumentError,
               "type #{inspect(type_ref)} not found in module #{inspect(module)} (#{operation})"
 

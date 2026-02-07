@@ -502,13 +502,14 @@ defmodule SpectralTest do
     # After the fix, documentation is correctly assigned:
     #   each spectral call documents the first @type defined after it
 
-    attrs = SemanticPairingTestModule.__info__(:attributes)[:spectra]
+    # Check __spectra__() function instead of beam attributes
+    {:type_info, _types, _records, _functions, docs, _record_docs} =
+      SemanticPairingTestModule.__spectra__()
 
     # Should have exactly 1 doc entry for :documented type
-    assert length(attrs) == 1
+    assert map_size(docs) == 1
 
-    assert [%{type: {:documented, 0}, title: "Documented", description: "This type has docs"}] =
-             attrs
+    assert %{{:documented, 0} => %{title: "Documented", description: "This type has docs"}} = docs
 
     # Verify schema for undocumented type has NO title/description
     schema_undoc =
