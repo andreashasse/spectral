@@ -12,9 +12,14 @@ defmodule Spectral.MixProject do
       deps: deps(),
       docs: docs(),
       name: "Spectral",
-      source_url: "https://github.com/andreashasse/spectral"
+      source_url: "https://github.com/andreashasse/spectral",
+      elixirc_paths: elixirc_paths(Mix.env())
     ]
   end
+
+  # Specifies which paths to compile per environment
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   def application do
     [
@@ -47,14 +52,7 @@ defmodule Spectral.MixProject do
     [
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/andreashasse/spectral"},
-      files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md),
-      exclude_patterns: [
-        "lib/person.ex",
-        "lib/multi_type_module.ex",
-        "lib/multi_type_module_reversed.ex",
-        "lib/multi_type_module_first_missing.ex",
-        "lib/semantic_pairing_test_module.ex"
-      ]
+      files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md)
     ]
   end
 
