@@ -167,7 +167,7 @@ defmodule Spectral do
   """
   defmacro __using__(_opts) do
     quote do
-      Module.register_attribute(__MODULE__, :spectral, accumulate: true, persist: true)
+      Module.register_attribute(__MODULE__, :spectral, accumulate: true)
       import Spectral, only: [spectral: 1]
       @before_compile Spectral
     end
