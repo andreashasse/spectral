@@ -49,8 +49,6 @@ defmodule Spectral do
     end
   end
 
-  # Handle map literal syntax: %{key: value}
-  # Map literals in AST are represented as {:%{}, meta, [{key, value}, ...]}
   defmacro spectral({:%{}, _meta, fields}) when is_list(fields) do
     line = __CALLER__.line
 
@@ -195,29 +193,23 @@ defmodule Spectral do
     # Both attributes accumulate in reverse order (LIFO), so reverse to get source order
     spectral_in_order = Enum.reverse(spectral_attrs)
 
-    # Extract types with their line numbers from the AST metadata
-    # Supports standard type definitions: @type name :: type_expr and @type name(args) :: type_expr
     types_with_lines =
       type_attrs
       |> Enum.reverse()
       |> Enum.map(fn type_ast ->
         case type_ast do
-          # Standard type: @type name :: type_expr or @type name(args...) :: type_expr
           {:type, {:"::", meta, [{name, _, args_or_nil}, _type_expr]}, _env}
           when is_atom(name) ->
             arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
             line = Keyword.get(meta, :line, 0)
             {line, {name, arity}}
 
-          # Opaque types (@typep) are not supported for documentation
           {:typep, _, _} ->
             raise ArgumentError,
                   "Private types (@typep) cannot be documented with Spectral in #{inspect(env.module)}. " <>
                     "Only public @type definitions can have documentation."
 
-          # Unexpected AST structure
           other_ast ->
-            # Try to extract some useful info for debugging
             type_kind =
               case other_ast do
                 {kind, _, _} when is_atom(kind) -> kind
@@ -234,11 +226,8 @@ defmodule Spectral do
       end)
 
     # Semantic pairing: match each @spectral with the @type that comes immediately after it
-    # For each @spectral, find the first @type defined on a later line
     paired_docs =
       Enum.map(spectral_in_order, fn spectral_doc ->
-        # Extract line number and doc
-        # This should always match because spectral/1 macro validates inputs
         {spectral_line, doc} =
           case spectral_doc do
             {line, map} when is_integer(line) and is_map(map) ->
@@ -251,7 +240,6 @@ defmodule Spectral do
                       "This is a bug in Spectral - please report it at https://github.com/andreashasse/spectral/issues"
           end
 
-        # Find the first type defined after this @spectral - crash if not found
         {_type_line, type_ref} =
           Enum.find(types_with_lines, fn {type_line, _} -> type_line > spectral_line end) ||
             raise ArgumentError,
@@ -260,20 +248,15 @@ defmodule Spectral do
         Map.put(doc, :type, type_ref)
       end)
 
-    # Prepare docs for injection into the __spectra_type_info__ function
-    # Convert paired_docs into a list of {name, arity, doc} tuples
     docs_to_add =
       Enum.map(paired_docs, fn doc ->
-        # Extract type name and arity from the :type field
         {type_name, type_arity} = doc[:type]
-        # Remove the :type field from the doc map (it's metadata, not part of the doc)
         doc_without_type = Map.delete(doc, :type)
         {type_name, type_arity, doc_without_type}
       end)
 
     quote do
       def __spectra_type_info__ do
-        # Get the beam file path for this module
         beam_path =
           case :code.which(__MODULE__) do
             :cover_compiled ->
@@ -288,24 +271,18 @@ defmodule Spectral do
                     "Cannot find beam file for module #{inspect(__MODULE__)}: #{inspect(error)}"
           end
 
-        # Load type info from the beam file
         type_info = :spectra_abstract_code.types_in_module_path(beam_path)
 
-        # Add each doc to the type_info by updating the type's meta field
         Enum.reduce(
           unquote(Macro.escape(docs_to_add)),
           type_info,
           fn {name, arity, doc}, acc_type_info ->
-            # Get the existing type
             case :spectra_type_info.find_type(acc_type_info, name, arity) do
               {:ok, existing_type} ->
-                # Update the type's meta field to include the doc using spectra_type
                 updated_type = :spectra_type.add_doc_to_type(existing_type, doc)
-                # Replace the type in the type_info
                 :spectra_type_info.add_type(acc_type_info, name, arity, updated_type)
 
               :error ->
-                # Type not found, skip (shouldn't happen but be defensive)
                 acc_type_info
             end
           end
