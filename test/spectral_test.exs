@@ -31,6 +31,11 @@ defmodule SpectralTest do
     Record.extract(:literal_map_field, from: "deps/spectra/include/spectra_internal.hrl")
   )
 
+  Record.defrecord(
+    :sp_user_type_ref,
+    Record.extract(:sp_user_type_ref, from: "deps/spectra/include/spectra_internal.hrl")
+  )
+
   def encode_to_binary(data, module, type) do
     with {:ok, iodata} <- Spectral.encode(data, module, type) do
       {:ok, IO.iodata_to_binary(iodata)}
@@ -572,5 +577,22 @@ defmodule SpectralTest do
 
     assert schema_doc["title"] == "Documented"
     assert schema_doc["description"] == "This type has docs"
+  end
+
+  # Error handling tests for type AST validation
+
+  test "spectral works with types that have parameters" do
+    # This should work without errors - testing the defensive is_atom(name) guard
+    type_info(types: types) = TypeWithParams.__spectra_type_info__()
+    assert Map.has_key?(types, {:generic, 1})
+
+    # Verify the type has documentation
+    # Use :spectra_type.get_meta/1 to extract meta from any sp_type
+    type = types[{:generic, 1}]
+    meta = :spectra_type.get_meta(type)
+
+    assert is_map(meta)
+    assert meta[:doc][:title] == "Generic"
+    assert meta[:doc][:description] == "A generic type"
   end
 end

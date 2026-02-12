@@ -67,7 +67,8 @@ defmodule Spectral.MixProject do
           MultiTypeModule,
           MultiTypeModuleReversed,
           MultiTypeModuleFirstMissing,
-          SemanticPairingTestModule
+          SemanticPairingTestModule,
+          TypeWithParams
         ]
       end
     ]

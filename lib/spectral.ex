@@ -142,20 +142,41 @@ defmodule Spectral do
     spectral_in_order = Enum.reverse(spectral_attrs)
 
     # Extract types with their line numbers from the AST metadata
+    # Supports standard type definitions: @type name :: type_expr and @type name(args) :: type_expr
     types_with_lines =
       type_attrs
       |> Enum.reverse()
-      |> Enum.map(fn
-        {:type, {:"::", meta, [{name, _, args_or_nil}, _]}, _} ->
-          arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
-          line = Keyword.get(meta, :line, 0)
-          {line, {name, arity}}
+      |> Enum.map(fn type_ast ->
+        case type_ast do
+          # Standard type: @type name :: type_expr or @type name(args...) :: type_expr
+          {:type, {:"::", meta, [{name, _, args_or_nil}, _type_expr]}, _env}
+          when is_atom(name) ->
+            arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
+            line = Keyword.get(meta, :line, 0)
+            {line, {name, arity}}
 
-        other_ast ->
-          raise ArgumentError,
-                "Spectral.__before_compile__/1 encountered unsupported @type AST in " <>
-                  "#{inspect(env.module)}: #{inspect(other_ast)}. " <>
-                  "Please report this as a bug at https://github.com/andreashasse/spectral/issues"
+          # Opaque types (@typep) are not supported for documentation
+          {:typep, _, _} ->
+            raise ArgumentError,
+                  "Private types (@typep) cannot be documented with Spectral in #{inspect(env.module)}. " <>
+                    "Only public @type definitions can have documentation."
+
+          # Unexpected AST structure
+          other_ast ->
+            # Try to extract some useful info for debugging
+            type_kind =
+              case other_ast do
+                {kind, _, _} when is_atom(kind) -> kind
+                _ -> :unknown
+              end
+
+            raise ArgumentError,
+                  "Spectral.__before_compile__/1 encountered unsupported @type AST structure in #{inspect(env.module)}.\n" <>
+                    "Type kind: #{inspect(type_kind)}\n" <>
+                    "AST: #{inspect(other_ast, pretty: true)}\n\n" <>
+                    "This might be a bug in Spectral or an unsupported type definition syntax.\n" <>
+                    "Please report this at https://github.com/andreashasse/spectral/issues with the type definition that caused this error."
+        end
       end)
 
     # Semantic pairing: match each @spectral with the @type that comes immediately after it
