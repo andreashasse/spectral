@@ -2,6 +2,35 @@ defmodule SpectralTest do
   use ExUnit.Case
   doctest Spectral
 
+  # Import Erlang record definitions from spectra
+  require Record
+
+  # Extract record definitions from spectra's internal header
+  Record.defrecord(
+    :type_info,
+    Record.extract(:type_info, from: "deps/spectra/include/spectra_internal.hrl")
+  )
+
+  Record.defrecord(
+    :sp_map,
+    Record.extract(:sp_map, from: "deps/spectra/include/spectra_internal.hrl")
+  )
+
+  Record.defrecord(
+    :sp_simple_type,
+    Record.extract(:sp_simple_type, from: "deps/spectra/include/spectra_internal.hrl")
+  )
+
+  Record.defrecord(
+    :sp_remote_type,
+    Record.extract(:sp_remote_type, from: "deps/spectra/include/spectra_internal.hrl")
+  )
+
+  Record.defrecord(
+    :literal_map_field,
+    Record.extract(:literal_map_field, from: "deps/spectra/include/spectra_internal.hrl")
+  )
+
   def encode_to_binary(data, module, type) do
     with {:ok, iodata} <- Spectral.encode(data, module, type) do
       {:ok, IO.iodata_to_binary(iodata)}
@@ -128,8 +157,12 @@ defmodule SpectralTest do
                 type: :missing_data,
                 context: %{
                   type:
-                    {:literal_map_field, :exact, :name, "name",
-                     {:sp_remote_type, {String, :t, []}, %{}}},
+                    literal_map_field(
+                      kind: :exact,
+                      name: :name,
+                      binary_name: "name",
+                      val_type: sp_remote_type(mfargs: {String, :t, []})
+                    ),
                   value: %{}
                 }
               }
@@ -206,13 +239,7 @@ defmodule SpectralTest do
                 type: :type_mismatch,
                 context: %{
                   message: ~c"Struct mismatch",
-                  type:
-                    {:sp_map,
-                     [
-                       {:literal_map_field, :exact, :address, "address", _},
-                       {:literal_map_field, :exact, :age, "age", _},
-                       {:literal_map_field, :exact, :name, "name", _}
-                     ], Person, _},
+                  type: sp_map(struct_name: Person),
                   value: %{name: "Alice", age: "thirty"}
                 }
               }
@@ -339,18 +366,16 @@ defmodule SpectralTest do
 
   test "Person.__spectra_type_info__ returns type_info tuple" do
     result = Person.__spectra_type_info__()
-    assert {:type_info, _types, _records, _functions} = result
+    assert type_info(types: _types, records: _records, functions: _functions) = result
   end
 
   test "Person.__spectra_type_info__ docs contain title and description" do
-    {:type_info, types, _records, _functions} = Person.__spectra_type_info__()
+    type_info(types: types) = Person.__spectra_type_info__()
     assert is_map(types)
     assert Map.has_key?(types, {:t, 0})
 
     # The type itself now contains the doc in its meta field
-    type = types[{:t, 0}]
-    # Extract meta from the type tuple (last element)
-    meta = elem(type, tuple_size(type) - 1)
+    sp_map(meta: meta) = types[{:t, 0}]
     assert is_map(meta)
     assert Map.has_key?(meta, :doc)
 
@@ -361,18 +386,16 @@ defmodule SpectralTest do
 
   test "Person.Address.__spectra_type_info__ returns type_info tuple" do
     result = Person.Address.__spectra_type_info__()
-    assert {:type_info, _types, _records, _functions} = result
+    assert type_info(types: _types, records: _records, functions: _functions) = result
   end
 
   test "Person.Address.__spectra_type_info__ docs contain title and description" do
-    {:type_info, types, _records, _functions} = Person.Address.__spectra_type_info__()
+    type_info(types: types) = Person.Address.__spectra_type_info__()
     assert is_map(types)
     assert Map.has_key?(types, {:t, 0})
 
     # The type itself now contains the doc in its meta field
-    type = types[{:t, 0}]
-    # Extract meta from the type tuple (last element)
-    meta = elem(type, tuple_size(type) - 1)
+    sp_map(meta: meta) = types[{:t, 0}]
     assert is_map(meta)
     assert Map.has_key?(meta, :doc)
 
@@ -517,22 +540,19 @@ defmodule SpectralTest do
     #   each spectral call documents the first @type defined after it
 
     # Check __spectra_type_info__() function instead of beam attributes
-    {:type_info, types, _records, _functions} =
-      SemanticPairingTestModule.__spectra_type_info__()
+    type_info(types: types) = SemanticPairingTestModule.__spectra_type_info__()
 
     # Should have exactly 2 types (documented and undocumented)
     assert map_size(types) == 2
 
     # Check documented type has docs in meta
-    documented_type = types[{:documented, 0}]
-    documented_meta = elem(documented_type, tuple_size(documented_type) - 1)
+    sp_simple_type(meta: documented_meta) = types[{:documented, 0}]
     assert Map.has_key?(documented_meta, :doc)
     assert documented_meta[:doc][:title] == "Documented"
     assert documented_meta[:doc][:description] == "This type has docs"
 
     # Check undocumented type has no docs in meta
-    undocumented_type = types[{:undocumented, 0}]
-    undocumented_meta = elem(undocumented_type, tuple_size(undocumented_type) - 1)
+    sp_simple_type(meta: undocumented_meta) = types[{:undocumented, 0}]
     refute Map.has_key?(undocumented_meta, :doc)
 
     # Verify schema for undocumented type has NO title/description

@@ -23,6 +23,14 @@ defmodule Spectral.Error do
       }
   """
 
+  # Import Erlang record definition from spectra
+  require Record
+
+  Record.defrecordp(
+    :sp_error,
+    Record.extract(:sp_error, from: "deps/spectra/include/spectra.hrl")
+  )
+
   @type error_type ::
           :decode_error | :type_mismatch | :no_match | :missing_data | :not_matched_fields
 
@@ -58,7 +66,7 @@ defmodule Spectral.Error do
 
   ## Example
 
-      iex> erlang_error = {:sp_error, ["user", "age"], :type_mismatch, %{expected: :integer}}
+      iex> erlang_error = {:sp_error, ["user", "age"], :type_mismatch, %{expected: :integer}, nil}
       iex> Spectral.Error.from_erlang(erlang_error)
       %Spectral.Error{
         location: ["user", "age"],
@@ -67,7 +75,7 @@ defmodule Spectral.Error do
         message: nil
       }
   """
-  def from_erlang({:sp_error, location, type, ctx}) do
+  def from_erlang(sp_error(location: location, type: type, ctx: ctx)) do
     %__MODULE__{
       location: location,
       type: type,
@@ -89,7 +97,7 @@ defmodule Spectral.Error do
 
   ## Example
 
-      iex> errors = [{:sp_error, [], :decode_error, %{reason: "invalid JSON"}}]
+      iex> errors = [{:sp_error, [], :decode_error, %{reason: "invalid JSON"}, nil}]
       iex> Spectral.Error.from_erlang_list(errors)
       [%Spectral.Error{location: [], type: :decode_error, context: %{reason: "invalid JSON"}, message: nil}]
   """
