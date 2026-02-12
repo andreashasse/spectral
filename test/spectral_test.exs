@@ -129,7 +129,7 @@ defmodule SpectralTest do
                 context: %{
                   type:
                     {:literal_map_field, :exact, :name, "name",
-                     {:sp_remote_type, {String, :t, []}}},
+                     {:sp_remote_type, {String, :t, []}, %{}}},
                   value: %{}
                 }
               }
@@ -212,7 +212,7 @@ defmodule SpectralTest do
                        {:literal_map_field, :exact, :address, "address", _},
                        {:literal_map_field, :exact, :age, "age", _},
                        {:literal_map_field, :exact, :name, "name", _}
-                     ], Person},
+                     ], Person, _},
                   value: %{name: "Alice", age: "thirty"}
                 }
               }
@@ -335,34 +335,48 @@ defmodule SpectralTest do
     assert exception.message =~ "not found"
   end
 
-  # __spectra__/0 function tests
+  # __spectra_type_info__/0 function tests
 
-  test "Person.__spectra__ returns type_info tuple" do
-    result = Person.__spectra__()
-    assert {:type_info, _types, _records, _functions, _docs, _record_docs} = result
+  test "Person.__spectra_type_info__ returns type_info tuple" do
+    result = Person.__spectra_type_info__()
+    assert {:type_info, _types, _records, _functions} = result
   end
 
-  test "Person.__spectra__ docs contain title and description" do
-    {:type_info, _types, _records, _functions, docs, _record_docs} = Person.__spectra__()
-    assert is_map(docs)
-    assert Map.has_key?(docs, {:t, 0})
+  test "Person.__spectra_type_info__ docs contain title and description" do
+    {:type_info, types, _records, _functions} = Person.__spectra_type_info__()
+    assert is_map(types)
+    assert Map.has_key?(types, {:t, 0})
 
-    doc = docs[{:t, 0}]
+    # The type itself now contains the doc in its meta field
+    type = types[{:t, 0}]
+    # Extract meta from the type tuple (last element)
+    meta = elem(type, tuple_size(type) - 1)
+    assert is_map(meta)
+    assert Map.has_key?(meta, :doc)
+
+    doc = meta[:doc]
     assert doc.title == "Person"
     assert doc.description == "A person with name and age"
   end
 
-  test "Person.Address.__spectra__ returns type_info tuple" do
-    result = Person.Address.__spectra__()
-    assert {:type_info, _types, _records, _functions, _docs, _record_docs} = result
+  test "Person.Address.__spectra_type_info__ returns type_info tuple" do
+    result = Person.Address.__spectra_type_info__()
+    assert {:type_info, _types, _records, _functions} = result
   end
 
-  test "Person.Address.__spectra__ docs contain title and description" do
-    {:type_info, _types, _records, _functions, docs, _record_docs} = Person.Address.__spectra__()
-    assert is_map(docs)
-    assert Map.has_key?(docs, {:t, 0})
+  test "Person.Address.__spectra_type_info__ docs contain title and description" do
+    {:type_info, types, _records, _functions} = Person.Address.__spectra_type_info__()
+    assert is_map(types)
+    assert Map.has_key?(types, {:t, 0})
 
-    doc = docs[{:t, 0}]
+    # The type itself now contains the doc in its meta field
+    type = types[{:t, 0}]
+    # Extract meta from the type tuple (last element)
+    meta = elem(type, tuple_size(type) - 1)
+    assert is_map(meta)
+    assert Map.has_key?(meta, :doc)
+
+    doc = meta[:doc]
     assert doc.title == "Address"
     assert doc.description == "A postal address"
   end
@@ -502,14 +516,24 @@ defmodule SpectralTest do
     # After the fix, documentation is correctly assigned:
     #   each spectral call documents the first @type defined after it
 
-    # Check __spectra__() function instead of beam attributes
-    {:type_info, _types, _records, _functions, docs, _record_docs} =
-      SemanticPairingTestModule.__spectra__()
+    # Check __spectra_type_info__() function instead of beam attributes
+    {:type_info, types, _records, _functions} =
+      SemanticPairingTestModule.__spectra_type_info__()
 
-    # Should have exactly 1 doc entry for :documented type
-    assert map_size(docs) == 1
+    # Should have exactly 2 types (documented and undocumented)
+    assert map_size(types) == 2
 
-    assert %{{:documented, 0} => %{title: "Documented", description: "This type has docs"}} = docs
+    # Check documented type has docs in meta
+    documented_type = types[{:documented, 0}]
+    documented_meta = elem(documented_type, tuple_size(documented_type) - 1)
+    assert Map.has_key?(documented_meta, :doc)
+    assert documented_meta[:doc][:title] == "Documented"
+    assert documented_meta[:doc][:description] == "This type has docs"
+
+    # Check undocumented type has no docs in meta
+    undocumented_type = types[{:undocumented, 0}]
+    undocumented_meta = elem(undocumented_type, tuple_size(undocumented_type) - 1)
+    refute Map.has_key?(undocumented_meta, :doc)
 
     # Verify schema for undocumented type has NO title/description
     schema_undoc =

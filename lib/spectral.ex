@@ -58,11 +58,11 @@ defmodule Spectral do
   end
 
   @doc """
-  Sets up the Spectral macros and injects `__spectra__/0` function.
+  Sets up the Spectral macros and injects `__spectra_type_info__/0` function.
 
   When you `use Spectral`, the following happens:
   - The `spectral/1` macro is imported for documenting types
-  - A `__spectra__/0` function is injected that returns type information
+  - A `__spectra_type_info__/0` function is injected that returns type information
   - The `@spectral` attribute is registered (used internally by the `spectral/1` macro)
 
   ## Usage
@@ -102,9 +102,9 @@ defmodule Spectral do
         @type internal_id :: non_neg_integer()
       end
 
-  ## The `__spectra__/0` Function
+  ## The `__spectra_type_info__/0` Function
 
-  The injected `__spectra__/0` function returns detailed type information for the module.
+  The injected `__spectra_type_info__/0` function returns detailed type information for the module.
   It calls `:spectra_abstract_code.types_in_module/1` and returns a tuple with the structure:
 
       {:type_info, types_map, docs_map, specs_map, callbacks_map}
@@ -117,7 +117,7 @@ defmodule Spectral do
 
   Example:
 
-      Person.__spectra__()
+      Person.__spectra_type_info__()
       # => {:type_info, %{{:t, 0} => ...}, %{title: "Person", ...}, %{}, %{}}
 
   This function is primarily used internally by Spectral's encoding, decoding, and schema
@@ -182,7 +182,7 @@ defmodule Spectral do
         Map.put(doc, :type, type_ref)
       end)
 
-    # Prepare docs for injection into the __spectra__ function
+    # Prepare docs for injection into the __spectra_type_info__ function
     # Convert paired_docs into a list of {name, arity, doc} tuples
     docs_to_add =
       Enum.map(paired_docs, fn doc ->
@@ -194,7 +194,7 @@ defmodule Spectral do
       end)
 
     quote do
-      def __spectra__ do
+      def __spectra_type_info__ do
         # Get the beam file path for this module
         beam_path =
           case :code.which(__MODULE__) do
@@ -213,12 +213,23 @@ defmodule Spectral do
         # Load type info from the beam file
         type_info = :spectra_abstract_code.types_in_module_path(beam_path)
 
-        # Add each doc to the type_info using :spectra_type_info.add_doc/4
+        # Add each doc to the type_info by updating the type's meta field
         Enum.reduce(
           unquote(Macro.escape(docs_to_add)),
           type_info,
           fn {name, arity, doc}, acc_type_info ->
-            :spectra_type_info.add_doc(acc_type_info, name, arity, doc)
+            # Get the existing type
+            case :spectra_type_info.find_type(acc_type_info, name, arity) do
+              {:ok, existing_type} ->
+                # Update the type's meta field to include the doc using spectra_type
+                updated_type = :spectra_type.add_doc_to_type(existing_type, doc)
+                # Replace the type in the type_info
+                :spectra_type_info.add_type(acc_type_info, name, arity, updated_type)
+
+              :error ->
+                # Type not found, skip (shouldn't happen but be defensive)
+                acc_type_info
+            end
           end
         )
       end
