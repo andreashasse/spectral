@@ -49,12 +49,24 @@ defmodule Spectral do
     end
   end
 
-  defmacro spectral(metadata) do
+  # Handle map literal syntax: %{key: value}
+  # Map literals in AST are represented as {:%{}, meta, [{key, value}, ...]}
+  defmacro spectral({:%{}, _meta, fields}) when is_list(fields) do
     line = __CALLER__.line
 
     quote do
-      @spectral {unquote(line), unquote(metadata)}
+      @spectral {unquote(line), Map.new(unquote(fields))}
     end
+  end
+
+  defmacro spectral(metadata) do
+    raise ArgumentError, """
+    spectral macro requires a keyword list or map, got: #{inspect(metadata)}
+
+    Valid usage:
+      spectral title: "My Type", description: "A description"
+      spectral %{title: "My Type", description: "A description"}
+    """
   end
 
   @doc """
@@ -225,15 +237,18 @@ defmodule Spectral do
     # For each @spectral, find the first @type defined on a later line
     paired_docs =
       Enum.map(spectral_in_order, fn spectral_doc ->
-        # Extract line number and doc - crash if format is unexpected
+        # Extract line number and doc
+        # This should always match because spectral/1 macro validates inputs
         {spectral_line, doc} =
           case spectral_doc do
             {line, map} when is_integer(line) and is_map(map) ->
               {line, map}
 
             other ->
+              # This should never happen if spectral/1 macro validation is working
               raise ArgumentError,
-                    "spectral macro must be called with keyword list or map, got: #{inspect(other)} in #{inspect(env.module)}"
+                    "Internal error: Invalid @spectral attribute format: #{inspect(other)} in #{inspect(env.module)}. " <>
+                      "This is a bug in Spectral - please report it at https://github.com/andreashasse/spectral/issues"
           end
 
         # Find the first type defined after this @spectral - crash if not found
