@@ -105,23 +105,65 @@ defmodule Spectral do
   ## The `__spectra_type_info__/0` Function
 
   The injected `__spectra_type_info__/0` function returns detailed type information for the module.
-  It calls `:spectra_abstract_code.types_in_module/1` and returns a tuple with the structure:
+  It extracts type definitions from the module's compiled BEAM file and enriches them with
+  documentation from `spectral` attributes.
 
-      {:type_info, types_map, docs_map, specs_map, callbacks_map}
+  ### Return Value Structure
 
-  Where:
-  - `types_map` - Map of `{type_name, arity}` to type AST information
-  - `docs_map` - Map containing documentation from `spectral` calls (title, description, etc.)
-  - `specs_map` - Map of function specs
-  - `callbacks_map` - Map of callback specs
+  Returns a `type_info` record (Erlang record from spectra library):
 
-  Example:
+      {:type_info, types, records, functions}
 
-      Person.__spectra_type_info__()
-      # => {:type_info, %{{:t, 0} => ...}, %{title: "Person", ...}, %{}, %{}}
+  #### Fields:
+
+  - **`types`** - Map of `{type_name, arity}` tuples to `sp_type` records. Each `sp_type` contains:
+    - Type structure information (e.g., `sp_map`, `sp_simple_type`, `sp_union`, etc.)
+    - A `meta` field containing optional documentation
+
+  - **`records`** - Map of record names (atoms) to `sp_rec` records containing record field information
+
+  - **`functions`** - Map of `{function_name, arity}` tuples to function spec information
+
+  #### Type Documentation (meta field)
+
+  When you use the `spectral` macro to document a type, the documentation is stored in that
+  type's `meta` field as:
+
+      %{doc: %{title: "...", description: "...", examples: [...]}}
+
+  Where the `doc` map can contain:
+  - `:title` - Short title for the type (binary)
+  - `:description` - Longer description (binary)
+  - `:examples` - List of example values
+  - `:examples_function` - Reference to a function that generates examples
+
+  ### Example Usage
+
+      defmodule Person do
+        use Spectral
+
+        spectral title: "Person", description: "A person record"
+        @type t :: %Person{name: String.t()}
+      end
+
+      # Access type information
+      {:type_info, types, records, functions} = Person.__spectra_type_info__()
+
+      # Get the type definition for Person.t/0
+      person_type = types[{:t, 0}]
+
+      # Extract documentation from the type's meta field
+      meta = :spectra_type.get_meta(person_type)
+      # => %{doc: %{title: "Person", description: "A person record"}}
+
+  ### Use Cases
 
   This function is primarily used internally by Spectral's encoding, decoding, and schema
-  generation functions, but can be called directly for introspection purposes.
+  generation functions, but can be called directly for:
+  - Introspection and debugging
+  - Custom tooling that needs access to type information
+  - Documentation generation
+  - Type analysis and validation tools
   """
   defmacro __using__(_opts) do
     quote do
