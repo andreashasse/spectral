@@ -28,7 +28,7 @@ defmodule Spectral.Error do
 
   Record.defrecordp(
     :sp_error,
-    Record.extract(:sp_error, from: "deps/spectra/include/spectra.hrl")
+    Record.extract(:sp_error, from_lib: "spectra/include/spectra.hrl")
   )
 
   @type error_type ::
