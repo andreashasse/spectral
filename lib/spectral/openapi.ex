@@ -51,7 +51,10 @@ defmodule Spectral.OpenAPI do
           optional(:operationId) => binary(),
           optional(:tags) => [binary()],
           optional(:deprecated) => boolean(),
-          optional(:externalDocs) => %{required(:url) => binary(), optional(:description) => binary()}
+          optional(:externalDocs) => %{
+            required(:url) => binary(),
+            optional(:description) => binary()
+          }
         }) :: dynamic()
   def endpoint(method, path, doc \\ %{}) do
     :spectra_openapi.endpoint(method, path, doc)

@@ -318,7 +318,12 @@ defmodule Spectral do
       iex> IO.iodata_to_binary(json)
       ~s({"name":"Alice"})
   """
-  @spec encode(dynamic(), module(), atom(), atom()) ::
+  @spec encode(
+          dynamic(),
+          module() | :spectra.type_info(),
+          atom() | :spectra.sp_type_or_ref(),
+          atom()
+        ) ::
           {:ok, iodata()} | {:error, [Spectral.Error.t()]}
   def encode(data, module, type_ref, format \\ :json) do
     :spectra.encode(format, module, type_ref, data)
@@ -357,7 +362,12 @@ defmodule Spectral do
       ...> |> Spectral.decode(Person, :t)
       {:ok, %Person{age: 30, name: "Alice", address: nil}}
   """
-  @spec decode(binary(), module(), atom(), atom()) ::
+  @spec decode(
+          binary() | list(),
+          module() | :spectra.type_info(),
+          atom() | :spectra.sp_type_or_ref(),
+          atom()
+        ) ::
           {:ok, dynamic()} | {:error, [Spectral.Error.t()]}
   def decode(data, module, type_ref, format \\ :json) do
     :spectra.decode(format, module, type_ref, data)
@@ -386,7 +396,8 @@ defmodule Spectral do
       iex> is_binary(IO.iodata_to_binary(schemadata))
       true
   """
-  @spec schema(module(), atom(), atom()) :: iodata()
+  @spec schema(module() | :spectra.type_info(), atom() | :spectra.sp_type_or_ref(), atom()) ::
+          iodata()
   def schema(module, type_ref, format \\ :json_schema) when is_atom(type_ref) do
     # Convert atom type_ref to tuple to preserve type reference for documentation
     # This is a workaround for spectra.erl converting atoms to type structures
@@ -425,7 +436,13 @@ defmodule Spectral do
       ...> |> IO.iodata_to_binary()
       ~s({"age":30,"name":"Alice"})
   """
-  @spec encode!(dynamic(), module(), atom(), atom()) :: iodata()
+  @spec encode!(
+          dynamic(),
+          module() | :spectra.type_info(),
+          atom() | :spectra.sp_type_or_ref(),
+          atom()
+        ) ::
+          iodata()
   def encode!(data, module, type_ref, format \\ :json) do
     case encode(data, module, type_ref, format) do
       {:ok, result} ->
@@ -462,7 +479,13 @@ defmodule Spectral do
       ...> |> Spectral.decode!(Person, :t)
       %Person{age: 30, name: "Alice", address: nil}
   """
-  @spec decode!(binary(), module(), atom(), atom()) :: dynamic()
+  @spec decode!(
+          binary() | list(),
+          module() | :spectra.type_info(),
+          atom() | :spectra.sp_type_or_ref(),
+          atom()
+        ) ::
+          dynamic()
   def decode!(data, module, type_ref, format \\ :json) do
     case decode(data, module, type_ref, format) do
       {:ok, result} ->
