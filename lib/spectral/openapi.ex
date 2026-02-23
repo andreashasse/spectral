@@ -27,6 +27,13 @@ defmodule Spectral.OpenAPI do
 
   - `method` - HTTP method as an atom (`:get`, `:post`, `:put`, `:delete`, `:patch`, etc.)
   - `path` - URL path as a binary (e.g., `"/users/{id}"`)
+  - `doc` - Optional documentation map with optional keys:
+    - `:summary` - Short summary of the endpoint
+    - `:description` - Longer description of the endpoint
+    - `:operationId` - Unique string to identify the operation
+    - `:tags` - List of tags for grouping endpoints
+    - `:deprecated` - Whether the endpoint is deprecated (boolean)
+    - `:externalDocs` - Map with `:url` (required) and `:description` (optional)
 
   ## Returns
 
@@ -34,10 +41,20 @@ defmodule Spectral.OpenAPI do
 
   ## Example
 
-      endpoint = Spectral.OpenAPI.endpoint(:get, "/users/{id}")
+      iex> endpoint = Spectral.OpenAPI.endpoint(:get, "/users/{id}", %{summary: "Get user by ID"})
+      iex> endpoint.doc
+      %{summary: "Get user by ID"}
   """
-  def endpoint(method, path) do
-    :spectra_openapi.endpoint(method, path)
+  @spec endpoint(atom(), binary(), %{
+          optional(:summary) => binary(),
+          optional(:description) => binary(),
+          optional(:operationId) => binary(),
+          optional(:tags) => [binary()],
+          optional(:deprecated) => boolean(),
+          optional(:externalDocs) => %{required(:url) => binary(), optional(:description) => binary()}
+        }) :: dynamic()
+  def endpoint(method, path, doc \\ %{}) do
+    :spectra_openapi.endpoint(method, path, doc)
   end
 
   @doc """
