@@ -204,26 +204,24 @@ defmodule Spectral do
   # credo:disable-for-this-file Credo.Check.Refactor.Nesting
   defmacro __before_compile__(env) do
     spectral_attrs = Module.get_attribute(env.module, :spectral) || []
-    type_attrs = Module.get_attribute(env.module, :type) || []
+    # @type and @typep are stored under separate module attributes; combine them
+    # so that spectral/1 annotations can be paired with private types too.
+    type_attrs =
+      (Module.get_attribute(env.module, :type) || []) ++
+        (Module.get_attribute(env.module, :typep) || [])
 
     # Both attributes accumulate in reverse order (LIFO), so reverse to get source order
     spectral_in_order = Enum.reverse(spectral_attrs)
 
     types_with_lines =
       type_attrs
-      |> Enum.reverse()
       |> Enum.map(fn type_ast ->
         case type_ast do
-          {:type, {:"::", meta, [{name, _, args_or_nil}, _type_expr]}, _env}
-          when is_atom(name) ->
+          {kind, {:"::", meta, [{name, _, args_or_nil}, _type_expr]}, _env}
+          when kind in [:type, :typep] and is_atom(name) ->
             arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
             line = Keyword.get(meta, :line, 0)
             {line, {name, arity}}
-
-          {:typep, _, _} ->
-            raise ArgumentError,
-                  "Private types (@typep) cannot be documented with Spectral in #{inspect(env.module)}. " <>
-                    "Only public @type definitions can have documentation."
 
           other_ast ->
             type_kind =
@@ -240,6 +238,7 @@ defmodule Spectral do
                     "Please report this at https://github.com/andreashasse/spectral/issues with the type definition that caused this error."
         end
       end)
+      |> Enum.sort_by(fn {line, _} -> line end)
 
     # Semantic pairing: match each @spectral with the @type that comes immediately after it
     paired_docs =

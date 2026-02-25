@@ -80,4 +80,5 @@ defmodule InvalidSpectralMetadataTest do
 
     assert [{TestValidMap, _bytecode}] = result
   end
+
 end
