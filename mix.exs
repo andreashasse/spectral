@@ -29,10 +29,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      # Temporary git-branch dependency for JSON Schema/OpenAPI documentation support.
-      # TODO: Replace with a released :spectra version from Hex (or a tagged release)
-      # once the required functionality is available upstream.
-      {:spectra, github: "andreashasse/spectra", branch: "json-schema-doc-support"},
+      {:spectra, "~> 0.5.0"},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
