@@ -182,7 +182,7 @@ defmodule Person do
 end
 ```
 
-The `spectral` call must be placed immediately before the `@type` definition it documents. When you generate a JSON schema, it will include the title and description:
+Place the `spectral` call before the `@type` definition it documents. When you generate a JSON schema, it will include the title and description:
 
 ```elixir
 schema = Spectral.schema(Person, :t) |> IO.iodata_to_binary() |> Jason.decode!()

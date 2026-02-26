@@ -8,32 +8,32 @@ defmodule SpectralTest do
   # Extract record definitions from spectra's internal header
   Record.defrecord(
     :type_info,
-    Record.extract(:type_info, from: "deps/spectra/include/spectra_internal.hrl")
+    Record.extract(:type_info, from_lib: "spectra/include/spectra_internal.hrl")
   )
 
   Record.defrecord(
     :sp_map,
-    Record.extract(:sp_map, from: "deps/spectra/include/spectra_internal.hrl")
+    Record.extract(:sp_map, from_lib: "spectra/include/spectra_internal.hrl")
   )
 
   Record.defrecord(
     :sp_simple_type,
-    Record.extract(:sp_simple_type, from: "deps/spectra/include/spectra_internal.hrl")
+    Record.extract(:sp_simple_type, from_lib: "spectra/include/spectra_internal.hrl")
   )
 
   Record.defrecord(
     :sp_remote_type,
-    Record.extract(:sp_remote_type, from: "deps/spectra/include/spectra_internal.hrl")
+    Record.extract(:sp_remote_type, from_lib: "spectra/include/spectra_internal.hrl")
   )
 
   Record.defrecord(
     :literal_map_field,
-    Record.extract(:literal_map_field, from: "deps/spectra/include/spectra_internal.hrl")
+    Record.extract(:literal_map_field, from_lib: "spectra/include/spectra_internal.hrl")
   )
 
   Record.defrecord(
     :sp_user_type_ref,
-    Record.extract(:sp_user_type_ref, from: "deps/spectra/include/spectra_internal.hrl")
+    Record.extract(:sp_user_type_ref, from_lib: "spectra/include/spectra_internal.hrl")
   )
 
   def encode_to_binary(data, module, type) do
