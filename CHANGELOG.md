@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-02-26
+
+### Added
+- `spectral/1` annotation macro for documenting `@type`/`@typep` definitions with JSON Schema metadata (title, description, examples)
+- `Spectral.TypeInfo` module for runtime type introspection via `__spectra_type_info__/0`
+- OpenAPI endpoint documentation support via type annotations
+
 ## [0.4.0] - 2026-01-27
 
 ### Changed
