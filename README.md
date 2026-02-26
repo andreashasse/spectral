@@ -164,6 +164,58 @@ Spectral.schema(module, type_ref, format \\ :json_schema) :: iodata()
 - `type_ref` - The type reference
 - `format` - (optional) Schema format, currently supports `:json_schema` (default)
 
+### Documenting Types with `spectral`
+
+You can add JSON Schema documentation (title, description, examples) to your types using the `spectral` macro:
+
+```elixir
+defmodule Person do
+  use Spectral
+
+  defstruct [:name, :age]
+
+  spectral title: "Person", description: "A person with name and age"
+  @type t :: %Person{
+    name: String.t(),
+    age: non_neg_integer() | nil
+  }
+end
+```
+
+Place the `spectral` call before the `@type` definition it documents. When you generate a JSON schema, it will include the title and description:
+
+```elixir
+schema = Spectral.schema(Person, :t) |> IO.iodata_to_binary() |> Jason.decode!()
+# %{
+#   "title" => "Person",
+#   "description" => "A person with name and age",
+#   "type" => "object",
+#   ...
+# }
+```
+
+**Supported fields:**
+- `title` - A short title for the type
+- `description` - A longer description of what the type represents
+- `examples` - A list of example values (not yet fully supported)
+
+**Multiple types in one module:**
+
+If you have multiple types in a module, you only need to document the types you want. Types without `spectral` calls won't have title/description in their schemas:
+
+```elixir
+defmodule MyModule do
+  use Spectral
+
+  # Documented type
+  spectral title: "Public API", description: "The public interface"
+  @type public_api :: map()
+
+  # Undocumented type - no spectral call needed
+  @type internal_type :: atom()
+end
+```
+
 ## OpenAPI Specification
 
 Spectral can generate complete [OpenAPI 3.0](https://spec.openapis.org/oas/v3.0.0) specifications for your REST APIs. This provides interactive documentation, client generation, and API testing tools.
