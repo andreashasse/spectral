@@ -48,33 +48,16 @@ The library works by reading Elixir `@type` specifications from modules (e.g., `
 
 ### Testing
 ```bash
-mix test                    # Run all tests
+make test                    # Run all tests
 mix test test/spectral_test.exs  # Run specific test file
 mix test --only line:9      # Run test at specific line
 ```
 
-The test suite includes doctests from module documentation, so ensure examples in `@doc` blocks are correct.
-
-### Code Quality
-```bash
-mix format                  # Format code according to .formatter.exs
-mix format --check-formatted # Check if code is formatted
-```
 
 ### Dependencies
 ```bash
 mix deps.get                # Fetch dependencies
 mix deps.update spectra     # Update the spectra dependency
-```
-
-### Build
-```bash
-mix compile                 # Compile the project
-```
-
-### Documentation
-```bash
-mix docs                    # Generate HTML documentation (requires ex_doc dependency)
 ```
 
 ## Working with This Codebase
