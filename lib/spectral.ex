@@ -35,6 +35,15 @@ defmodule Spectral do
   @typedoc "A spectra type structure or type reference. `sp_type()` is an opaque Erlang record."
   @type sp_type_or_ref :: :spectra.sp_type_or_ref()
 
+  @typedoc """
+  Options for `encode/5` and `decode/5`.
+
+  - `:json_term` - For encoding: skip the final JSON serialization step and return the
+    intermediate JSON term (a map/list) instead of iodata. For decoding: accept an
+    already-decoded JSON term as input, skipping the JSON parsing step.
+  """
+  @type encode_option :: :json_term | {:json_term, boolean()}
+
   @doc """
   Adds documentation metadata for a type.
 
@@ -315,10 +324,13 @@ defmodule Spectral do
   - `module` - Module containing the type definition
   - `type_ref` - Type reference (typically an atom like `:t`)
   - `format` - Format to encode to (default: `:json`)
+  - `opts` - Options list (default: `[]`). Supported options:
+    - `:json_term` - Return the intermediate JSON term (map/list) instead of iodata.
 
   ## Returns
 
-  - `{:ok, iodata()}` - Encoded data on success
+  - `{:ok, iodata()}` - Encoded data on success (default)
+  - `{:ok, dynamic()}` - Encoded data as a JSON term when `:json_term` option is set
   - `{:error, [%Spectral.Error{}]}` - List of errors on failure
 
   ## Examples
@@ -332,11 +344,17 @@ defmodule Spectral do
       iex> {:ok, json} = %Person{name: "Alice"} |> Spectral.encode(Person, :t)
       iex> IO.iodata_to_binary(json)
       ~s({"name":"Alice"})
+
+      iex> {:ok, term} = %Person{name: "Alice", age: 30} |> Spectral.encode(Person, :t, :json, [:json_term])
+      iex> is_map(term)
+      true
   """
-  @spec encode(dynamic(), module() | type_info(), atom() | sp_type_or_ref(), atom()) ::
-          {:ok, iodata()} | {:error, [Spectral.Error.t()]}
-  def encode(data, module, type_ref, format \\ :json) do
-    :spectra.encode(format, module, type_ref, data)
+  @spec encode(dynamic(), module() | type_info(), atom() | sp_type_or_ref(), atom(), [
+          encode_option()
+        ]) ::
+          {:ok, iodata() | dynamic()} | {:error, [Spectral.Error.t()]}
+  def encode(data, module, type_ref, format \\ :json, opts \\ []) do
+    :spectra.encode(format, module, type_ref, data, opts)
     |> convert_result()
   rescue
     error in ErlangError ->
@@ -348,10 +366,12 @@ defmodule Spectral do
 
   ## Parameters
 
-  - `data` - The data to decode (binary for JSON, string for string format)
+  - `data` - The data to decode (binary for JSON, string for string format; or a JSON term when `:json_term` option is set)
   - `module` - Module containing the type definition
   - `type_ref` - Type reference (typically an atom like `:t`)
   - `format` - Format to decode from (default: `:json`)
+  - `opts` - Options list (default: `[]`). Supported options:
+    - `:json_term` - Accept an already-decoded JSON term as input, skipping JSON parsing.
 
   ## Returns
 
@@ -371,11 +391,22 @@ defmodule Spectral do
       iex> ~s({"name":"Alice","age":30,"extra_field":"ignored"})
       ...> |> Spectral.decode(Person, :t)
       {:ok, %Person{age: 30, name: "Alice", address: nil}}
+
+      iex> Spectral.decode(%{"name" => "Alice", "age" => 30}, Person, :t, :json, [:json_term])
+      {:ok, %Person{age: 30, name: "Alice", address: nil}}
   """
-  @spec decode(binary() | list(), module() | type_info(), atom() | sp_type_or_ref(), atom()) ::
+  @spec decode(
+          binary() | list() | dynamic(),
+          module() | type_info(),
+          atom() | sp_type_or_ref(),
+          atom(),
+          [
+            encode_option()
+          ]
+        ) ::
           {:ok, dynamic()} | {:error, [Spectral.Error.t()]}
-  def decode(data, module, type_ref, format \\ :json) do
-    :spectra.decode(format, module, type_ref, data)
+  def decode(data, module, type_ref, format \\ :json, opts \\ []) do
+    :spectra.decode(format, module, type_ref, data, opts)
     |> convert_result()
   rescue
     error in ErlangError ->
@@ -440,9 +471,11 @@ defmodule Spectral do
       ...> |> IO.iodata_to_binary()
       ~s({"age":30,"name":"Alice"})
   """
-  @spec encode!(dynamic(), module() | type_info(), atom() | sp_type_or_ref(), atom()) :: iodata()
-  def encode!(data, module, type_ref, format \\ :json) do
-    case encode(data, module, type_ref, format) do
+  @spec encode!(dynamic(), module() | type_info(), atom() | sp_type_or_ref(), atom(), [
+          encode_option()
+        ]) :: iodata() | dynamic()
+  def encode!(data, module, type_ref, format \\ :json, opts \\ []) do
+    case encode(data, module, type_ref, format, opts) do
       {:ok, result} ->
         result
 
@@ -477,10 +510,18 @@ defmodule Spectral do
       ...> |> Spectral.decode!(Person, :t)
       %Person{age: 30, name: "Alice", address: nil}
   """
-  @spec decode!(binary() | list(), module() | type_info(), atom() | sp_type_or_ref(), atom()) ::
+  @spec decode!(
+          binary() | list() | dynamic(),
+          module() | type_info(),
+          atom() | sp_type_or_ref(),
+          atom(),
+          [
+            encode_option()
+          ]
+        ) ::
           dynamic()
-  def decode!(data, module, type_ref, format \\ :json) do
-    case decode(data, module, type_ref, format) do
+  def decode!(data, module, type_ref, format \\ :json, opts \\ []) do
+    case decode(data, module, type_ref, format, opts) do
       {:ok, result} ->
         result
 
