@@ -98,38 +98,38 @@ defmodule SpectralTest do
              Spectral.decode(json, Person, :t)
   end
 
-  test "encode with json_term option returns map instead of iodata" do
+  test "encode with pre_encoded option returns map instead of iodata" do
     assert {:ok, term} =
-             Spectral.encode(%Person{name: "Alice", age: 30}, Person, :t, :json, [:json_term])
+             Spectral.encode(%Person{name: "Alice", age: 30}, Person, :t, :json, [:pre_encoded])
 
     assert is_map(term)
     assert term["name"] == "Alice"
     assert term["age"] == 30
   end
 
-  test "encode with json_term option omits nil values" do
+  test "encode with pre_encoded option omits nil values" do
     assert {:ok, term} =
-             Spectral.encode(%Person{name: "Alice"}, Person, :t, :json, [:json_term])
+             Spectral.encode(%Person{name: "Alice"}, Person, :t, :json, [:pre_encoded])
 
     assert is_map(term)
     assert term["name"] == "Alice"
     refute Map.has_key?(term, "age")
   end
 
-  test "decode with json_term option accepts pre-decoded map" do
+  test "decode with pre_decoded option accepts pre-decoded map" do
     assert {:ok, %Person{name: "Alice", age: 30, address: nil}} ==
              Spectral.decode(
                %{"name" => "Alice", "age" => 30},
                Person,
                :t,
                :json,
-               [:json_term]
+               [:pre_decoded]
              )
   end
 
-  test "decode with json_term option accepts map with missing optional fields" do
+  test "decode with pre_decoded option accepts map with missing optional fields" do
     assert {:ok, %Person{name: "Alice", age: nil, address: nil}} ==
-             Spectral.decode(%{"name" => "Alice"}, Person, :t, :json, [:json_term])
+             Spectral.decode(%{"name" => "Alice"}, Person, :t, :json, [:pre_decoded])
   end
 
   test "encode! returns result directly" do
@@ -139,16 +139,16 @@ defmodule SpectralTest do
              |> IO.iodata_to_binary()
   end
 
-  test "encode! with json_term option returns map" do
-    result = Spectral.encode!(%Person{name: "Alice", age: 30}, Person, :t, :json, [:json_term])
+  test "encode! with pre_encoded option returns map" do
+    result = Spectral.encode!(%Person{name: "Alice", age: 30}, Person, :t, :json, [:pre_encoded])
     assert is_map(result)
     assert result["name"] == "Alice"
     assert result["age"] == 30
   end
 
-  test "decode! with json_term option accepts pre-decoded map" do
+  test "decode! with pre_decoded option accepts pre-decoded map" do
     assert %Person{name: "Alice", age: 30, address: nil} ==
-             Spectral.decode!(%{"name" => "Alice", "age" => 30}, Person, :t, :json, [:json_term])
+             Spectral.decode!(%{"name" => "Alice", "age" => 30}, Person, :t, :json, [:pre_decoded])
   end
 
   test "decode! returns result directly" do
