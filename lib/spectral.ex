@@ -39,7 +39,8 @@ defmodule Spectral do
   Options for `encode/5` and `encode!/5`.
 
   - `:pre_encoded` - Skip the final JSON serialization step and return the intermediate
-    JSON term (a map/list) instead of iodata.
+    JSON term (a map/list) instead of iodata. Equivalent to `{:pre_encoded, true}`.
+  - `{:pre_encoded, boolean()}` - Explicit boolean form; `false` gives the default behaviour.
   """
   @type encode_option :: :pre_encoded | {:pre_encoded, boolean()}
 
@@ -47,7 +48,8 @@ defmodule Spectral do
   Options for `decode/5` and `decode!/5`.
 
   - `:pre_decoded` - Accept an already-decoded JSON term as input, skipping the JSON
-    parsing step.
+    parsing step. Equivalent to `{:pre_decoded, true}`.
+  - `{:pre_decoded, boolean()}` - Explicit boolean form; `false` gives the default behaviour.
   """
   @type decode_option :: :pre_decoded | {:pre_decoded, boolean()}
 
@@ -353,8 +355,8 @@ defmodule Spectral do
       ~s({"name":"Alice"})
 
       iex> {:ok, term} = %Person{name: "Alice", age: 30} |> Spectral.encode(Person, :t, :json, [:pre_encoded])
-      iex> is_map(term)
-      true
+      iex> term["name"]
+      "Alice"
   """
   @spec encode(dynamic(), module() | type_info(), atom() | sp_type_or_ref(), atom(), [
           encode_option()
@@ -402,15 +404,9 @@ defmodule Spectral do
       iex> Spectral.decode(%{"name" => "Alice", "age" => 30}, Person, :t, :json, [:pre_decoded])
       {:ok, %Person{age: 30, name: "Alice", address: nil}}
   """
-  @spec decode(
-          binary() | list() | dynamic(),
-          module() | type_info(),
-          atom() | sp_type_or_ref(),
-          atom(),
-          [
-            decode_option()
-          ]
-        ) ::
+  @spec decode(dynamic(), module() | type_info(), atom() | sp_type_or_ref(), atom(), [
+          decode_option()
+        ]) ::
           {:ok, dynamic()} | {:error, [Spectral.Error.t()]}
   def decode(data, module, type_ref, format \\ :json, opts \\ []) do
     :spectra.decode(format, module, type_ref, data, opts)
@@ -522,15 +518,9 @@ defmodule Spectral do
       ...> |> Spectral.decode!(Person, :t)
       %Person{age: 30, name: "Alice", address: nil}
   """
-  @spec decode!(
-          binary() | list() | dynamic(),
-          module() | type_info(),
-          atom() | sp_type_or_ref(),
-          atom(),
-          [
-            decode_option()
-          ]
-        ) ::
+  @spec decode!(dynamic(), module() | type_info(), atom() | sp_type_or_ref(), atom(), [
+          decode_option()
+        ]) ::
           dynamic()
   def decode!(data, module, type_ref, format \\ :json, opts \\ []) do
     case decode(data, module, type_ref, format, opts) do

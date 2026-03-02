@@ -132,6 +132,11 @@ defmodule SpectralTest do
              Spectral.decode(%{"name" => "Alice"}, Person, :t, :json, [:pre_decoded])
   end
 
+  test "decode returns error when map is passed without pre_decoded option" do
+    assert {:error, [%Spectral.Error{type: :decode_error}]} =
+             Spectral.decode(%{"name" => "Alice"}, Person, :t)
+  end
+
   test "encode! returns result directly" do
     assert ~s({"age":30,"name":"Alice"}) ==
              %Person{name: "Alice", age: 30}
