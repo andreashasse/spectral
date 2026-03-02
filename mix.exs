@@ -29,7 +29,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.5.1"},
+      {:spectra, github: "andreashasse/spectra"},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
@@ -61,9 +61,11 @@ defmodule Spectral.MixProject do
         module not in [
           Person,
           Person.Address,
+          EndpointHandler,
           MultiTypeModule,
           MultiTypeModuleReversed,
           MultiTypeModuleFirstMissing,
+          MultiSpectralHandler,
           SemanticPairingTestModule,
           TypeWithParams
         ]

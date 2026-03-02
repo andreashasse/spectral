@@ -1,4 +1,11 @@
 defmodule Spectral.TypeInfo do
+  require Record
+
+  Record.defrecord(
+    :sp_function_spec,
+    Record.extract(:sp_function_spec, from_lib: "spectra/include/spectra_internal.hrl")
+  )
+
   @moduledoc """
   Elixir wrapper for the Erlang `:spectra_type_info` module.
 
@@ -265,5 +272,46 @@ defmodule Spectral.TypeInfo do
   @spec find_function(type_info(), atom(), arity()) :: {:ok, [term()]} | :error
   def find_function(type_info, name, arity) when is_atom(name) and is_integer(arity) do
     :spectra_type_info.find_function(type_info, name, arity)
+  end
+
+  @doc """
+  Returns the endpoint documentation attached to a function via the `spectral/1` macro.
+
+  When `spectral/1` is placed before a `@spec` and function definition, the documentation
+  map (with keys like `:summary`, `:description`, `:deprecated`) is stored in the function
+  spec's metadata. This function retrieves it, using the first function spec when there are
+  multiple specs (e.g., multiple clauses with different guards).
+
+  ## Parameters
+
+  - `type_info` - The type_info structure to search
+  - `name` - The function name (atom)
+  - `arity` - The function arity (non-negative integer)
+
+  ## Returns
+
+  - `{:ok, doc}` - If a doc was attached to the function (map with endpoint doc fields)
+  - `:error` - If no `spectral/1` annotation was found for this function
+
+  ## Example
+
+      type_info = MyController.__spectra_type_info__()
+      {:ok, doc} = Spectral.TypeInfo.get_function_doc(type_info, :show, 2)
+      # doc => %{summary: "Show resource", description: "Returns a resource by ID"}
+  """
+  @spec get_function_doc(type_info(), atom(), arity()) :: {:ok, map()} | :error
+  def get_function_doc(type_info, name, arity) when is_atom(name) and is_integer(arity) do
+    case :spectra_type_info.find_function(type_info, name, arity) do
+      {:ok, [spec | _]} ->
+        meta = sp_function_spec(spec, :meta)
+
+        case Map.fetch(meta, :doc) do
+          {:ok, doc} -> {:ok, doc}
+          :error -> :error
+        end
+
+      _ ->
+        :error
+    end
   end
 end

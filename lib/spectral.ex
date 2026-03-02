@@ -6,6 +6,11 @@ defmodule Spectral do
     Record.extract(:type_info, from_lib: "spectra/include/spectra_internal.hrl")
   )
 
+  Record.defrecord(
+    :sp_function_spec,
+    Record.extract(:sp_function_spec, from_lib: "spectra/include/spectra_internal.hrl")
+  )
+
   @moduledoc """
   Elixir wrapper for the Erlang `spectra` library.
 
@@ -105,13 +110,14 @@ defmodule Spectral do
   Sets up the Spectral macros and injects `__spectra_type_info__/0` function.
 
   When you `use Spectral`, the following happens:
-  - The `spectral/1` macro is imported for documenting types
+  - The `spectral/1` macro is imported for documenting types and functions
   - A `__spectra_type_info__/0` function is injected that returns type information
   - The `@spectral` attribute is registered (used internally by the `spectral/1` macro)
 
-  ## Usage
+  ## Annotating Types
 
-  Use the `spectral/1` macro to document types. Place it immediately before a `@type` definition:
+  Place `spectral/1` immediately before a `@type` definition to attach documentation
+  that will appear in generated JSON schemas and OpenAPI component schemas:
 
       defmodule Person do
         use Spectral
@@ -124,26 +130,48 @@ defmodule Spectral do
 
   Types without a `spectral` call will not have title/description in their JSON schemas.
 
-  ## Documentation Fields
+  ### Type Documentation Fields
 
-  The `spectral` macro accepts the following fields:
   - `title` - A short title for the type (string)
   - `description` - A detailed description (string)
   - `examples` - Example values (list, not fully supported yet)
 
-  ## Multiple Types
+  ## Annotating Functions (Endpoint Documentation)
 
-  You can have multiple types in a module. Only document the ones you want:
+  Place `spectral/1` immediately before a `@spec` definition to attach endpoint
+  documentation. This metadata is used by `Spectral.OpenAPI.endpoint/5` to automatically
+  populate the OpenAPI operation fields:
+
+      defmodule MyController do
+        use Spectral
+
+        spectral summary: "Get user", description: "Returns a user by ID"
+        @spec show(map(), map()) :: map()
+        def show(_conn, _params), do: %{}
+      end
+
+      # Build the endpoint — docs are read automatically from the function's metadata
+      endpoint = Spectral.OpenAPI.endpoint(:get, "/users/{id}", MyController, :show, 2)
+
+  ### Function Documentation Fields
+
+  - `summary` - Short summary of the endpoint operation (string)
+  - `description` - Longer description of the operation (string)
+  - `deprecated` - Whether the endpoint is deprecated (boolean)
+
+  ## Multiple Annotations
+
+  A module can mix type and function annotations freely:
 
       defmodule MyModule do
         use Spectral
 
-        # Public API type - documented
         spectral title: "Public API", description: "The public interface"
         @type public_api :: map()
 
-        # Internal type - no documentation needed
-        @type internal_id :: non_neg_integer()
+        spectral summary: "List items", description: "Returns all items"
+        @spec index(map(), map()) :: map()
+        def index(_conn, _params), do: %{}
       end
 
   ## The `__spectra_type_info__/0` Function
@@ -166,7 +194,8 @@ defmodule Spectral do
 
   - **`records`** - Map of record names (atoms) to `sp_rec` records containing record field information
 
-  - **`functions`** - Map of `{function_name, arity}` tuples to function spec information
+  - **`functions`** - Map of `{function_name, arity}` tuples to lists of `sp_function_spec` records.
+    When annotated with `spectral/1`, each spec's `meta.doc` field holds the endpoint documentation.
 
   #### Type Documentation (meta field)
 
@@ -175,11 +204,14 @@ defmodule Spectral do
 
       %{doc: %{title: "...", description: "...", examples: [...]}}
 
-  Where the `doc` map can contain:
-  - `:title` - Short title for the type (binary)
-  - `:description` - Longer description (binary)
-  - `:examples` - List of example values
-  - `:examples_function` - Reference to a function that generates examples
+  #### Function Documentation (sp_function_spec meta field)
+
+  When you use the `spectral` macro to document a function, the documentation is stored in
+  each matching `sp_function_spec`'s `meta` field as:
+
+      %{doc: %{summary: "...", description: "..."}}
+
+  Use `Spectral.TypeInfo.get_function_doc/3` to retrieve it.
 
   ### Example Usage
 
@@ -228,6 +260,8 @@ defmodule Spectral do
       (Module.get_attribute(env.module, :type) || []) ++
         (Module.get_attribute(env.module, :typep) || [])
 
+    spec_attrs = Module.get_attribute(env.module, :spec) || []
+
     # Both attributes accumulate in reverse order (LIFO), so reverse to get source order
     spectral_in_order = Enum.reverse(spectral_attrs)
 
@@ -239,7 +273,7 @@ defmodule Spectral do
           when kind in [:type, :typep] and is_atom(name) ->
             arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
             line = Keyword.get(meta, :line, 0)
-            {line, {name, arity}}
+            {line, :type, {name, arity}}
 
           other_ast ->
             type_kind =
@@ -256,9 +290,32 @@ defmodule Spectral do
                     "Please report this at https://github.com/andreashasse/spectral/issues with the type definition that caused this error."
         end
       end)
-      |> Enum.sort_by(fn {line, _} -> line end)
 
-    # Semantic pairing: match each @spectral with the @type that comes immediately after it
+    specs_with_lines =
+      spec_attrs
+      |> Enum.flat_map(fn spec_ast ->
+        case spec_ast do
+          {:spec, {:"::", meta, [{name, _, args_or_nil}, _return_type]}, _env}
+          when is_atom(name) ->
+            arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
+            line = Keyword.get(meta, :line, 0)
+            [{line, :function, {name, arity}}]
+
+          {:spec, {:when, _, [{:"::", meta, [{name, _, args_or_nil}, _return_type]}, _]}, _env}
+          when is_atom(name) ->
+            arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
+            line = Keyword.get(meta, :line, 0)
+            [{line, :function, {name, arity}}]
+
+          _ ->
+            []
+        end
+      end)
+
+    all_declarations =
+      Enum.sort_by(types_with_lines ++ specs_with_lines, fn {line, _, _} -> line end)
+
+    # Semantic pairing: match each @spectral with the @type or @spec that comes immediately after it
     paired_docs =
       Enum.map(spectral_in_order, fn spectral_doc ->
         {spectral_line, doc} =
@@ -273,20 +330,23 @@ defmodule Spectral do
                       "This is a bug in Spectral - please report it at https://github.com/andreashasse/spectral/issues"
           end
 
-        {_type_line, type_ref} =
-          Enum.find(types_with_lines, fn {type_line, _} -> type_line > spectral_line end) ||
+        {_decl_line, kind, ref} =
+          Enum.find(all_declarations, fn {decl_line, _, _} -> decl_line > spectral_line end) ||
             raise ArgumentError,
-                  "spectral call on line #{spectral_line} in #{inspect(env.module)} has no corresponding @type definition after it"
+                  "spectral call on line #{spectral_line} in #{inspect(env.module)} has no corresponding @type or @spec definition after it"
 
-        Map.put(doc, :type, type_ref)
+        {kind, ref, doc}
       end)
 
-    docs_to_add =
-      Enum.map(paired_docs, fn doc ->
-        {type_name, type_arity} = doc[:type]
-        doc_without_type = Map.delete(doc, :type)
-        {type_name, type_arity, doc_without_type}
-      end)
+    type_docs_to_add =
+      paired_docs
+      |> Enum.filter(fn {kind, _, _} -> kind == :type end)
+      |> Enum.map(fn {:type, {name, arity}, doc} -> {name, arity, doc} end)
+
+    function_docs_to_add =
+      paired_docs
+      |> Enum.filter(fn {kind, _, _} -> kind == :function end)
+      |> Enum.map(fn {:function, {name, arity}, doc} -> {name, arity, doc} end)
 
     quote do
       def __spectra_type_info__ do
@@ -306,21 +366,49 @@ defmodule Spectral do
 
         type_info = :spectra_abstract_code.types_in_module_path(beam_path)
 
-        Enum.reduce(
-          unquote(Macro.escape(docs_to_add)),
-          type_info,
-          fn {name, arity, doc}, acc_type_info ->
-            case :spectra_type_info.find_type(acc_type_info, name, arity) do
-              {:ok, existing_type} ->
-                updated_type = :spectra_type.add_doc_to_type(existing_type, doc)
-                :spectra_type_info.add_type(acc_type_info, name, arity, updated_type)
+        type_info_with_type_docs =
+          Enum.reduce(
+            unquote(Macro.escape(type_docs_to_add)),
+            type_info,
+            fn {name, arity, doc}, acc_type_info ->
+              case :spectra_type_info.find_type(acc_type_info, name, arity) do
+                {:ok, existing_type} ->
+                  updated_type = :spectra_type.add_doc_to_type(existing_type, doc)
+                  :spectra_type_info.add_type(acc_type_info, name, arity, updated_type)
 
-              :error ->
-                acc_type_info
+                :error ->
+                  acc_type_info
+              end
             end
+          )
+
+        Enum.reduce(
+          unquote(Macro.escape(function_docs_to_add)),
+          type_info_with_type_docs,
+          fn {name, arity, doc}, acc_type_info ->
+            Spectral.__attach_function_doc__(acc_type_info, name, arity, doc)
           end
         )
       end
+    end
+  end
+
+  @doc false
+  def __attach_function_doc__(type_info, name, arity, raw_doc) do
+    normalized_doc = :spectra_type.normalize_function_doc(raw_doc)
+
+    case :spectra_type_info.find_function(type_info, name, arity) do
+      {:ok, func_specs} ->
+        updated_specs =
+          Enum.map(func_specs, fn spec ->
+            meta = sp_function_spec(spec, :meta)
+            sp_function_spec(spec, meta: Map.put(meta, :doc, normalized_doc))
+          end)
+
+        :spectra_type_info.add_function(type_info, name, arity, updated_specs)
+
+      :error ->
+        type_info
     end
   end
 
