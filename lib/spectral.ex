@@ -454,7 +454,7 @@ defmodule Spectral do
   @doc """
   Encodes data to the specified format, raising on error.
 
-  Like `encode/4` but raises `Spectral.Error` instead of returning an error tuple.
+  Like `encode/5` but raises `Spectral.Error` instead of returning an error tuple.
 
   ## Parameters
 
@@ -462,10 +462,13 @@ defmodule Spectral do
   - `module` - Module containing the type definition
   - `type_ref` - Type reference (typically an atom like `:t`)
   - `format` - Format to encode to (default: `:json`)
+  - `opts` - Options list (default: `[]`). Supported options:
+    - `:pre_encoded` - Return the intermediate JSON term (map/list) instead of iodata.
 
   ## Returns
 
-  - `iodata()` - Encoded data on success
+  - `iodata()` - Encoded data on success (default)
+  - `dynamic()` - Encoded data as a JSON term when `:pre_encoded` option is set
 
   ## Raises
 
@@ -494,14 +497,16 @@ defmodule Spectral do
   @doc """
   Decodes data from the specified format, raising on error.
 
-  Like `decode/4` but raises `Spectral.Error` instead of returning an error tuple.
+  Like `decode/5` but raises `Spectral.Error` instead of returning an error tuple.
 
   ## Parameters
 
-  - `data` - The data to decode (binary for JSON, string for string format)
+  - `data` - The data to decode (binary for JSON, string for string format; or a JSON term when `:pre_decoded` option is set)
   - `module` - Module containing the type definition
   - `type_ref` - Type reference (typically an atom like `:t`)
   - `format` - Format to decode from (default: `:json`)
+  - `opts` - Options list (default: `[]`). Supported options:
+    - `:pre_decoded` - Accept an already-decoded JSON term as input, skipping JSON parsing.
 
   ## Returns
 
