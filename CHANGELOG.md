@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-03-02
+
+### Added
+- `opts` parameter to `encode/5`, `decode/5`, `encode!/5`, and `decode!/5` for passing options to the underlying spectra library (backward-compatible: defaults to `[]`)
+- `:pre_encoded` option for `encode/5`/`encode!/5`: returns intermediate JSON term (map/list) instead of iodata
+- `:pre_decoded` option for `decode/5`/`decode!/5`: accepts an already-decoded JSON term as input, skipping JSON parsing
+
+### Changed
+- Upgraded spectra dependency from 0.5.0 to 0.5.1
+- spectra 0.5.1 adds performance improvements via `persistent_term` caching for `__spectra_type_info__/0` calls
+
 ## [0.5.0] - 2026-02-26
 
 ### Added
