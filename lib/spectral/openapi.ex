@@ -347,7 +347,6 @@ defmodule Spectral.OpenAPI do
   end
 
   defp function_doc(module, function_name, arity) do
-    # credo:disable-for-next-line Credo.Check.Readability.WithSingleClause
     with {:ok, doc} <-
            Spectral.TypeInfo.get_function_doc(
              module.__spectra_type_info__(),
@@ -356,7 +355,13 @@ defmodule Spectral.OpenAPI do
            ) do
       doc
     else
-      {:error, _} -> %{}
+      {:error, :function_not_found} ->
+        raise ArgumentError,
+              "#{inspect(module)}.#{function_name}/#{arity} has no @spec — add a @spec before using spectral/1 to annotate it"
+
+      {:error, :no_doc_found} ->
+        raise ArgumentError,
+              "#{inspect(module)}.#{function_name}/#{arity} has no spectral/1 annotation — add `spectral summary: \"...\"` before its @spec"
     end
   end
 end

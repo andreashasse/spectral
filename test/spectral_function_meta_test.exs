@@ -70,10 +70,16 @@ defmodule Spectral.FunctionMetaTest do
       assert endpoint.doc[:description] == "Returns a resource by ID"
     end
 
-    test "creates endpoint with empty doc when function has no spectral annotation" do
-      endpoint = Spectral.OpenAPI.endpoint(:get, "/persons", Person, :testdata, 0)
+    test "raises when function has no spectral annotation" do
+      assert_raise ArgumentError, ~r/has no spectral\/1 annotation/, fn ->
+        Spectral.OpenAPI.endpoint(:get, "/persons", EndpointHandler, :list, 1)
+      end
+    end
 
-      assert endpoint.doc == %{}
+    test "raises when function has no @spec" do
+      assert_raise ArgumentError, ~r/has no @spec/, fn ->
+        Spectral.OpenAPI.endpoint(:get, "/persons", Person, :testdata, 0)
+      end
     end
 
     test "endpoint doc integrates into the full openapi spec" do
