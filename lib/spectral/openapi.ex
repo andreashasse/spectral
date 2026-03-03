@@ -347,11 +347,16 @@ defmodule Spectral.OpenAPI do
   end
 
   defp function_doc(module, function_name, arity) do
-    type_info = module.__spectra_type_info__()
-
-    case Spectral.TypeInfo.get_function_doc(type_info, function_name, arity) do
-      {:ok, doc} -> doc
-      :error -> %{}
+    # credo:disable-for-next-line Credo.Check.Readability.WithSingleClause
+    with {:ok, doc} <-
+           Spectral.TypeInfo.get_function_doc(
+             module.__spectra_type_info__(),
+             function_name,
+             arity
+           ) do
+      doc
+    else
+      {:error, _} -> %{}
     end
   end
 end

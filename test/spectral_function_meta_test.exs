@@ -27,16 +27,18 @@ defmodule Spectral.FunctionMetaTest do
       assert meta[:doc][:description] == "A handler type"
     end
 
-    test "get_function_doc returns error for function without spectral annotation" do
-      type_info = Person.__spectra_type_info__()
-
-      assert :error = Spectral.TypeInfo.get_function_doc(type_info, :testdata, 0)
-    end
-
-    test "get_function_doc returns error for unknown function" do
+    test "get_function_doc returns no_doc_found for function with @spec but no spectral annotation" do
       type_info = EndpointHandler.__spectra_type_info__()
 
-      assert :error = Spectral.TypeInfo.get_function_doc(type_info, :nonexistent, 0)
+      assert {:error, :no_doc_found} =
+               Spectral.TypeInfo.get_function_doc(type_info, :list, 1)
+    end
+
+    test "get_function_doc returns function_not_found for unknown function" do
+      type_info = EndpointHandler.__spectra_type_info__()
+
+      assert {:error, :function_not_found} =
+               Spectral.TypeInfo.get_function_doc(type_info, :nonexistent, 0)
     end
   end
 

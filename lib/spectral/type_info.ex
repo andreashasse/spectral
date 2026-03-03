@@ -29,7 +29,7 @@ defmodule Spectral.TypeInfo do
   and then query or modify it:
 
       type_info = Person.__spectra_type_info__()
-      
+
       # Find a specific type
       case Spectral.TypeInfo.find_type(type_info, :t, 0) do
         {:ok, type} -> IO.inspect(type)
@@ -112,7 +112,7 @@ defmodule Spectral.TypeInfo do
       iex> {:ok, type} = Spectral.TypeInfo.find_type(type_info, :t, 0)
       iex> is_tuple(type)
       true
-      
+
       iex> type_info = Spectral.TypeInfo.new()
       iex> Spectral.TypeInfo.find_type(type_info, :nonexistent, 0)
       :error
@@ -291,7 +291,8 @@ defmodule Spectral.TypeInfo do
   ## Returns
 
   - `{:ok, doc}` - If a doc was attached to the function (map with endpoint doc fields)
-  - `:error` - If no `spectral/1` annotation was found for this function
+  - `{:error, :no_doc_found}` - If the function exists but has no `spectral/1` annotation
+  - `{:error, :function_not_found}` - If the function is not found in the type info
 
   ## Example
 
@@ -299,7 +300,8 @@ defmodule Spectral.TypeInfo do
       {:ok, doc} = Spectral.TypeInfo.get_function_doc(type_info, :show, 2)
       # doc => %{summary: "Show resource", description: "Returns a resource by ID"}
   """
-  @spec get_function_doc(type_info(), atom(), arity()) :: {:ok, map()} | :error
+  @spec get_function_doc(type_info(), atom(), arity()) ::
+          {:ok, map()} | {:error, :no_doc_found | :function_not_found}
   def get_function_doc(type_info, name, arity) when is_atom(name) and is_integer(arity) do
     case :spectra_type_info.find_function(type_info, name, arity) do
       {:ok, [spec | _]} ->
@@ -307,11 +309,11 @@ defmodule Spectral.TypeInfo do
 
         case Map.fetch(meta, :doc) do
           {:ok, doc} -> {:ok, doc}
-          :error -> :error
+          :error -> {:error, :no_doc_found}
         end
 
       _ ->
-        :error
+        {:error, :function_not_found}
     end
   end
 end

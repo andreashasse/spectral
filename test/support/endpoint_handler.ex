@@ -22,4 +22,7 @@ defmodule EndpointHandler do
 
   @spec create(map(), map()) :: map()
   def create(_conn, _params), do: %{}
+
+  @spec list(map()) :: [map()]
+  def list(_conn), do: []
 end
