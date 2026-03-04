@@ -81,6 +81,21 @@ defmodule Spectral.OpenAPITest do
       assert response.schema == :t
       assert Map.has_key?(response.headers, "X-Custom")
     end
+
+    test "adds deprecated header to response" do
+      response =
+        Spectral.OpenAPI.response(200, "Success")
+        |> Spectral.OpenAPI.response_with_header("X-Old-Header", Person, %{
+          description: "This header is deprecated",
+          required: false,
+          deprecated: true,
+          schema: :string
+        })
+
+      header = response.headers["X-Old-Header"]
+      assert header.deprecated == true
+      assert header.description == "This header is deprecated"
+    end
   end
 
   describe "add_response/2" do
@@ -126,12 +141,20 @@ defmodule Spectral.OpenAPITest do
       assert endpoint.request_body.schema == :t
     end
 
-    test "adds request body with custom content type" do
+    test "adds request body with content type via opts" do
       endpoint =
         Spectral.OpenAPI.endpoint(:post, "/users")
-        |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
+        |> Spectral.OpenAPI.with_request_body(Person, :t, %{content_type: "application/xml"})
 
       assert endpoint.request_body.content_type == "application/xml"
+    end
+
+    test "adds request body with description via opts" do
+      endpoint =
+        Spectral.OpenAPI.endpoint(:post, "/users")
+        |> Spectral.OpenAPI.with_request_body(Person, :t, %{description: "The user to create"})
+
+      assert endpoint.request_body.description == "The user to create"
     end
   end
 
@@ -189,6 +212,23 @@ defmodule Spectral.OpenAPITest do
 
       assert length(endpoint.parameters) == 2
     end
+
+    test "adds parameter with description and deprecated" do
+      endpoint =
+        Spectral.OpenAPI.endpoint(:get, "/users/{id}")
+        |> Spectral.OpenAPI.with_parameter(Person, %{
+          name: "id",
+          in: :path,
+          required: true,
+          schema: :string,
+          description: "The user ID",
+          deprecated: true
+        })
+
+      param = hd(endpoint.parameters)
+      assert param.description == "The user ID"
+      assert param.deprecated == true
+    end
   end
 
   describe "endpoints_to_openapi/2" do
@@ -210,6 +250,31 @@ defmodule Spectral.OpenAPITest do
       assert spec["info"]["version"] == "1.0.0"
       assert Map.has_key?(spec, "paths")
       assert Map.has_key?(spec["paths"], "/users")
+    end
+
+    test "generates spec with servers in metadata" do
+      metadata = %{
+        title: "Test API",
+        version: "1.0.0",
+        servers: [
+          %{url: "https://api.example.com", description: "Production"},
+          %{url: "https://staging.example.com", description: "Staging"}
+        ]
+      }
+
+      endpoints = [
+        Spectral.OpenAPI.endpoint(:get, "/users")
+        |> Spectral.OpenAPI.add_response(
+          Spectral.OpenAPI.response(200, "List of users")
+          |> Spectral.OpenAPI.response_with_body(Person, {:type, :t, 0})
+        )
+      ]
+
+      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+
+      assert is_list(spec["servers"])
+      assert length(spec["servers"]) == 2
+      assert hd(spec["servers"])["url"] == "https://api.example.com"
     end
 
     test "generates spec with multiple endpoints" do

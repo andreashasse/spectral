@@ -180,6 +180,7 @@ defmodule Spectral.OpenAPI do
   - `header_spec` - Header specification map with keys:
     - `:description` (optional) - Description of the header
     - `:required` (optional) - Whether the header is required (default: false)
+    - `:deprecated` (optional) - Whether the header is deprecated (boolean)
     - `:schema` - Schema for the header value
 
   ## Returns
@@ -248,14 +249,16 @@ defmodule Spectral.OpenAPI do
   end
 
   @doc """
-  Adds a request body specification with custom content type to an endpoint.
+  Adds a request body specification with additional options to an endpoint.
 
   ## Parameters
 
   - `endpoint` - The endpoint to modify
   - `module` - Module containing type definitions
   - `schema` - Schema reference (typically an atom like `:t`)
-  - `content_type` - Content type (e.g., `"application/json"`, `"application/xml"`)
+  - `opts` - Options map with optional keys:
+    - `:content_type` - Content type override (e.g., `"application/xml"`; defaults to `"application/json"`)
+    - `:description` - Description of the request body
 
   ## Returns
 
@@ -264,10 +267,10 @@ defmodule Spectral.OpenAPI do
   ## Example
 
       endpoint = Spectral.OpenAPI.endpoint(:post, "/users")
-        |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
+        |> Spectral.OpenAPI.with_request_body(Person, :t, %{content_type: "application/xml"})
   """
-  def with_request_body(endpoint, module, schema, content_type) do
-    :spectra_openapi.with_request_body(endpoint, module, schema, content_type)
+  def with_request_body(endpoint, module, schema, opts) when is_map(opts) do
+    :spectra_openapi.with_request_body(endpoint, module, schema, opts)
   end
 
   @doc """
@@ -284,6 +287,8 @@ defmodule Spectral.OpenAPI do
     - `:in` - Location (`:path`, `:query`, `:header`, `:cookie`)
     - `:required` - Whether the parameter is required
     - `:schema` - Schema for the parameter value
+    - `:description` (optional) - Description of the parameter
+    - `:deprecated` (optional) - Whether the parameter is deprecated (boolean)
 
   ## Returns
 
@@ -309,8 +314,14 @@ defmodule Spectral.OpenAPI do
   ## Parameters
 
   - `metadata` - OpenAPI metadata map with keys:
-    - `:title` - API title
-    - `:version` - API version
+    - `:title` - API title (required)
+    - `:version` - API version (required)
+    - `:summary` (optional) - Short summary of the API
+    - `:description` (optional) - Longer description of the API
+    - `:terms_of_service` (optional) - URL to the terms of service
+    - `:contact` (optional) - Contact map with optional `:name`, `:url`, `:email`
+    - `:license` (optional) - License map with required `:name` and optional `:url`, `:identifier`
+    - `:servers` (optional) - List of server objects, each with required `:url` and optional `:description`
   - `endpoints` - List of endpoint definitions
 
   ## Returns
