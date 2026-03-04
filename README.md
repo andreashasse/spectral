@@ -312,7 +312,8 @@ user_get_endpoint =
     name: "id",
     in: :path,
     required: true,
-    schema: :string
+    schema: :string,
+    description: "The user ID"
   })
   |> Spectral.OpenAPI.add_response(user_found_response)
   |> Spectral.OpenAPI.add_response(user_not_found_response)
@@ -323,7 +324,18 @@ user_create_endpoint =
   Spectral.OpenAPI.endpoint(:post, "/users")
   |> Spectral.OpenAPI.with_request_body(
     Person,
-    {:type, :t, 0}
+    {:type, :t, 0},
+    %{description: "User to create"}
+  )
+  |> Spectral.OpenAPI.add_response(user_created_response)
+
+# Override content type (defaults to "application/json")
+user_create_xml_endpoint =
+  Spectral.OpenAPI.endpoint(:post, "/users")
+  |> Spectral.OpenAPI.with_request_body(
+    Person,
+    {:type, :t, 0},
+    %{content_type: "application/xml", description: "User to create"}
   )
   |> Spectral.OpenAPI.add_response(user_created_response)
 
@@ -346,7 +358,14 @@ Combine all endpoints into a complete OpenAPI spec:
 ```elixir
 metadata = %{
   title: "My API",
-  version: "1.0.0"
+  version: "1.0.0",
+  # Optional fields:
+  summary: "Short summary of the API",
+  description: "Longer description of the API",
+  terms_of_service: "https://example.com/terms",
+  contact: %{name: "Support", url: "https://example.com/support", email: "support@example.com"},
+  license: %{name: "MIT", url: "https://opensource.org/licenses/MIT"},
+  servers: [%{url: "https://api.example.com", description: "Production"}]
 }
 
 
