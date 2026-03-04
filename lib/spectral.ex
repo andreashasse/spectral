@@ -262,7 +262,7 @@ defmodule Spectral do
 
     spec_attrs = Module.get_attribute(env.module, :spec) || []
 
-    # Both attributes accumulate in reverse order (LIFO), so reverse to get source order
+    # The :spectral attribute accumulates in reverse order (LIFO), so reverse it to get source order.
     spectral_in_order = Enum.reverse(spectral_attrs)
 
     types_with_lines =
