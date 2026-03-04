@@ -347,6 +347,7 @@ defmodule Spectral.OpenAPI do
   end
 
   defp function_doc(module, function_name, arity) do
+    # credo:disable-for-next-line Credo.Check.Readability.WithSingleClause
     with {:ok, doc} <-
            Spectral.TypeInfo.get_function_doc(
              module.__spectra_type_info__(),
