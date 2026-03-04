@@ -13,7 +13,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.5.1"}
+    {:spectral, "~> 0.6.0"}
   ]
 end
 ```
@@ -216,6 +216,27 @@ defmodule MyModule do
 end
 ```
 
+### Documenting Functions (Endpoint Metadata)
+
+The `spectral` macro also works before `@spec` definitions to attach OpenAPI endpoint documentation to functions:
+
+```elixir
+defmodule MyController do
+  use Spectral
+
+  spectral summary: "Get user", description: "Returns a user by ID"
+  @spec show(map(), map()) :: map()
+  def show(_conn, _params), do: %{}
+end
+```
+
+**Supported fields:**
+- `summary` - Short summary of the endpoint operation
+- `description` - Longer description of the operation
+- `deprecated` - Whether the endpoint is deprecated (boolean)
+
+This metadata is used by `Spectral.OpenAPI.endpoint/5` to automatically populate OpenAPI operation fields — see the OpenAPI section below.
+
 ## OpenAPI Specification
 
 Spectral can generate complete [OpenAPI 3.0](https://spec.openapis.org/oas/v3.0.0) specifications for your REST APIs. This provides interactive documentation, client generation, and API testing tools.
@@ -271,12 +292,22 @@ response_with_headers =
 
 #### Building Endpoints
 
-Endpoints are built by combining the endpoint definition with responses, request bodies, and parameters:
-Responses are taken from the previous section.
+Endpoints are built by combining the endpoint definition with responses, request bodies, and parameters.
+
+Use `endpoint/5` to automatically pull the endpoint documentation from a function's `spectral/1` annotation:
+
+```elixir
+# Documentation comes from the spectral/1 annotation on MyController.show/2
+user_get_endpoint =
+  Spectral.OpenAPI.endpoint(:get, "/users/{id}", MyController, :show, 2)
+  |> Spectral.OpenAPI.add_response(user_found_response)
+```
+
+Or use `endpoint/3` to pass documentation inline:
 
 ```elixir
 user_get_endpoint =
-  Spectral.OpenAPI.endpoint(:get, "/users/{id}")
+  Spectral.OpenAPI.endpoint(:get, "/users/{id}", %{summary: "Get user by ID"})
   |> Spectral.OpenAPI.with_parameter(Person, %{
     name: "id",
     in: :path,

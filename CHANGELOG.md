@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-04
+
+### Added
+- `spectral/1` macro can now be placed before `@spec` definitions to attach endpoint documentation (`summary`, `description`, `deprecated`) to functions
+- `Spectral.TypeInfo.get_function_doc/3` — retrieves endpoint documentation stored in a function's `sp_function_spec` metadata; returns `{:ok, doc}`, `{:error, :no_doc_found}`, or `{:error, :function_not_found}`
+- `Spectral.OpenAPI.endpoint/5` — 5-argument overload that reads a function's `spectral/1` metadata from the module's type info and uses it as the OpenAPI operation documentation; raises `ArgumentError` if the function has no `spectral/1` annotation
+
+### Changed
+- Upgraded spectra dependency from `~> 0.5.1` to `~> 0.6.0`
+- spectra 0.6.0 fixes the `sp_union` record default value (no user-facing impact)
+
 ## [0.5.1] - 2026-03-02
 
 ### Added
