@@ -61,6 +61,46 @@ defmodule Spectral.OpenAPI do
   end
 
   @doc """
+  Creates a new OpenAPI endpoint definition using metadata from a `spectral/1` macro
+  placed before a function definition.
+
+  The function's metadata (set via `spectral summary: "...", description: "..."` before
+  the corresponding `@spec`) is retrieved from the module's type info and used as the
+  endpoint documentation.
+
+  ## Parameters
+
+  - `method` - HTTP method as an atom (`:get`, `:post`, `:put`, `:delete`, `:patch`, etc.)
+  - `path` - URL path as a binary (e.g., `"/users/{id}"`)
+  - `module` - The module containing the function with `spectral` metadata
+  - `function_name` - The function name as an atom
+  - `arity` - The function arity
+
+  ## Returns
+
+  - `endpoint` - OpenAPI endpoint structure with documentation from the function's metadata
+
+  ## Example
+
+      defmodule MyController do
+        use Spectral
+
+        spectral summary: "Get user", description: "Returns a user by ID"
+        @spec get_user(map(), map()) :: map()
+        def get_user(_conn, _params), do: %{}
+      end
+
+      endpoint = Spectral.OpenAPI.endpoint(:get, "/users/{id}", MyController, :get_user, 2)
+  """
+  @spec endpoint(atom(), binary(), module(), atom(), non_neg_integer()) :: dynamic()
+  def endpoint(method, path, module, function_name, arity)
+      when is_atom(method) and is_binary(path) and is_atom(module) and is_atom(function_name) and
+             is_integer(arity) and arity >= 0 do
+    doc = function_doc(module, function_name, arity)
+    endpoint(method, path, doc)
+  end
+
+  @doc """
   Creates a response builder.
 
   This creates a response specification that can be further configured with
@@ -304,5 +344,25 @@ defmodule Spectral.OpenAPI do
 
   defp convert_result({:error, erlang_errors}) when is_list(erlang_errors) do
     {:error, Spectral.Error.from_erlang_list(erlang_errors)}
+  end
+
+  defp function_doc(module, function_name, arity) do
+    # credo:disable-for-next-line Credo.Check.Readability.WithSingleClause
+    with {:ok, doc} <-
+           Spectral.TypeInfo.get_function_doc(
+             module.__spectra_type_info__(),
+             function_name,
+             arity
+           ) do
+      doc
+    else
+      {:error, :function_not_found} ->
+        raise ArgumentError,
+              "#{inspect(module)}.#{function_name}/#{arity} has no @spec — add a @spec before using spectral/1 to annotate it"
+
+      {:error, :no_doc_found} ->
+        raise ArgumentError,
+              "#{inspect(module)}.#{function_name}/#{arity} has no spectral/1 annotation — add `spectral summary: \"...\"` before its @spec"
+    end
   end
 end
