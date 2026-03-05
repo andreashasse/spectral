@@ -358,6 +358,13 @@ defmodule Spectral.OpenAPI do
   end
 
   defp function_doc(module, function_name, arity) do
+    Code.ensure_loaded!(module)
+
+    unless function_exported?(module, :__spectra_type_info__, 0) do
+      raise ArgumentError,
+            "#{inspect(module)} does not use Spectral — add `use Spectral` to the module"
+    end
+
     # credo:disable-for-next-line Credo.Check.Readability.WithSingleClause
     with {:ok, doc} <-
            Spectral.TypeInfo.get_function_doc(
