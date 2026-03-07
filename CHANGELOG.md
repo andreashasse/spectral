@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-04
+
+### Added
+- `Spectral.OpenAPI.with_request_body/4` now accepts an opts map as the fourth argument with optional `content_type` and `description` keys
+- `parameter_spec` in `Spectral.OpenAPI.with_parameter/3` now supports `description` and `deprecated` fields
+- `header_spec` in `Spectral.OpenAPI.response_with_header/4` now supports a `deprecated` field
+- `endpoints_to_openapi/2` metadata now supports additional `info` fields (`summary`, `description`, `terms_of_service`, `contact`, `license`) and a top-level `servers` list
+
+### Changed
+- **BREAKING**: `Spectral.OpenAPI.with_request_body/4` — the fourth argument changed from a `content_type :: binary()` string to an `opts :: map()`. Update calls from `with_request_body(e, mod, schema, "application/xml")` to `with_request_body(e, mod, schema, %{content_type: "application/xml"})`.
+- Upgraded spectra dependency from `~> 0.6.0` to `~> 0.7.0`
+
 ## [0.6.0] - 2026-03-04
 
 ### Added
