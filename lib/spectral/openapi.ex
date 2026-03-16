@@ -249,16 +249,14 @@ defmodule Spectral.OpenAPI do
   end
 
   @doc """
-  Adds a request body specification with additional options to an endpoint.
+  Adds a request body specification with a custom content type to an endpoint.
 
   ## Parameters
 
   - `endpoint` - The endpoint to modify
   - `module` - Module containing type definitions
   - `schema` - Schema reference (typically an atom like `:t`)
-  - `opts` - Options map with optional keys:
-    - `:content_type` - Content type override (e.g., `"application/xml"`; defaults to `"application/json"`)
-    - `:description` - Description of the request body
+  - `content_type` - Content type binary (e.g., `"application/xml"`; defaults to `"application/json"`)
 
   ## Returns
 
@@ -267,10 +265,10 @@ defmodule Spectral.OpenAPI do
   ## Example
 
       endpoint = Spectral.OpenAPI.endpoint(:post, "/users")
-        |> Spectral.OpenAPI.with_request_body(Person, :t, %{content_type: "application/xml"})
+        |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
   """
-  def with_request_body(endpoint, module, schema, opts) when is_map(opts) do
-    :spectra_openapi.with_request_body(endpoint, module, schema, opts)
+  def with_request_body(endpoint, module, schema, content_type) when is_binary(content_type) do
+    :spectra_openapi.with_request_body(endpoint, module, schema, content_type)
   end
 
   @doc """

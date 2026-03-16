@@ -141,20 +141,12 @@ defmodule Spectral.OpenAPITest do
       assert endpoint.request_body.schema == :t
     end
 
-    test "adds request body with content type via opts" do
+    test "adds request body with custom content type" do
       endpoint =
         Spectral.OpenAPI.endpoint(:post, "/users")
-        |> Spectral.OpenAPI.with_request_body(Person, :t, %{content_type: "application/xml"})
+        |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
 
       assert endpoint.request_body.content_type == "application/xml"
-    end
-
-    test "adds request body with description via opts" do
-      endpoint =
-        Spectral.OpenAPI.endpoint(:post, "/users")
-        |> Spectral.OpenAPI.with_request_body(Person, :t, %{description: "The user to create"})
-
-      assert endpoint.request_body.description == "The user to create"
     end
   end
 

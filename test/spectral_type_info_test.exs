@@ -2,9 +2,9 @@ defmodule Spectral.TypeInfoTest do
   use ExUnit.Case, async: true
   doctest Spectral.TypeInfo
 
-  describe "new/0" do
-    test "creates an empty type_info structure" do
-      type_info = Spectral.TypeInfo.new()
+  describe "new/2" do
+    test "creates a type_info structure for the given module" do
+      type_info = Spectral.TypeInfo.new(:nomodule, false)
       assert is_tuple(type_info)
       assert elem(type_info, 0) == :type_info
     end
@@ -12,12 +12,11 @@ defmodule Spectral.TypeInfoTest do
 
   describe "type operations" do
     setup do
-      # Use Person module's actual type info for realistic testing
       person_type_info = Person.__spectra_type_info__()
       {:ok, person_type} = Spectral.TypeInfo.find_type(person_type_info, :t, 0)
 
       %{
-        empty_type_info: Spectral.TypeInfo.new(),
+        empty_type_info: Spectral.TypeInfo.new(:nomodule, false),
         person_type_info: person_type_info,
         person_type: person_type
       }
@@ -71,7 +70,7 @@ defmodule Spectral.TypeInfoTest do
       person_type_info = Person.__spectra_type_info__()
 
       %{
-        empty_type_info: Spectral.TypeInfo.new(),
+        empty_type_info: Spectral.TypeInfo.new(:nomodule, false),
         person_type_info: person_type_info
       }
     end
@@ -107,7 +106,7 @@ defmodule Spectral.TypeInfoTest do
 
   describe "function operations" do
     setup do
-      %{empty_type_info: Spectral.TypeInfo.new()}
+      %{empty_type_info: Spectral.TypeInfo.new(:nomodule, false)}
     end
 
     test "add_function/4 and find_function/3 work together", %{empty_type_info: type_info} do
@@ -156,13 +155,18 @@ defmodule Spectral.TypeInfoTest do
       assert is_tuple(address_type)
     end
 
+    test "get_module/1 returns the module" do
+      type_info = Person.__spectra_type_info__()
+      assert Spectral.TypeInfo.get_module(type_info) == Person
+    end
+
     test "can modify and re-add type from existing type_info" do
       type_info = Person.__spectra_type_info__()
       {:ok, person_type} = Spectral.TypeInfo.find_type(type_info, :t, 0)
 
       # Add it to a new type_info with a different name
       new_type_info =
-        Spectral.TypeInfo.new()
+        Spectral.TypeInfo.new(:nomodule, false)
         |> Spectral.TypeInfo.add_type(:custom_person, 0, person_type)
 
       assert {:ok, ^person_type} =
@@ -176,7 +180,7 @@ defmodule Spectral.TypeInfoTest do
       {:ok, person_type} = Spectral.TypeInfo.find_type(person_type_info, :t, 0)
 
       %{
-        empty_type_info: Spectral.TypeInfo.new(),
+        empty_type_info: Spectral.TypeInfo.new(:nomodule, false),
         person_type: person_type
       }
     end

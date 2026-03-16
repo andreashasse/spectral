@@ -50,17 +50,35 @@ defmodule Spectral.TypeInfo do
   @type function_key :: :spectra_type_info.function_key()
 
   @doc """
-  Creates a new empty type_info structure.
+  Creates a new type_info structure for the given module.
+
+  Pass `implements_codec: true` when the module implements `Spectral.Codec`.
+  In practice you rarely need to call this directly — type info is normally
+  obtained via `Module.__spectra_type_info__/0`.
 
   ## Examples
 
-      iex> type_info = Spectral.TypeInfo.new()
-      iex> is_tuple(type_info)
-      true
+      iex> type_info = Spectral.TypeInfo.new(Person, false)
+      iex> Spectral.TypeInfo.get_module(type_info)
+      Person
   """
-  @spec new() :: type_info()
-  def new do
-    :spectra_type_info.new()
+  @spec new(module(), boolean()) :: type_info()
+  def new(module, implements_codec) when is_atom(module) and is_boolean(implements_codec) do
+    :spectra_type_info.new(module, implements_codec)
+  end
+
+  @doc """
+  Returns the module associated with a type_info structure.
+
+  ## Examples
+
+      iex> type_info = Person.__spectra_type_info__()
+      iex> Spectral.TypeInfo.get_module(type_info)
+      Person
+  """
+  @spec get_module(type_info()) :: module()
+  def get_module(type_info) do
+    :spectra_type_info.get_module(type_info)
   end
 
   @doc """
@@ -81,7 +99,7 @@ defmodule Spectral.TypeInfo do
 
       iex> type_info = Person.__spectra_type_info__()
       iex> {:ok, person_type} = Spectral.TypeInfo.find_type(type_info, :t, 0)
-      iex> new_info = Spectral.TypeInfo.new()
+      iex> new_info = Spectral.TypeInfo.new(:nomodule, false)
       iex> updated = Spectral.TypeInfo.add_type(new_info, :my_type, 0, person_type)
       iex> {:ok, _type} = Spectral.TypeInfo.find_type(updated, :my_type, 0)
       iex> :ok
@@ -113,7 +131,7 @@ defmodule Spectral.TypeInfo do
       iex> is_tuple(type)
       true
 
-      iex> type_info = Spectral.TypeInfo.new()
+      iex> type_info = Spectral.TypeInfo.new(:nomodule, false)
       iex> Spectral.TypeInfo.find_type(type_info, :nonexistent, 0)
       :error
   """
@@ -166,7 +184,7 @@ defmodule Spectral.TypeInfo do
 
   ## Examples
 
-      type_info = Spectral.TypeInfo.new()
+      type_info = Spectral.TypeInfo.new(:nomodule, false)
       updated = Spectral.TypeInfo.add_record(type_info, :my_record, some_record)
   """
   @spec add_record(type_info(), atom(), term()) :: type_info()
@@ -189,7 +207,7 @@ defmodule Spectral.TypeInfo do
 
   ## Examples
 
-      iex> type_info = Spectral.TypeInfo.new()
+      iex> type_info = Spectral.TypeInfo.new(:nomodule, false)
       iex> Spectral.TypeInfo.find_record(type_info, :person)
       :error
   """
@@ -240,7 +258,7 @@ defmodule Spectral.TypeInfo do
 
   ## Examples
 
-      type_info = Spectral.TypeInfo.new()
+      type_info = Spectral.TypeInfo.new(:nomodule, false)
       updated = Spectral.TypeInfo.add_function(type_info, :my_func, 2, func_spec)
   """
   @spec add_function(type_info(), atom(), arity(), [term()]) :: type_info()
@@ -265,7 +283,7 @@ defmodule Spectral.TypeInfo do
 
   ## Examples
 
-      iex> type_info = Spectral.TypeInfo.new()
+      iex> type_info = Spectral.TypeInfo.new(:nomodule, false)
       iex> Spectral.TypeInfo.find_function(type_info, :my_func, 2)
       :error
   """
