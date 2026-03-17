@@ -541,12 +541,8 @@ defmodule Spectral do
       true
   """
   @spec schema(module() | type_info(), atom() | sp_type_or_ref(), atom()) :: iodata()
-  def schema(module, type_ref, format \\ :json_schema) when is_atom(type_ref) do
-    # Convert atom type_ref to tuple to preserve type reference for documentation
-    # This is a workaround for spectra.erl converting atoms to type structures
-    # which bypasses documentation lookup in to_schema
-    type_ref_tuple = {:type, type_ref, 0}
-    :spectra.schema(format, module, type_ref_tuple)
+  def schema(module, type_ref, format \\ :json_schema) do
+    :spectra.schema(format, module, type_ref)
   rescue
     error in ErlangError ->
       handle_erlang_error(error, :schema, module, type_ref)
