@@ -25,4 +25,14 @@ defmodule EndpointHandler do
 
   @spec list(map()) :: [map()]
   def list(_conn), do: []
+
+  # Same-module alias with no annotation — description should be inherited from t()
+  @type t_alias :: t()
+
+  # Documented alias — local annotation takes precedence over the referenced type's doc
+  spectral(description: "A custom alias description")
+  @type t_documented_alias :: t()
+
+  # Remote type alias without annotation — description should be inherited from Person.t()
+  @type person_ref :: Person.t()
 end

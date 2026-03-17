@@ -284,9 +284,11 @@ defmodule Spectral.OpenAPI do
     - `:name` - Parameter name
     - `:in` - Location (`:path`, `:query`, `:header`, `:cookie`)
     - `:required` - Whether the parameter is required
-    - `:schema` - Schema for the parameter value
-    - `:description` (optional) - Description of the parameter
-    - `:deprecated` (optional) - Whether the parameter is deprecated (boolean)
+    - `:schema` - Schema for the parameter value (atom or `{:type, name, arity}` tuple)
+
+  The `description` and `deprecated` fields in the rendered OpenAPI output are sourced from
+  the type's `spectral` annotation, not from the parameter spec. Type aliases and remote type
+  references are followed automatically to inherit their documentation.
 
   ## Returns
 
