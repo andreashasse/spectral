@@ -379,8 +379,7 @@ defmodule Spectral.OpenAPI do
               "#{inspect(module)}.#{function_name}/#{arity} has no @spec — add a @spec before using spectral/1 to annotate it"
 
       {:error, :no_doc_found} ->
-        raise ArgumentError,
-              "#{inspect(module)}.#{function_name}/#{arity} has no spectral/1 annotation — add `spectral summary: \"...\"` before its @spec"
+        %{}
     end
   end
 end
