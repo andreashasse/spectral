@@ -29,7 +29,14 @@ defmodule Spectral.Codec.Date do
   end
 
   def encode(_format, Date, {:type, :t, 0}, data, _params) do
-    {:error, [type_mismatch({:type, :t, 0}, data)]}
+    {:error,
+     [
+       %Spectral.Error{
+         type: :type_mismatch,
+         location: [],
+         context: %{type: {:type, :t, 0}, value: data}
+       }
+     ]}
   end
 
   @impl Spectral.Codec
@@ -40,7 +47,14 @@ defmodule Spectral.Codec.Date do
         {:ok, d}
 
       {:error, _} ->
-        {:error, [type_mismatch({:type, :t, 0}, input, %{reason: :invalid_format})]}
+        {:error,
+         [
+           %Spectral.Error{
+             type: :type_mismatch,
+             location: [],
+             context: %{type: {:type, :t, 0}, value: input, reason: :invalid_format}
+           }
+         ]}
     end
   end
 
@@ -50,12 +64,26 @@ defmodule Spectral.Codec.Date do
         {:ok, d}
 
       {:error, _} ->
-        {:error, [type_mismatch({:type, :t, 0}, input, %{reason: :invalid_format})]}
+        {:error,
+         [
+           %Spectral.Error{
+             type: :type_mismatch,
+             location: [],
+             context: %{type: {:type, :t, 0}, value: input, reason: :invalid_format}
+           }
+         ]}
     end
   end
 
   def decode(_format, Date, {:type, :t, 0}, data, _params) do
-    {:error, [type_mismatch({:type, :t, 0}, data)]}
+    {:error,
+     [
+       %Spectral.Error{
+         type: :type_mismatch,
+         location: [],
+         context: %{type: {:type, :t, 0}, value: data}
+       }
+     ]}
   end
 
   @impl Spectral.Codec

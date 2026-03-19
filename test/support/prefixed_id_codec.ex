@@ -18,7 +18,14 @@ defmodule PrefixedIdCodec do
 
   def encode(_format, PrefixedIdCodec, {:type, type, 0}, data, _prefix)
       when type in [:user_id, :org_id] do
-    {:error, [type_mismatch({:type, type, 0}, data)]}
+    {:error,
+     [
+       %Spectral.Error{
+         type: :type_mismatch,
+         location: [],
+         context: %{type: {:type, type, 0}, value: data}
+       }
+     ]}
   end
 
   def encode(_format, _module, _type_ref, _data, _params), do: :continue
@@ -29,8 +36,18 @@ defmodule PrefixedIdCodec do
     prefix_len = byte_size(prefix)
 
     case encoded do
-      <<^prefix::binary-size(prefix_len), id::binary>> -> {:ok, id}
-      _ -> {:error, [type_mismatch({:type, type, 0}, encoded)]}
+      <<^prefix::binary-size(prefix_len), id::binary>> ->
+        {:ok, id}
+
+      _ ->
+        {:error,
+         [
+           %Spectral.Error{
+             type: :type_mismatch,
+             location: [],
+             context: %{type: {:type, type, 0}, value: encoded}
+           }
+         ]}
     end
   end
 

@@ -27,7 +27,14 @@ defmodule Spectral.Codec.MapSet do
 
   def encode(_format, MapSet, type_ref, data, _params)
       when type_ref in [{:type, :t, 0}, {:type, :t, 1}] do
-    {:error, [type_mismatch(type_ref, data)]}
+    {:error,
+     [
+       %Spectral.Error{
+         type: :type_mismatch,
+         location: [],
+         context: %{type: type_ref, value: data}
+       }
+     ]}
   end
 
   @impl Spectral.Codec
@@ -38,7 +45,14 @@ defmodule Spectral.Codec.MapSet do
 
   def decode(_format, MapSet, type_ref, input, _params)
       when type_ref in [{:type, :t, 0}, {:type, :t, 1}] do
-    {:error, [type_mismatch(type_ref, input)]}
+    {:error,
+     [
+       %Spectral.Error{
+         type: :type_mismatch,
+         location: [],
+         context: %{type: type_ref, value: input}
+       }
+     ]}
   end
 
   @impl Spectral.Codec
