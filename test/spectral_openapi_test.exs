@@ -229,9 +229,10 @@ defmodule Spectral.OpenAPITest do
         })
         |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "OK"))
 
-      {:ok, spec} =
+      {:ok, json} =
         Spectral.OpenAPI.endpoints_to_openapi(%{title: "API", version: "1.0"}, [endpoint])
 
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
       [param] = spec["paths"]["/users/{id}"]["get"]["parameters"]
       assert param["description"] == "A handler type"
     end
@@ -249,7 +250,8 @@ defmodule Spectral.OpenAPITest do
         )
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       assert spec["openapi"] == "3.1.0"
       assert spec["info"]["title"] == "Test API"
@@ -276,7 +278,8 @@ defmodule Spectral.OpenAPITest do
         )
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       assert is_list(spec["servers"])
       assert length(spec["servers"]) == 2
@@ -300,7 +303,8 @@ defmodule Spectral.OpenAPITest do
         )
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       assert Map.has_key?(spec["paths"], "/users")
       assert Map.has_key?(spec["paths"]["/users"], "get")
@@ -320,9 +324,10 @@ defmodule Spectral.OpenAPITest do
         })
         |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "OK"))
 
-      {:ok, spec} =
+      {:ok, json} =
         Spectral.OpenAPI.endpoints_to_openapi(%{title: "API", version: "1.0"}, [endpoint])
 
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
       [param] = spec["paths"]["/test/{id}"]["get"]["parameters"]
       param
     end
@@ -376,7 +381,8 @@ defmodule Spectral.OpenAPITest do
         |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(400, "Invalid input"))
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       # Verify structure
       assert spec["openapi"] == "3.1.0"

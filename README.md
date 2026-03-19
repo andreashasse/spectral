@@ -185,6 +185,76 @@ config :spectra, :codecs, %{
 
 Both codecs handle `:json` and `:binary` formats (binary string) and `:string` format (charlist). A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context, distinguishing a wrong type from a badly formatted string.
 
+If you use `DateTime.t()` or `Date.t()` without registering the codec, encoding and decoding fall through to spectra's structural codec, which cannot handle these opaque structs. Schema generation raises `{:schema_not_implemented, DateTime, {:type, :t, 0}}`. Register the codecs before your application starts processing these types.
+
+### Custom Codecs
+
+You can write a codec for any type by implementing the `Spectral.Codec` behaviour. Add `use Spectral.Codec` to your module — spectra auto-detects it via the `@behaviour` attribute in the compiled BEAM, so no registration is needed for types defined in your own module.
+
+Error values are constructed using `:sp_error`, an Erlang module from the `spectra` dependency (available automatically). Use `:sp_error.type_mismatch/2` and similar helpers to build error records. To work with errors on the Elixir side, convert them with `Spectral.Error.from_erlang/1`.
+
+#### Static per-type configuration with `type_parameters`
+
+The `type_parameters` key in a `spectral` attribute passes a static value to your codec as the `params` argument. This is useful for reusing one codec across multiple types with different configuration:
+
+```elixir
+defmodule MyIds do
+  use Spectral.Codec
+  use Spectral
+
+  spectral(type_parameters: "user_")
+  @type user_id :: String.t()
+
+  spectral(type_parameters: "org_")
+  @type org_id :: String.t()
+
+  @impl Spectral.Codec
+  def encode(_format, MyIds, {:type, type, 0}, id, prefix)
+      when type in [:user_id, :org_id] and is_binary(id) do
+    {:ok, prefix <> id}
+  end
+
+  def encode(_format, MyIds, {:type, type, 0}, data, _prefix)
+      when type in [:user_id, :org_id] do
+    {:error, [:sp_error.type_mismatch({:type, type, 0}, data)]}
+  end
+
+  def encode(_format, _module, _type_ref, _data, _params), do: :continue
+
+  @impl Spectral.Codec
+  def decode(_format, MyIds, {:type, type, 0}, encoded, prefix)
+      when type in [:user_id, :org_id] and is_binary(encoded) do
+    prefix_len = byte_size(prefix)
+
+    case encoded do
+      <<^prefix::binary-size(prefix_len), id::binary>> -> {:ok, id}
+      _ -> {:error, [:sp_error.type_mismatch({:type, type, 0}, encoded)]}
+    end
+  end
+
+  def decode(_format, _module, _type_ref, _input, _params), do: :continue
+
+  @impl Spectral.Codec
+  def schema(_format, MyIds, {:type, type, 0}, prefix) when type in [:user_id, :org_id] do
+    %{type: "string", pattern: "^" <> prefix}
+  end
+end
+```
+
+When no `type_parameters` attribute is present, `params` is `:undefined`.
+
+#### Codecs for third-party types
+
+To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally:
+
+```elixir
+Application.put_env(:spectra, :codecs, %{
+  {SomeLibrary, {:type, :some_type, 0}} => MyCodec
+})
+```
+
+The module is passed as the second argument to all callbacks, so each clause is unambiguous regardless of how the codec was registered.
+
 ### Documenting Types with `spectral`
 
 You can add JSON Schema documentation (title, description, examples) to your types using the `spectral` macro:
@@ -341,23 +411,16 @@ user_get_endpoint =
 
 
 # Add request body (for POST, PUT, PATCH)
+# Description comes automatically from the spectral attribute on Person.t()
 user_create_endpoint =
   Spectral.OpenAPI.endpoint(:post, "/users")
-  |> Spectral.OpenAPI.with_request_body(
-    Person,
-    {:type, :t, 0},
-    %{description: "User to create"}
-  )
+  |> Spectral.OpenAPI.with_request_body(Person, {:type, :t, 0})
   |> Spectral.OpenAPI.add_response(user_created_response)
 
 # Override content type (defaults to "application/json")
 user_create_xml_endpoint =
   Spectral.OpenAPI.endpoint(:post, "/users")
-  |> Spectral.OpenAPI.with_request_body(
-    Person,
-    {:type, :t, 0},
-    %{content_type: "application/xml", description: "User to create"}
-  )
+  |> Spectral.OpenAPI.with_request_body(Person, {:type, :t, 0}, "application/xml")
   |> Spectral.OpenAPI.add_response(user_created_response)
 
 # Add parameters
@@ -391,16 +454,15 @@ metadata = %{
 
 
 endpoints = [
-  #user_get_endpoint,
+  user_get_endpoint,
   user_create_endpoint,
-  #user_search_endpoint
+  user_search_endpoint
 ]
 
-{:ok, openapi_spec} =
-  Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
-
-IO.inspect(openapi_spec, pretty: true)
+{:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
 ```
+
+`endpoints_to_openapi/2` returns `{:ok, iodata}` — the complete OpenAPI 3.1 spec serialised as JSON, ready to write to a file or serve over HTTP.
 
 ## Requirements
 

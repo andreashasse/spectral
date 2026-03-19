@@ -94,7 +94,8 @@ defmodule Spectral.FunctionMetaTest do
         )
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       get_op = spec["paths"]["/resources/{id}"]["get"]
       assert get_op["summary"] == "Get resource"

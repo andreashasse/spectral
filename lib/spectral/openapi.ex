@@ -326,7 +326,7 @@ defmodule Spectral.OpenAPI do
 
   ## Returns
 
-  - `{:ok, openapi_spec}` - Complete OpenAPI 3.0 specification as a map
+  - `{:ok, iodata}` - Complete OpenAPI 3.1 specification serialised as JSON iodata
   - `{:error, [%Spectral.Error{}]}` - List of errors if generation fails
 
   ## Example
@@ -340,10 +340,10 @@ defmodule Spectral.OpenAPI do
         )
       ]
 
-      {:ok, openapi_spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
   """
   @spec endpoints_to_openapi(map(), [dynamic()]) ::
-          {:ok, map()} | {:error, [Spectral.Error.t()]}
+          {:ok, iodata()} | {:error, [Spectral.Error.t()]}
   def endpoints_to_openapi(metadata, endpoints) do
     metadata
     |> :spectra_openapi.endpoints_to_openapi(endpoints)
