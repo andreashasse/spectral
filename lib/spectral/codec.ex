@@ -21,40 +21,40 @@ defmodule Spectral.Codec do
         @opaque point :: {float(), float()}
 
         @impl Spectral.Codec
-        def encode(_format, {:type, :point, 0}, {x, y}, _params)
+        def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _params)
             when is_number(x) and is_number(y) do
           {:ok, [x, y]}
         end
 
-        def encode(_format, {:type, :point, 0}, data, _params) do
+        def encode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
           # Bad data for a type this codec owns → return an error
           {:error, [:sp_error.type_mismatch({:type, :point, 0}, data)]}
         end
 
         # Types not handled by this codec → continue to default
-        def encode(_format, _type_ref, _data, _params), do: :continue
+        def encode(_format, _module, _type_ref, _data, _params), do: :continue
 
         @impl Spectral.Codec
-        def decode(_format, {:type, :point, 0}, [x, y], _params)
+        def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _params)
             when is_number(x) and is_number(y) do
           {:ok, {x, y}}
         end
 
-        def decode(_format, {:type, :point, 0}, data, _params) do
+        def decode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
           {:error, [:sp_error.type_mismatch({:type, :point, 0}, data)]}
         end
 
-        def decode(_format, _type_ref, _input, _params), do: :continue
+        def decode(_format, _module, _type_ref, _input, _params), do: :continue
 
         @impl Spectral.Codec
-        def schema(:json_schema, {:type, :point, 0}, _params) do
+        def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _params) do
           %{type: "array", items: %{type: "number"}, minItems: 2, maxItems: 2}
         end
       end
 
   ## The `params` argument
 
-  The fourth argument to each callback is the value of the `type_parameters` key
+  The fifth argument to each callback is the value of the `type_parameters` key
   in the `spectral` attribute placed before the type definition, or `:undefined`
   if no such attribute is present. It is a static, per-type configuration value —
   it is **not** related to Erlang type variables.
@@ -77,20 +77,20 @@ defmodule Spectral.Codec do
   third-party type you cannot annotate), register it via the application environment:
 
       Application.put_env(:spectra, :codecs, %{
-        {Calendar, {:type, :datetime, 0}} => MyDateTimeCodec
+        {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime
       })
   """
 
-  @typedoc "Return value for `encode/4` callback."
+  @typedoc "Return value for `encode/5` callback."
   @type encode_result :: {:ok, term()} | {:error, [term()]} | :continue
 
-  @typedoc "Return value for `decode/4` callback."
+  @typedoc "Return value for `decode/5` callback."
   @type decode_result :: {:ok, term()} | {:error, [term()]} | :continue
 
   @doc """
-  Encodes `data` of the given `type_ref` to `format`.
+  Encodes `data` of the given `type_ref` (defined in `module`) to `format`.
 
-  Called by spectra when encoding a value whose type is defined in this module.
+  Called by spectra when encoding a value whose type is defined in a codec module.
   Return `{:error, errors}` when the data is invalid for a type your codec handles,
   or `:continue` for types this codec does not recognise.
 
@@ -99,15 +99,16 @@ defmodule Spectral.Codec do
   """
   @callback encode(
               format :: atom(),
+              module :: module(),
               type_ref :: Spectral.sp_type_reference(),
               data :: term(),
               params :: term()
             ) :: encode_result()
 
   @doc """
-  Decodes `input` from `format` into the Elixir value described by `type_ref`.
+  Decodes `input` from `format` into the Elixir value described by `type_ref` (defined in `module`).
 
-  Called by spectra when decoding a value whose type is defined in this module.
+  Called by spectra when decoding a value whose type is defined in a codec module.
   Return `{:error, errors}` when the input is invalid for a type your codec handles,
   or `:continue` for types this codec does not recognise.
 
@@ -116,13 +117,14 @@ defmodule Spectral.Codec do
   """
   @callback decode(
               format :: atom(),
+              module :: module(),
               type_ref :: Spectral.sp_type_reference(),
               input :: term(),
               params :: term()
             ) :: decode_result()
 
   @doc """
-  Returns a schema map for `type_ref` in `format`.
+  Returns a schema map for `type_ref` (defined in `module`) in `format`.
 
   This callback is optional. If not implemented, spectra will raise
   `{:schema_not_implemented, module, type_ref}` when schema generation is requested
@@ -133,11 +135,12 @@ defmodule Spectral.Codec do
   """
   @callback schema(
               format :: atom(),
+              module :: module(),
               type_ref :: Spectral.sp_type_reference(),
               params :: term()
             ) :: map()
 
-  @optional_callbacks schema: 3
+  @optional_callbacks schema: 4
 
   @doc false
   defmacro __using__(_opts) do
