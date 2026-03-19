@@ -330,7 +330,9 @@ This metadata is used by `Spectral.OpenAPI.endpoint/5` to automatically populate
 
 ## OpenAPI Specification
 
-Spectral can generate complete [OpenAPI 3.0](https://spec.openapis.org/oas/v3.0.0) specifications for your REST APIs. This provides interactive documentation, client generation, and API testing tools.
+> **Note:** Most users will not need to use `Spectral.OpenAPI` directly. Web framework integrations such as [phoenix_spec](https://github.com/andreashasse/phoenix_spec) build on top of it and provide a higher-level API. Use `Spectral.OpenAPI` only if you are building such an integration or need direct control over spec generation.
+
+Spectral can generate complete [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) specifications for your REST APIs. This provides interactive documentation, client generation, and API testing tools.
 
 ### OpenAPI Builder API
 
