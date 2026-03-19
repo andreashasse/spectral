@@ -191,7 +191,9 @@ If you use `DateTime.t()` or `Date.t()` without registering the codec, encoding 
 
 You can write a codec for any type by implementing the `Spectral.Codec` behaviour. Add `use Spectral.Codec` to your module — spectra auto-detects it via the `@behaviour` attribute in the compiled BEAM, so no registration is needed for types defined in your own module.
 
-Error values are constructed using `:sp_error`, an Erlang module from the `spectra` dependency (available automatically). Use `:sp_error.type_mismatch/2` and similar helpers to build error records. To work with errors on the Elixir side, convert them with `Spectral.Error.from_erlang/1`.
+**Errors in codec callbacks** must be returned as `{:error, [sp_error_records]}` — a list of `sp_error` records constructed with helpers from the `:sp_error` Erlang module (part of the `spectra` dependency, available automatically). Do not raise an exception and do not return a plain map: spectra expects this specific format so it can collect errors from multiple locations, attach path information as it traverses nested structures, and ultimately surface them as `%Spectral.Error{}` structs to the caller via `Spectral.Error.from_erlang_list/1`.
+
+The most common helper is `:sp_error.type_mismatch(type_ref, bad_value)`, which records that `bad_value` did not match `type_ref`. Pass an optional third argument (a map) to add extra context — for example `%{reason: :invalid_format}` when the value has the right type but the wrong shape. Other helpers include `:sp_error.missing_data/3` and `:sp_error.no_match/3`; see the `sp_error` module in the spectra source for the full list.
 
 #### Static per-type configuration with `type_parameters`
 
