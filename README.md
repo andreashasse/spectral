@@ -174,18 +174,25 @@ import Config
 
 config :spectra, :codecs, %{
   {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime,
-  {Date, {:type, :t, 0}} => Spectral.Codec.Date
+  {Date, {:type, :t, 0}} => Spectral.Codec.Date,
+  {MapSet, {:type, :t, 0}} => Spectral.Codec.MapSet,
+  {MapSet, {:type, :t, 1}} => Spectral.Codec.MapSet
 }
 ```
 
-| Codec | Elixir type | Format | Example |
-|---|---|---|---|
-| `Spectral.Codec.DateTime` | `DateTime.t()` | ISO 8601 / RFC 3339 | `"2012-04-23T18:25:43.511Z"` |
-| `Spectral.Codec.Date` | `Date.t()` | ISO 8601 | `"2023-04-01"` |
+| Codec | Elixir type | JSON representation |
+|---|---|---|
+| `Spectral.Codec.DateTime` | `DateTime.t()` | ISO 8601 / RFC 3339 string, e.g. `"2012-04-23T18:25:43.511Z"` |
+| `Spectral.Codec.Date` | `Date.t()` | ISO 8601 date string, e.g. `"2023-04-01"` |
+| `Spectral.Codec.MapSet` | `MapSet.t()` / `MapSet.t(elem)` | JSON array with `uniqueItems: true` in its schema |
 
-Both codecs handle `:json` and `:binary` formats (binary string) and `:string` format (charlist). A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context, distinguishing a wrong type from a badly formatted string.
+The date/time codecs handle `:json` and `:binary` formats (binary string) and `:string` format (charlist). A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context.
 
-If you use `DateTime.t()` or `Date.t()` without registering the codec, encoding and decoding fall through to spectra's structural codec, which cannot handle these opaque structs. Schema generation raises `{:schema_not_implemented, DateTime, {:type, :t, 0}}`. Register the codecs before your application starts processing these types.
+If you use any of these types without registering the codec, encoding and decoding fall through to spectra's structural codec, which cannot handle these opaque structs. Schema generation raises `{:schema_not_implemented, Module, type_ref}`. Register the codecs before your application starts processing these types.
+
+### Unsupported types
+
+`Range` and `Stream` do not have built-in codecs. If you need to encode/decode these types, implement a custom `Spectral.Codec` — see [Custom Codecs](#custom-codecs) below. PRs adding built-in codecs for `Range` and `Stream` are welcome.
 
 ### Custom Codecs
 
