@@ -164,6 +164,27 @@ Spectral.schema(module, type_ref, format \\ :json_schema) :: iodata()
 - `type_ref` - The type reference
 - `format` - (optional) Schema format, currently supports `:json_schema` (default)
 
+### Built-in Codecs
+
+Spectral ships with codecs for Elixir's standard date/time types. They are not active by default — register them in your application's `config/config.exs` or in your `Application.start/2` callback:
+
+```elixir
+# config/config.exs (or config/runtime.exs)
+import Config
+
+config :spectra, :codecs, %{
+  {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime,
+  {Date, {:type, :t, 0}} => Spectral.Codec.Date
+}
+```
+
+| Codec | Elixir type | Format | Example |
+|---|---|---|---|
+| `Spectral.Codec.DateTime` | `DateTime.t()` | ISO 8601 / RFC 3339 | `"2012-04-23T18:25:43.511Z"` |
+| `Spectral.Codec.Date` | `Date.t()` | ISO 8601 | `"2023-04-01"` |
+
+Both codecs handle `:json` and `:binary` formats (binary string) and `:string` format (charlist). A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context, distinguishing a wrong type from a badly formatted string.
+
 ### Documenting Types with `spectral`
 
 You can add JSON Schema documentation (title, description, examples) to your types using the `spectral` macro:
