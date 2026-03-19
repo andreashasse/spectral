@@ -79,6 +79,8 @@ defmodule Spectral do
   - `title` - A short title for the type
   - `description` - A detailed description
   - `examples` - Example values (list, not yet fully supported)
+  - `type_parameters` - Static configuration forwarded as the `params` argument
+    to `Spectral.Codec` callbacks for this type (any term)
   """
   defmacro spectral(metadata) when is_list(metadata) do
     line = __CALLER__.line
@@ -135,6 +137,8 @@ defmodule Spectral do
   - `title` - A short title for the type (string)
   - `description` - A detailed description (string)
   - `examples` - Example values (list, not fully supported yet)
+  - `type_parameters` - Static configuration passed as the `params` argument to
+    `Spectral.Codec` callbacks for this type (any term)
 
   ## Annotating Functions (Endpoint Documentation)
 
@@ -373,7 +377,20 @@ defmodule Spectral do
             fn {name, arity, doc}, acc_type_info ->
               case :spectra_type_info.find_type(acc_type_info, name, arity) do
                 {:ok, existing_type} ->
-                  updated_type = :spectra_type.add_doc_to_type(existing_type, doc)
+                  {type_params, doc_without_params} = Map.pop(doc, :type_parameters)
+
+                  updated_type =
+                    existing_type
+                    |> :spectra_type.add_doc_to_type(doc_without_params)
+                    |> then(fn t ->
+                      if type_params != nil do
+                        meta = :spectra_type.get_meta(t)
+                        :spectra_type.set_meta(t, Map.put(meta, :parameters, type_params))
+                      else
+                        t
+                      end
+                    end)
+
                   :spectra_type_info.add_type(acc_type_info, name, arity, updated_type)
 
                 :error ->
@@ -524,12 +541,8 @@ defmodule Spectral do
       true
   """
   @spec schema(module() | type_info(), atom() | sp_type_or_ref(), atom()) :: iodata()
-  def schema(module, type_ref, format \\ :json_schema) when is_atom(type_ref) do
-    # Convert atom type_ref to tuple to preserve type reference for documentation
-    # This is a workaround for spectra.erl converting atoms to type structures
-    # which bypasses documentation lookup in to_schema
-    type_ref_tuple = {:type, type_ref, 0}
-    :spectra.schema(format, module, type_ref_tuple)
+  def schema(module, type_ref, format \\ :json_schema) do
+    :spectra.schema(format, module, type_ref)
   rescue
     error in ErlangError ->
       handle_erlang_error(error, :schema, module, type_ref)

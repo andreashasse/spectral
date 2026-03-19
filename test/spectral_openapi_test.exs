@@ -141,20 +141,12 @@ defmodule Spectral.OpenAPITest do
       assert endpoint.request_body.schema == :t
     end
 
-    test "adds request body with content type via opts" do
+    test "adds request body with custom content type" do
       endpoint =
         Spectral.OpenAPI.endpoint(:post, "/users")
-        |> Spectral.OpenAPI.with_request_body(Person, :t, %{content_type: "application/xml"})
+        |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
 
       assert endpoint.request_body.content_type == "application/xml"
-    end
-
-    test "adds request body with description via opts" do
-      endpoint =
-        Spectral.OpenAPI.endpoint(:post, "/users")
-        |> Spectral.OpenAPI.with_request_body(Person, :t, %{description: "The user to create"})
-
-      assert endpoint.request_body.description == "The user to create"
     end
   end
 
@@ -194,6 +186,19 @@ defmodule Spectral.OpenAPITest do
       assert param.required == false
     end
 
+    test "raises on unsupported keys in parameter spec" do
+      assert_raise ErlangError, fn ->
+        Spectral.OpenAPI.endpoint(:get, "/users/{id}")
+        |> Spectral.OpenAPI.with_parameter(Person, %{
+          name: "id",
+          in: :path,
+          required: true,
+          schema: :string,
+          description: "The user ID"
+        })
+      end
+    end
+
     test "adds multiple parameters to endpoint" do
       endpoint =
         Spectral.OpenAPI.endpoint(:get, "/users")
@@ -213,21 +218,23 @@ defmodule Spectral.OpenAPITest do
       assert length(endpoint.parameters) == 2
     end
 
-    test "adds parameter with description and deprecated" do
+    test "description in rendered output comes from type spectral annotation, not parameter spec" do
       endpoint =
         Spectral.OpenAPI.endpoint(:get, "/users/{id}")
-        |> Spectral.OpenAPI.with_parameter(Person, %{
+        |> Spectral.OpenAPI.with_parameter(EndpointHandler, %{
           name: "id",
           in: :path,
           required: true,
-          schema: :string,
-          description: "The user ID",
-          deprecated: true
+          schema: {:type, :t, 0}
         })
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "OK"))
 
-      param = hd(endpoint.parameters)
-      assert param.description == "The user ID"
-      assert param.deprecated == true
+      {:ok, json} =
+        Spectral.OpenAPI.endpoints_to_openapi(%{title: "API", version: "1.0"}, [endpoint])
+
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+      [param] = spec["paths"]["/users/{id}"]["get"]["parameters"]
+      assert param["description"] == "A handler type"
     end
   end
 
@@ -243,7 +250,8 @@ defmodule Spectral.OpenAPITest do
         )
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       assert spec["openapi"] == "3.1.0"
       assert spec["info"]["title"] == "Test API"
@@ -270,7 +278,8 @@ defmodule Spectral.OpenAPITest do
         )
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       assert is_list(spec["servers"])
       assert length(spec["servers"]) == 2
@@ -294,11 +303,48 @@ defmodule Spectral.OpenAPITest do
         )
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       assert Map.has_key?(spec["paths"], "/users")
       assert Map.has_key?(spec["paths"]["/users"], "get")
       assert Map.has_key?(spec["paths"]["/users"], "post")
+    end
+  end
+
+  describe "type_doc follows type references" do
+    defp param_for_schema(schema) do
+      endpoint =
+        Spectral.OpenAPI.endpoint(:get, "/test/{id}")
+        |> Spectral.OpenAPI.with_parameter(EndpointHandler, %{
+          name: "id",
+          in: :path,
+          required: true,
+          schema: schema
+        })
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "OK"))
+
+      {:ok, json} =
+        Spectral.OpenAPI.endpoints_to_openapi(%{title: "API", version: "1.0"}, [endpoint])
+
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+      [param] = spec["paths"]["/test/{id}"]["get"]["parameters"]
+      param
+    end
+
+    test "inherits description from referenced same-module type alias" do
+      param = param_for_schema({:type, :t_alias, 0})
+      assert param["description"] == "A handler type"
+    end
+
+    test "uses local annotation on a documented alias" do
+      param = param_for_schema({:type, :t_documented_alias, 0})
+      assert param["description"] == "A custom alias description"
+    end
+
+    test "inherits description from remote module type alias" do
+      param = param_for_schema({:type, :person_ref, 0})
+      assert param["description"] == "A person with name and age"
     end
   end
 
@@ -335,7 +381,8 @@ defmodule Spectral.OpenAPITest do
         |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(400, "Invalid input"))
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       # Verify structure
       assert spec["openapi"] == "3.1.0"

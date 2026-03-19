@@ -70,10 +70,11 @@ defmodule Spectral.FunctionMetaTest do
       assert endpoint.doc[:description] == "Returns a resource by ID"
     end
 
-    test "raises when function has no spectral annotation" do
-      assert_raise ArgumentError, ~r/has no spectral\/1 annotation/, fn ->
-        Spectral.OpenAPI.endpoint(:get, "/persons", EndpointHandler, :list, 1)
-      end
+    test "returns undocumented endpoint when function has no spectral annotation" do
+      endpoint = Spectral.OpenAPI.endpoint(:get, "/persons", EndpointHandler, :list, 1)
+      assert endpoint.method == :get
+      assert endpoint.path == "/persons"
+      assert endpoint.doc == %{}
     end
 
     test "raises when function has no @spec" do
@@ -93,7 +94,8 @@ defmodule Spectral.FunctionMetaTest do
         )
       ]
 
-      {:ok, spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       get_op = spec["paths"]["/resources/{id}"]["get"]
       assert get_op["summary"] == "Get resource"

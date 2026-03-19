@@ -249,16 +249,14 @@ defmodule Spectral.OpenAPI do
   end
 
   @doc """
-  Adds a request body specification with additional options to an endpoint.
+  Adds a request body specification with a custom content type to an endpoint.
 
   ## Parameters
 
   - `endpoint` - The endpoint to modify
   - `module` - Module containing type definitions
   - `schema` - Schema reference (typically an atom like `:t`)
-  - `opts` - Options map with optional keys:
-    - `:content_type` - Content type override (e.g., `"application/xml"`; defaults to `"application/json"`)
-    - `:description` - Description of the request body
+  - `content_type` - Content type binary (e.g., `"application/xml"`; defaults to `"application/json"`)
 
   ## Returns
 
@@ -267,10 +265,10 @@ defmodule Spectral.OpenAPI do
   ## Example
 
       endpoint = Spectral.OpenAPI.endpoint(:post, "/users")
-        |> Spectral.OpenAPI.with_request_body(Person, :t, %{content_type: "application/xml"})
+        |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
   """
-  def with_request_body(endpoint, module, schema, opts) when is_map(opts) do
-    :spectra_openapi.with_request_body(endpoint, module, schema, opts)
+  def with_request_body(endpoint, module, schema, content_type) when is_binary(content_type) do
+    :spectra_openapi.with_request_body(endpoint, module, schema, content_type)
   end
 
   @doc """
@@ -286,9 +284,11 @@ defmodule Spectral.OpenAPI do
     - `:name` - Parameter name
     - `:in` - Location (`:path`, `:query`, `:header`, `:cookie`)
     - `:required` - Whether the parameter is required
-    - `:schema` - Schema for the parameter value
-    - `:description` (optional) - Description of the parameter
-    - `:deprecated` (optional) - Whether the parameter is deprecated (boolean)
+    - `:schema` - Schema for the parameter value (atom or `{:type, name, arity}` tuple)
+
+  The `description` and `deprecated` fields in the rendered OpenAPI output are sourced from
+  the type's `spectral` annotation, not from the parameter spec. Type aliases and remote type
+  references are followed automatically to inherit their documentation.
 
   ## Returns
 
@@ -326,7 +326,7 @@ defmodule Spectral.OpenAPI do
 
   ## Returns
 
-  - `{:ok, openapi_spec}` - Complete OpenAPI 3.0 specification as a map
+  - `{:ok, iodata}` - Complete OpenAPI 3.1 specification serialised as JSON iodata
   - `{:error, [%Spectral.Error{}]}` - List of errors if generation fails
 
   ## Example
@@ -340,10 +340,10 @@ defmodule Spectral.OpenAPI do
         )
       ]
 
-      {:ok, openapi_spec} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
+      {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
   """
   @spec endpoints_to_openapi(map(), [dynamic()]) ::
-          {:ok, map()} | {:error, [Spectral.Error.t()]}
+          {:ok, iodata()} | {:error, [Spectral.Error.t()]}
   def endpoints_to_openapi(metadata, endpoints) do
     metadata
     |> :spectra_openapi.endpoints_to_openapi(endpoints)
@@ -379,8 +379,7 @@ defmodule Spectral.OpenAPI do
               "#{inspect(module)}.#{function_name}/#{arity} has no @spec — add a @spec before using spectral/1 to annotate it"
 
       {:error, :no_doc_found} ->
-        raise ArgumentError,
-              "#{inspect(module)}.#{function_name}/#{arity} has no spectral/1 annotation — add `spectral summary: \"...\"` before its @spec"
+        %{}
     end
   end
 end

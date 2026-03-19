@@ -105,6 +105,11 @@ defmodule Spectral.Error do
     Enum.map(erlang_errors, &from_erlang/1)
   end
 
+  @doc false
+  def to_erlang(%__MODULE__{location: location, type: type, context: ctx}) do
+    sp_error(type: type, location: location, ctx: ctx || %{})
+  end
+
   defp format_error(%__MODULE__{location: location, type: type}) do
     location_str =
       case location do
