@@ -46,7 +46,7 @@ Main API: `encode/4-5`, `decode/4-5`, `schema/3`, and bang variants. Also contai
 
 ### `Spectral.Codec` (lib/spectral/codec.ex)
 
-Behaviour for custom codec modules. Implement `encode/4`, `decode/4`, and optionally `schema/3`. The 4th argument (`params`) is the `type_parameters` value from the `spectral` attribute on the type, or `:undefined`.
+Behaviour for custom codec modules. Implement `encode/5`, `decode/5`, and optionally `schema/4`. The 2nd argument is the module that owns the type; the 5th argument (`params`) is the `type_parameters` value from the `spectral` attribute on the type, or `:undefined`.
 
 `use Spectral.Codec` injects `@behaviour Spectral.Codec`. The Erlang library auto-detects codec modules by checking for `'Elixir.Spectral.Codec'` in the BEAM's `behaviour` attribute — no manual registration needed.
 
@@ -54,7 +54,7 @@ Return `:continue` for types the codec does not handle; `{:error, errors}` for b
 
 ### `Spectral.TypeInfo` (lib/spectral/type_info.ex)
 
-Wraps `:spectra_type_info`. Key functions: `new/2`, `get_module/1`, `find_type/3`, `get_type/3`, `find_record/2`, `find_function/3`, `find_local_codec/1`, `get_function_doc/3`.
+Wraps `:spectra_type_info`. Key functions: `new/2`, `get_module/1`, `find_type/3`, `get_type/3`, `find_record/2`, `find_function/3`, `get_function_doc/3`.
 
 ### `Spectral.OpenAPI` (lib/spectral/openapi.ex)
 
