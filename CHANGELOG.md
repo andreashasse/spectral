@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **BREAKING**: `Spectral.OpenAPI.with_request_body/4` — the fourth argument reverted from an opts map back to a `content_type :: binary()` string; description is now sourced automatically from the type's `spectral` attribute. Update calls from `with_request_body(e, mod, schema, %{content_type: "application/xml"})` to `with_request_body(e, mod, schema, "application/xml")`.
-- Upgraded spectra dependency to `codec_types_v2` branch
+- Upgraded spectra dependency to `~> 0.8.0`
 
 ### Removed
 - **BREAKING**: `Spectral.TypeInfo.new/0` removed — use `new(module, false)` instead
