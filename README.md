@@ -214,7 +214,7 @@ defmodule MyIds do
 
   def encode(_format, MyIds, {:type, type, 0}, data, _prefix)
       when type in [:user_id, :org_id] do
-    {:error, [:sp_error.type_mismatch({:type, type, 0}, data)]}
+    {:error, [type_mismatch({:type, type, 0}, data)]}
   end
 
   def encode(_format, _module, _type_ref, _data, _params), do: :continue
@@ -226,7 +226,7 @@ defmodule MyIds do
 
     case encoded do
       <<^prefix::binary-size(prefix_len), id::binary>> -> {:ok, id}
-      _ -> {:error, [:sp_error.type_mismatch({:type, type, 0}, encoded)]}
+      _ -> {:error, [type_mismatch({:type, type, 0}, encoded)]}
     end
   end
 
@@ -526,11 +526,11 @@ Schema generation may still raise exceptions for type and configuration errors (
 
 ### sp_error records
 
-`%Spectral.Error{}` structs are the Elixir view of errors, but the underlying spectra library works with `sp_error` Erlang records. You will encounter these when writing a custom codec — the `:sp_error` module (from the `spectra` dependency, available automatically) provides helpers to construct them.
+`%Spectral.Error{}` structs are the Elixir view of errors, but the underlying spectra library uses `sp_error` Erlang records internally. `use Spectral.Codec` hides this entirely — codec callbacks return `%Spectral.Error{}` structs and the behaviour converts them automatically before passing them to spectra.
 
-Do not raise an exception or return a plain map from a codec callback. Spectra expects the `sp_error` record format so it can collect errors from multiple locations, attach path information as it traverses nested structures, and convert them to `%Spectral.Error{}` via `Spectral.Error.from_erlang_list/1` before returning to the caller.
+Do not raise an exception or return a plain map from a codec callback. Spectra expects a specific record format so it can collect errors from multiple locations, attach path information as it traverses nested structures, and convert them to `%Spectral.Error{}` for the caller. `use Spectral.Codec` handles this contract for you.
 
-The most common helper is `:sp_error.type_mismatch(type_ref, bad_value)`. Pass an optional third argument map to add context — for example `%{reason: :invalid_format}` when the value has the right type but the wrong shape. Other helpers: `:sp_error.missing_data/3`, `:sp_error.no_match/3`. See the `sp_error` module in the spectra source for the full list.
+`use Spectral.Codec` imports `type_mismatch/2,3` helpers for constructing errors. Pass an optional context map as the third argument — for example `%{reason: :invalid_format}` when the value has the right type but the wrong shape. See `Spectral.Codec` for the full list of helpers.
 
 ### Error Structure
 

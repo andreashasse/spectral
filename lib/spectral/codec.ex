@@ -27,8 +27,7 @@ defmodule Spectral.Codec do
         end
 
         def encode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
-          # Bad data for a type this codec owns → return an error
-          {:error, [:sp_error.type_mismatch({:type, :point, 0}, data)]}
+          {:error, [type_mismatch({:type, :point, 0}, data)]}
         end
 
         # Types not handled by this codec → continue to default
@@ -41,7 +40,7 @@ defmodule Spectral.Codec do
         end
 
         def decode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
-          {:error, [:sp_error.type_mismatch({:type, :point, 0}, data)]}
+          {:error, [type_mismatch({:type, :point, 0}, data)]}
         end
 
         def decode(_format, _module, _type_ref, _input, _params), do: :continue
@@ -63,7 +62,8 @@ defmodule Spectral.Codec do
 
   - `{:ok, result}` — Use this result instead of the default
   - `{:error, errors}` — The data is invalid for a type this codec handles; `errors`
-    is a list of `sp_error` records (use `:sp_error` helper functions to construct them)
+    is a list of `%Spectral.Error{}` structs (use `type_mismatch/2,3` and similar
+    helpers imported by `use Spectral.Codec`)
   - `:continue` — This codec does not handle this type; fall through to spectra's
     built-in structural codec
 
@@ -82,10 +82,10 @@ defmodule Spectral.Codec do
   """
 
   @typedoc "Return value for `encode/5` callback."
-  @type encode_result :: {:ok, term()} | {:error, [term()]} | :continue
+  @type encode_result :: {:ok, term()} | {:error, [Spectral.Error.t()]} | :continue
 
   @typedoc "Return value for `decode/5` callback."
-  @type decode_result :: {:ok, term()} | {:error, [term()]} | :continue
+  @type decode_result :: {:ok, term()} | {:error, [Spectral.Error.t()]} | :continue
 
   @doc """
   Encodes `data` of the given `type_ref` (defined in `module`) to `format`.
@@ -142,10 +142,66 @@ defmodule Spectral.Codec do
 
   @optional_callbacks schema: 4
 
+  @doc """
+  Creates a `type_mismatch` error for `value` not matching `type_ref`.
+
+  Imported automatically by `use Spectral.Codec`.
+  """
+  def type_mismatch(type_ref, value) do
+    %Spectral.Error{type: :type_mismatch, location: [], context: %{type: type_ref, value: value}}
+  end
+
+  @doc """
+  Creates a `type_mismatch` error with additional context.
+
+  Use `ctx` to pass extra information — for example `%{reason: :invalid_format}`
+  when the value has the right type but the wrong shape.
+
+  Imported automatically by `use Spectral.Codec`.
+  """
+  def type_mismatch(type_ref, value, ctx) when is_map(ctx) do
+    %Spectral.Error{
+      type: :type_mismatch,
+      location: [],
+      context: Map.merge(%{type: type_ref, value: value}, ctx)
+    }
+  end
+
+  @doc false
+  def __convert_result__({:error, errors}) when is_list(errors) do
+    {:error, Enum.map(errors, &to_sp_error/1)}
+  end
+
+  def __convert_result__(other), do: other
+
+  defp to_sp_error(%Spectral.Error{} = error), do: Spectral.Error.to_erlang(error)
+  defp to_sp_error(other), do: other
+
+  @doc false
+  defmacro __before_compile__(_env) do
+    quote do
+      defoverridable encode: 5, decode: 5
+
+      @impl Spectral.Codec
+      def encode(format, module, type_ref, data, params) do
+        super(format, module, type_ref, data, params)
+        |> Spectral.Codec.__convert_result__()
+      end
+
+      @impl Spectral.Codec
+      def decode(format, module, type_ref, input, params) do
+        super(format, module, type_ref, input, params)
+        |> Spectral.Codec.__convert_result__()
+      end
+    end
+  end
+
   @doc false
   defmacro __using__(_opts) do
     quote do
       @behaviour Spectral.Codec
+      @before_compile Spectral.Codec
+      import Spectral.Codec, only: [type_mismatch: 2, type_mismatch: 3]
     end
   end
 end

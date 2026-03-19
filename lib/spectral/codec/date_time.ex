@@ -17,7 +17,7 @@ defmodule Spectral.Codec.DateTime do
       })
   """
 
-  @behaviour Spectral.Codec
+  use Spectral.Codec
 
   @impl Spectral.Codec
   def encode(format, DateTime, {:type, :t, 0}, %DateTime{} = dt, _params)
@@ -30,7 +30,7 @@ defmodule Spectral.Codec.DateTime do
   end
 
   def encode(_format, DateTime, {:type, :t, 0}, data, _params) do
-    {:error, [:sp_error.type_mismatch({:type, :t, 0}, data)]}
+    {:error, [type_mismatch({:type, :t, 0}, data)]}
   end
 
   @impl Spectral.Codec
@@ -41,7 +41,7 @@ defmodule Spectral.Codec.DateTime do
         {:ok, dt}
 
       {:error, _} ->
-        {:error, [:sp_error.type_mismatch({:type, :t, 0}, input, %{reason: :invalid_format})]}
+        {:error, [type_mismatch({:type, :t, 0}, input, %{reason: :invalid_format})]}
     end
   end
 
@@ -51,12 +51,12 @@ defmodule Spectral.Codec.DateTime do
         {:ok, dt}
 
       {:error, _} ->
-        {:error, [:sp_error.type_mismatch({:type, :t, 0}, input, %{reason: :invalid_format})]}
+        {:error, [type_mismatch({:type, :t, 0}, input, %{reason: :invalid_format})]}
     end
   end
 
   def decode(_format, DateTime, {:type, :t, 0}, data, _params) do
-    {:error, [:sp_error.type_mismatch({:type, :t, 0}, data)]}
+    {:error, [type_mismatch({:type, :t, 0}, data)]}
   end
 
   @impl Spectral.Codec

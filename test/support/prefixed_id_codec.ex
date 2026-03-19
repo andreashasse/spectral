@@ -18,7 +18,7 @@ defmodule PrefixedIdCodec do
 
   def encode(_format, PrefixedIdCodec, {:type, type, 0}, data, _prefix)
       when type in [:user_id, :org_id] do
-    {:error, [:sp_error.type_mismatch({:type, type, 0}, data)]}
+    {:error, [type_mismatch({:type, type, 0}, data)]}
   end
 
   def encode(_format, _module, _type_ref, _data, _params), do: :continue
@@ -30,7 +30,7 @@ defmodule PrefixedIdCodec do
 
     case encoded do
       <<^prefix::binary-size(prefix_len), id::binary>> -> {:ok, id}
-      _ -> {:error, [:sp_error.type_mismatch({:type, type, 0}, encoded)]}
+      _ -> {:error, [type_mismatch({:type, type, 0}, encoded)]}
     end
   end
 
