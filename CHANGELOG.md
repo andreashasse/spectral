@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-03-21
+
+### Added
+- `Spectral.schema/4` — accepts an options list as the last argument, supporting the `:pre_encoded` option to return a map instead of iodata
+- `Spectral.OpenAPI.endpoints_to_openapi/3` — accepts an options list, supporting the same `:pre_encoded` option
+- `schema_option/0` type for the new options
+
+### Changed
+- Upgraded spectra dependency from `~> 0.8.0` to `~> 0.8.1`
+- `Spectral.OpenAPI` specs now use precise exported spectra types (`endpoint_spec`, `response_spec`, `openapi_metadata`, etc.) instead of `dynamic()` / `map()`
+- README revised: requirements merged into installation, sections reordered, Options table added, string/binary constraints documented, `examples_function` documented
+
 ## [0.8.0] - 2026-03-19
 
 ### Added
