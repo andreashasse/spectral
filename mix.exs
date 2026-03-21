@@ -29,7 +29,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.8.1"},
+      {:spectra, github: "andreashasse/spectra", branch: "docs/spectra-attribute-keys"},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
