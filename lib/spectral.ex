@@ -2,11 +2,6 @@ defmodule Spectral do
   require Record
 
   Record.defrecord(
-    :type_info,
-    Record.extract(:type_info, from_lib: "spectra/include/spectra_internal.hrl")
-  )
-
-  Record.defrecord(
     :sp_function_spec,
     Record.extract(:sp_function_spec, from_lib: "spectra/include/spectra_internal.hrl")
   )
@@ -31,8 +26,8 @@ defmodule Spectral do
 
   """
 
-  @typedoc "Spectra type information for a module, imported from the `#type_info{}` Erlang record."
-  @type type_info :: record(:type_info)
+  @typedoc "Spectra type information for a module. Alias for `:spectra.type_info()`."
+  @type type_info :: :spectra.type_info()
 
   @typedoc "A reference to a named type `{:type, name, arity}` or record `{:record, name}`."
   @type sp_type_reference :: {:type, atom(), non_neg_integer()} | {:record, atom()}
