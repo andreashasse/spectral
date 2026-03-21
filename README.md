@@ -15,7 +15,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.8.1"}
+    {:spectral, "~> 0.8.2"}
   ]
 end
 ```
@@ -342,6 +342,7 @@ end
 **Supported fields for types:**
 - `title` — short title for the type
 - `description` — longer description
+- `deprecated` — marks the type as deprecated (boolean); emitted as `"deprecated": true` in the JSON Schema
 - `examples` — list of example values
 - `examples_function` — `{module, function_name, args}` tuple; the function is called at schema generation time to produce examples. Use this instead of `examples` when constructing values inline is awkward. The function must be exported.
 - `type_parameters` — passed as `params` to codec callbacks (see [Custom Codecs](#custom-codecs))

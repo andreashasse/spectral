@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-03-21
+
+### Added
+- `deprecated` is now a documented `spectral` field for types — marks a type as deprecated, emitted as `"deprecated": true` in the generated JSON Schema (was already implemented in spectra but missing from Spectral's documentation)
+- `examples_function` added to the `spectral/1` macro `@doc` and `use Spectral` moduledoc
+
+### Changed
+- `spectral/1` macro `@doc` split into separate `@type` and `@spec` field sections, so function spec fields (`summary`, `description`, `deprecated`) are now documented on the macro itself
+- Upgraded spectra dependency to `~> 0.8.2`
+
 ## [0.8.1] - 2026-03-21
 
 ### Added

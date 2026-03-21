@@ -78,13 +78,22 @@ defmodule Spectral do
         @type t :: %Person{name: String.t()}
       end
 
-  ## Supported Fields
+  ## Fields — before a `@type`
 
   - `title` - A short title for the type
   - `description` - A detailed description
-  - `examples` - Example values (list, not yet fully supported)
+  - `deprecated` - Whether the type is deprecated (boolean)
+  - `examples` - Example values (list)
+  - `examples_function` - `{module, function_name, args}` tuple; called at schema
+    generation time to produce examples. The function must be exported.
   - `type_parameters` - Static configuration forwarded as the `params` argument
     to `Spectral.Codec` callbacks for this type (any term)
+
+  ## Fields — before a `@spec`
+
+  - `summary` - Short one-line summary of the function / endpoint
+  - `description` - A detailed description
+  - `deprecated` - Whether the function is deprecated (boolean)
   """
   defmacro spectral(metadata) when is_list(metadata) do
     line = __CALLER__.line
@@ -140,7 +149,10 @@ defmodule Spectral do
 
   - `title` - A short title for the type (string)
   - `description` - A detailed description (string)
-  - `examples` - Example values (list, not fully supported yet)
+  - `deprecated` - Whether the type is deprecated (boolean)
+  - `examples` - Example values (list)
+  - `examples_function` - `{module, function_name, args}` tuple; called at schema
+    generation time to produce examples. The function must be exported.
   - `type_parameters` - Static configuration passed as the `params` argument to
     `Spectral.Codec` callbacks for this type (any term)
 
