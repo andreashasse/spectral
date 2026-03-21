@@ -29,7 +29,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, github: "andreashasse/spectra", branch: "better-docs"},
+      {:spectra, "~> 0.8.1"},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
