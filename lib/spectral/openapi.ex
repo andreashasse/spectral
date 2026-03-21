@@ -377,6 +377,34 @@ defmodule Spectral.OpenAPI do
     |> convert_result()
   end
 
+  @doc """
+  Converts a list of endpoints to a complete OpenAPI specification, with options.
+
+  Like `endpoints_to_openapi/2` but accepts an options list.
+
+  ## Parameters
+
+  - `metadata` - OpenAPI metadata map (same as `endpoints_to_openapi/2`)
+  - `endpoints` - List of endpoint definitions
+  - `opts` - Options list. Supported options:
+    - `:pre_encoded` - Return a map instead of iodata, skipping JSON encoding.
+
+  ## Returns
+
+  - `{:ok, iodata()}` - Complete OpenAPI 3.1 spec as JSON iodata (default)
+  - `{:ok, map()}` - Spec as a decoded map when `:pre_encoded` option is set
+  - `{:error, [%Spectral.Error{}]}` - List of errors if generation fails
+  """
+  @spec endpoints_to_openapi(
+          :spectra_openapi.openapi_metadata(),
+          [:spectra_openapi.endpoint_spec()],
+          [Spectral.schema_option()]
+        ) :: {:ok, iodata() | dynamic()} | {:error, [Spectral.Error.t()]}
+  def endpoints_to_openapi(metadata, endpoints, opts) when is_list(opts) do
+    :spectra_openapi.endpoints_to_openapi(metadata, endpoints, opts)
+    |> convert_result()
+  end
+
   # Private helper to convert Erlang results to Elixir
   defp convert_result({:ok, result}), do: {:ok, result}
 

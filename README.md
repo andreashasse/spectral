@@ -6,7 +6,9 @@ Spectral provides type-safe data serialization and deserialization for Elixir ty
 - **Detailed errors**: Get error messages with location information when validation fails
 - **Support for complex scenarios**: Handles unions, structs, atoms, nested structures, and more
 
-## Installation
+## Requirements and Installation
+
+**Requires Erlang/OTP 27+** — Spectral uses the native `json` module introduced in OTP 27.
 
 Add `spectral` to your list of dependencies in `mix.exs`:
 
@@ -17,11 +19,14 @@ def deps do
   ]
 end
 ```
+
+Your modules must be compiled with `debug_info` for Spectral to extract type information. This is enabled by default in Mix projects.
+
+**Note:** Spectral reads type information from compiled BEAM files, so modules must be defined in files (not in IEx).
+
 ## Usage
 
 Here's how to use Spectral for JSON serialization and deserialization:
-
-**Note:** Spectral reads type information from compiled beam files, so modules must be defined in files (not in IEx).
 
 ```elixir
 # lib/person.ex
@@ -50,10 +55,7 @@ end
 person = %Person{
   name: "Alice",
   age: 30,
-  address: %Person.Address{
-    street: "Ystader Straße",
-    city: "Berlin"
-  }
+  address: %Person.Address{street: "Ystader Straße", city: "Berlin"}
 }
 
 with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
@@ -70,9 +72,7 @@ schema_iodata = Spectral.schema(Person, :t)
 IO.iodata_to_binary(schema_iodata)
 ```
 
-### Bang Functions
-
-For convenience, Spectral provides bang versions (`!`) of all main functions that raise exceptions instead of returning error tuples:
+Bang variants raise instead of returning error tuples:
 
 ```elixir
 json =
@@ -80,9 +80,7 @@ json =
   |> Spectral.encode!(Person, :t)
   |> IO.iodata_to_binary()
 
-person =
-  json_string
-  |> Spectral.decode!(Person, :t)
+person = Spectral.decode!(json_string, Person, :t)
 
 schema =
   Person
@@ -90,86 +88,126 @@ schema =
   |> IO.iodata_to_binary()
 ```
 
-Use bang functions when you want exceptions instead of explicit error handling.
+## Data Serialization API
 
-### Nil Value Handling
+**Parameters** for `encode/3-5`, `decode/3-5`, and `schema/2-3`:
 
-Spectral automatically omits `nil` values from JSON output for optional struct fields:
+- `data` — The data to encode/decode (Elixir value for encode, binary/iodata for decode)
+- `module` — The module where the type is defined (e.g., `Person`)
+- `type_ref` — The type reference, typically an atom like `:t` for `@type t`
+- `format` — (optional) The data format: `:json` (default), `:binary_string`, or `:string`
+
+The `binary_string` and `string` formats decode a single value from a binary or string — useful for path variables and query parameters.
+
+### Options
+
+`encode/5` and `decode/5` accept an options list as the last argument:
+
+| Option | Function | Effect |
+|--------|----------|--------|
+| `pre_decoded` | `decode` | Input is already a parsed term — skips JSON decoding |
+| `pre_encoded` | `encode`, `schema` | Returns a map/list instead of `iodata()` — skips JSON encoding |
 
 ```elixir
-# Only required fields
-person = %Person{name: "Alice"}
+# Input already decoded by a web framework (e.g. Plug already ran Jason.decode!)
+{:ok, person} = Spectral.decode(decoded_map, Person, :t, :json, [:pre_decoded])
+
+# Get a map instead of iodata (e.g. to pass to a framework that does its own encoding)
+{:ok, map} = Spectral.encode(person, Person, :t, :json, [:pre_encoded])
+
+# Get the schema as a map instead of iodata
+schema_map = Spectral.schema(Person, :t, :json_schema, [:pre_encoded])
+```
+
+## Error Handling
+
+`encode/3-5` and `decode/3-5` use a dual error handling strategy:
+
+**Data validation errors** return `{:error, [%Spectral.Error{}]}`:
+- Type mismatches (e.g., string when integer expected)
+- Missing required fields
+- Invalid data structure
+
+**Configuration errors** raise exceptions:
+- Module not found, unloaded, or compiled without `debug_info`
+- Type not found in the specified module
+- Unsupported types (e.g., `pid()`, `port()`, `tuple()`)
+
+Use `with` for clean error handling:
+
+```elixir
+bad_json = ~s({"name":"Alice","age":"not a number"})
+
+with {:ok, person} <- Spectral.decode(bad_json, Person, :t) do
+  process_person(person)
+end
+```
+
+Bang functions (`encode!/3-5`, `decode!/3-5`) raise for any error, including data validation errors. Use them when you want to propagate all errors as exceptions.
+
+`schema/2-3` returns `iodata()` directly (no result tuple) but may still raise for configuration errors.
+
+### Error Structure
+
+Each `%Spectral.Error{}` has:
+- `location` — path to the failing value, e.g. `["user", "age"]`
+- `type` — `:type_mismatch`, `:missing_data`, `:no_match`, or `:not_matched_fields`
+- `context` — additional context, e.g. `%{expected: :integer, got: "not a number"}`
+- `message` — human-readable error message
+
+### Codec errors
+
+`use Spectral.Codec` imports `type_mismatch/2,3` helpers for constructing errors in codec callbacks. Pass an optional context map as the third argument — for example `%{reason: :invalid_format}` when the value has the right type but the wrong shape.
+
+Do not raise exceptions or return plain maps from codec callbacks. Spectral's behaviour converts `%Spectral.Error{}` structs to the Erlang record format spectra expects, collecting errors from multiple locations and attaching path information as it traverses nested structures.
+
+## Nil Values, Extra Fields, and Special Types
+
+### Nil values
+
+Struct fields with `nil` values are omitted when encoding if the type allows `nil`. When decoding, missing fields and explicit JSON `null` both become `nil` if the type allows it:
+
+```elixir
+person = %Person{name: "Alice"}  # age and address are nil
 
 with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
   IO.iodata_to_binary(json_iodata)
-  # Returns: "{\"name\":\"Alice\"}" (age and address are omitted)
+  # Returns: "{\"name\":\"Alice\"}"  (age and address omitted)
 end
 
-# When decoding, both missing fields and explicit null values become nil in structs
 Spectral.decode(~s({"name":"Alice"}), Person, :t)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 
-Spectral.decode(~s({"name":"Alice","age":null,"address":null}), Person, :t)
+Spectral.decode(~s({"name":"Alice","age":null}), Person, :t)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
 
-### Extra Fields Handling
+### Extra fields
 
-When decoding JSON into Elixir structs, extra fields that are not defined in the type specification are **silently ignored**. This enables forward compatibility and flexible API evolution:
+Extra JSON fields not present in the type specification are silently ignored, enabling forward compatibility:
 
 ```elixir
-# JSON with extra fields not in the Person type
 json = ~s({"name":"Alice","age":30,"unknown_field":"ignored"})
-
 Spectral.decode(json, Person, :t)
 # Returns: {:ok, %Person{name: "Alice", age: 30, address: nil}}
-# Extra fields are discarded without errors
 ```
 
-This permissive behavior allows your application to accept JSON from newer API versions without breaking, as long as all required fields are present.
+### `dynamic()`, `term()`, and `any()`
 
-### Data Serialization API
+Spectral does not validate or reject data of these types. The result may not be valid JSON if encoding such data.
 
-The main functions for JSON serialization and deserialization (pipe-friendly):
+### Unsupported types
 
-```elixir
-# Regular versions (return tuples)
-Spectral.encode(data, module, type_ref, format \\ :json) ::
-    {:ok, iodata()} | {:error, [%Spectral.Error{}]}
+The following types cannot be serialized to JSON:
+- `pid()`, `port()`, `reference()`
+- `tuple()` (generic unstructured tuples)
+- Function types
 
-Spectral.encode!(data, module, type_ref, format \\ :json) :: iodata()
+## Built-in Codecs
 
-Spectral.decode(data, module, type_ref, format \\ :json) ::
-    {:ok, dynamic()} | {:error, [%Spectral.Error{}]}
-
-Spectral.decode!(data, module, type_ref, format \\ :json) :: dynamic()
-```
-
-**Parameters:**
-- `data` - The data to encode/decode (Elixir value for encode, binary/string for decode)
-- `module` - The module where the type is defined (e.g., `Person`)
-- `type_ref` - The type reference, typically an atom like `:t` for the `@type t` definition
-- `format` - (optional) The data format: `:json` (default), `:binary_string`, or `:string`
-
-### Schema API
-
-Generate schemas from your type definitions:
+Spectral ships with codecs for Elixir's standard date/time types. They are not active by default — register them in `config/config.exs`:
 
 ```elixir
-Spectral.schema(module, type_ref, format \\ :json_schema) :: iodata()
-```
-
-**Parameters:**
-- `module` - The module where the type is defined
-- `type_ref` - The type reference
-- `format` - (optional) Schema format, currently supports `:json_schema` (default)
-
-### Built-in Codecs
-
-Spectral ships with codecs for Elixir's standard date/time types. They are not active by default — register them in your application's `config/config.exs` or in your `Application.start/2` callback:
-
-```elixir
-# config/config.exs (or config/runtime.exs)
 import Config
 
 config :spectra, :codecs, %{
@@ -186,21 +224,21 @@ config :spectra, :codecs, %{
 | `Spectral.Codec.Date` | `Date.t()` | ISO 8601 date string, e.g. `"2023-04-01"` |
 | `Spectral.Codec.MapSet` | `MapSet.t()` / `MapSet.t(elem)` | JSON array with `uniqueItems: true` in its schema |
 
-The date/time codecs handle `:json` and `:binary` formats (binary string) and `:string` format (charlist). A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context.
+The date/time codecs handle `:json` and `:binary_string` formats. A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context.
 
 If you use any of these types without registering the codec, encoding and decoding fall through to spectra's structural codec, which cannot handle these opaque structs. Schema generation raises `{:schema_not_implemented, Module, type_ref}`. Register the codecs before your application starts processing these types.
 
-### Unsupported types
+`Range` and `Stream` do not have built-in codecs. Implement a custom `Spectral.Codec` if needed — PRs welcome.
 
-`Range` and `Stream` do not have built-in codecs. If you need to encode/decode these types, implement a custom `Spectral.Codec` — see [Custom Codecs](#custom-codecs) below. PRs adding built-in codecs for `Range` and `Stream` are welcome.
-
-### Custom Codecs
+## Custom Codecs
 
 You can write a codec for any type by implementing the `Spectral.Codec` behaviour. Add `use Spectral.Codec` to your module — spectra auto-detects it via the `@behaviour` attribute in the compiled BEAM, so no registration is needed for types defined in your own module.
 
-#### Static per-type configuration with `type_parameters`
+If a codec module does not export `schema/4`, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. The `schema/4` callback is optional — return `:continue` for types the codec does not handle.
 
-The `type_parameters` key in a `spectral` attribute passes a static value to your codec as the `params` argument. This is useful for reusing one codec across multiple types with different configuration:
+### Static per-type configuration with `type_parameters`
+
+The `type_parameters` key in a `spectral` attribute passes a static value to your codec as the `params` argument. When `type_parameters` is absent, `params` is `:undefined`. This lets you reuse one codec across multiple types with different configuration:
 
 ```elixir
 defmodule MyIds do
@@ -246,9 +284,32 @@ defmodule MyIds do
 end
 ```
 
-When no `type_parameters` attribute is present, `params` is `:undefined`.
+### String and binary constraints
 
-#### Codecs for third-party types
+For `String.t()`, `binary()`, `nonempty_binary()`, and `nonempty_string()` you can enforce structural constraints via `type_parameters` — **no custom codec required**:
+
+| Key | JSON Schema keyword | Validated at encode/decode? | Notes |
+|---|---|---|---|
+| `min_length` | `minLength` | yes | Unicode codepoint count, not byte count |
+| `max_length` | `maxLength` | yes | Unicode codepoint count, not byte count |
+| `pattern` | `pattern` | yes | PCRE regular expression |
+| `format` | `format` | no | Schema annotation only |
+
+```elixir
+defmodule MyTypes do
+  use Spectral
+
+  spectral type_parameters: %{min_length: 2, max_length: 64}
+  @type username :: String.t()
+
+  spectral type_parameters: %{pattern: "^[a-z0-9_]+$", format: "hostname"}
+  @type slug :: String.t()
+end
+```
+
+Encoding and decoding both enforce the constraints and return an error on failure. `nonempty_binary()` and `nonempty_string()` already imply `minLength: 1`; a `min_length` parameter overrides this.
+
+### Codecs for third-party types
 
 To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally:
 
@@ -260,9 +321,9 @@ Application.put_env(:spectra, :codecs, %{
 
 The module is passed as the second argument to all callbacks, so each clause is unambiguous regardless of how the codec was registered.
 
-### Documenting Types with `spectral`
+## Documenting Types with `spectral`
 
-You can add JSON Schema documentation (title, description, examples) to your types using the `spectral` macro:
+You can add JSON Schema documentation to your types using the `spectral` macro. Place the `spectral` call immediately before the `@type` definition it documents:
 
 ```elixir
 defmodule Person do
@@ -278,43 +339,54 @@ defmodule Person do
 end
 ```
 
-Place the `spectral` call before the `@type` definition it documents. When you generate a JSON schema, it will include the title and description:
+**Supported fields for types:**
+- `title` — short title for the type
+- `description` — longer description
+- `examples` — list of example values
+- `examples_function` — `{module, function_name, args}` tuple; the function is called at schema generation time to produce examples. Use this instead of `examples` when constructing values inline is awkward. The function must be exported.
+- `type_parameters` — passed as `params` to codec callbacks (see [Custom Codecs](#custom-codecs))
+
+```elixir
+defmodule Person do
+  use Spectral
+
+  defstruct [:name, :age]
+
+  spectral title: "Person",
+           description: "A person with name and age",
+           examples_function: {__MODULE__, :examples, []}
+  @type t :: %Person{name: String.t(), age: non_neg_integer()}
+
+  def examples do
+    [%Person{name: "Alice", age: 30}, %Person{name: "Bob", age: 25}]
+  end
+end
+```
+
+The generated schema will include the title and description:
 
 ```elixir
 schema = Spectral.schema(Person, :t) |> IO.iodata_to_binary() |> Jason.decode!()
-# %{
-#   "title" => "Person",
-#   "description" => "A person with name and age",
-#   "type" => "object",
-#   ...
-# }
+# %{"title" => "Person", "description" => "A person with name and age", "type" => "object", ...}
 ```
 
-**Supported fields:**
-- `title` - A short title for the type
-- `description` - A longer description of what the type represents
-- `examples` - A list of example values (not yet fully supported)
-
-**Multiple types in one module:**
-
-If you have multiple types in a module, you only need to document the types you want. Types without `spectral` calls won't have title/description in their schemas:
+**Multiple types in one module** — only types with a `spectral` call will have title/description in their schemas:
 
 ```elixir
 defmodule MyModule do
   use Spectral
 
-  # Documented type
   spectral title: "Public API", description: "The public interface"
   @type public_api :: map()
 
-  # Undocumented type - no spectral call needed
+  # No spectral call — no title/description in schema
   @type internal_type :: atom()
 end
 ```
 
 ### Documenting Functions (Endpoint Metadata)
 
-The `spectral` macro also works before `@spec` definitions to attach OpenAPI endpoint documentation to functions:
+The `spectral` macro also works before `@spec` definitions to attach OpenAPI endpoint documentation:
 
 ```elixir
 defmodule MyController do
@@ -326,10 +398,10 @@ defmodule MyController do
 end
 ```
 
-**Supported fields:**
-- `summary` - Short summary of the endpoint operation
-- `description` - Longer description of the operation
-- `deprecated` - Whether the endpoint is deprecated (boolean)
+**Supported fields for function specs:**
+- `summary` — short summary of the endpoint operation
+- `description` — longer description
+- `deprecated` — boolean
 
 This metadata is used by `Spectral.OpenAPI.endpoint/5` to automatically populate OpenAPI operation fields — see the OpenAPI section below.
 
@@ -341,11 +413,9 @@ Spectral can generate complete [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.
 
 ### OpenAPI Builder API
 
-The API uses a fluent builder pattern for constructing endpoints and responses. While experimental and subject to change, it's designed to be used by web framework developers.
+The API uses a fluent builder pattern for constructing endpoints and responses.
 
 #### Building Responses
-
-Responses are constructed using a builder pattern:
 
 ```elixir
 Code.ensure_loaded!(Person)
@@ -361,17 +431,11 @@ user_found_response =
 
 user_created_response =
   Spectral.OpenAPI.response(201, "User created")
-  |> Spectral.OpenAPI.response_with_body(
-    Person,
-    {:type, :t, 0}
-  )
+  |> Spectral.OpenAPI.response_with_body(Person, {:type, :t, 0})
 
 users_found_response =
   Spectral.OpenAPI.response(200, "Users found")
-  |> Spectral.OpenAPI.response_with_body(
-    Person,
-    {:type, :persons, 0}
-  )
+  |> Spectral.OpenAPI.response_with_body(Person, {:type, :persons, 0})
 
 # Response with response header
 response_with_headers =
@@ -380,19 +444,13 @@ response_with_headers =
   |> Spectral.OpenAPI.response_with_header(
     "X-Rate-Limit",
     :t,
-    %{
-      description: "Requests remaining",
-      required: false,
-      schema: :integer
-    }
+    %{description: "Requests remaining", required: false, schema: :integer}
   )
 ```
 
 #### Building Endpoints
 
-Endpoints are built by combining the endpoint definition with responses, request bodies, and parameters.
-
-Use `endpoint/5` to automatically pull the endpoint documentation from a function's `spectral/1` annotation:
+Use `endpoint/5` to automatically pull documentation from a function's `spectral` annotation:
 
 ```elixir
 # Documentation comes from the spectral/1 annotation on MyController.show/2
@@ -416,7 +474,6 @@ user_get_endpoint =
   |> Spectral.OpenAPI.add_response(user_found_response)
   |> Spectral.OpenAPI.add_response(user_not_found_response)
 
-
 # Add request body (for POST, PUT, PATCH)
 # Description comes automatically from the spectral attribute on Person.t()
 user_create_endpoint =
@@ -430,7 +487,7 @@ user_create_xml_endpoint =
   |> Spectral.OpenAPI.with_request_body(Person, {:type, :t, 0}, "application/xml")
   |> Spectral.OpenAPI.add_response(user_created_response)
 
-# Add parameters
+# Add query parameters
 user_search_endpoint =
   Spectral.OpenAPI.endpoint(:get, "/users")
   |> Spectral.OpenAPI.with_parameter(Person, %{
@@ -459,7 +516,6 @@ metadata = %{
   servers: [%{url: "https://api.example.com", description: "Production"}]
 }
 
-
 endpoints = [
   user_get_endpoint,
   user_create_endpoint,
@@ -471,123 +527,16 @@ endpoints = [
 
 `endpoints_to_openapi/2` returns `{:ok, iodata}` — the complete OpenAPI 3.1 spec serialised as JSON, ready to write to a file or serve over HTTP.
 
-## Requirements
+`endpoints_to_openapi/3` accepts the same `pre_encoded` option as `encode/5`:
 
-- **Erlang/OTP 27+**: Spectral requires Erlang/OTP version 27 or later (required by the underlying spectra library)
-- **Compilation**: Modules must be compiled with `debug_info` for Spectral to extract type information. This is enabled by default in Mix projects.
-
-## Error Handling
-
-Spectral provides two types of functions with different error handling strategies:
-
-### Normal Functions
-
-The encoding and decoding functions (`encode/3-4`, `decode/3-4`) use a dual error handling approach:
-
-**Data validation errors** return `{:error, [%Spectral.Error{}]}` tuples:
-- Type mismatches (e.g., string when integer expected)
-- Missing required fields
-- Invalid data structure
-- Decoding failures
-
-Use `with` for clean error handling:
+| Options | Return on success |
+|---------|------------------|
+| (default) | `{:ok, iodata()}` — encoded JSON |
+| `[:pre_encoded]` | `{:ok, map()}` — decoded map for further processing |
 
 ```elixir
-bad_json = ~s({"name":"Alice","age":"not a number"})
-
-with {:ok, person} <- Spectral.decode(bad_json, Person, :t) do
-  process_person(person)
-end
+{:ok, spec_map} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints, [:pre_encoded])
 ```
-
-**Type and configuration errors** raise exceptions:
-- Module not found, unloaded, or compiled without `debug_info`
-- Type not found in the specified module
-- Unsupported types used (e.g., `pid()`, `port()`, `tuple()`)
-
-These exceptions indicate problems with your application's configuration or type definitions, not with the data being processed.
-
-### Bang Functions
-
-The bang versions (`encode!/3-4`, `decode!/3-4`) always raise exceptions for any error:
-
-```elixir
-person =
-  bad_json
-  |> Spectral.decode!(Person, :t)
-  |> process_person()
-```
-
-Use bang functions when you want to propagate all errors as exceptions, simplifying pipelines but requiring try/rescue for error handling.
-
-### Schema Generation
-
-The `schema/2-3` function returns the schema directly as `iodata()` without wrapping it in a result tuple:
-
-```elixir
-schema = Spectral.schema(Person, :t)
-IO.iodata_to_binary(schema)
-```
-
-Schema generation may still raise exceptions for type and configuration errors (module not found, type not found, etc.).
-
-### sp_error records
-
-`%Spectral.Error{}` structs are the Elixir view of errors, but the underlying spectra library uses `sp_error` Erlang records internally. `use Spectral.Codec` hides this entirely — codec callbacks return `%Spectral.Error{}` structs and the behaviour converts them automatically before passing them to spectra.
-
-Do not raise an exception or return a plain map from a codec callback. Spectra expects a specific record format so it can collect errors from multiple locations, attach path information as it traverses nested structures, and convert them to `%Spectral.Error{}` for the caller. `use Spectral.Codec` handles this contract for you.
-
-`use Spectral.Codec` imports `type_mismatch/2,3` helpers for constructing errors. Pass an optional context map as the third argument — for example `%{reason: :invalid_format}` when the value has the right type but the wrong shape. See `Spectral.Codec` for the full list of helpers.
-
-### Error Structure
-
-Each `Spectral.Error` struct represents a single error with the following fields:
-- `location` - Path showing where the error occurred (e.g., `["user", "age"]`)
-- `type` - Error type: `:decode_error`, `:type_mismatch`, `:no_match`, `:missing_data`, `:not_matched_fields`
-- `context` - Additional context information about the error
-- `message` - Human-readable error message (auto-generated)
-
-Functions return `{:error, [%Spectral.Error{}]}` - a list of error structs:
-
-```elixir
-{:error, [
-  %Spectral.Error{
-    location: ["user", "age"],
-    type: :type_mismatch,
-    context: %{expected: :integer, got: "not a number"},
-    message: "type_mismatch at user.age"
-  }
-]}
-```
-
-## Special Handling
-
-### `nil` Values
-
-In Elixir structs, `nil` values are handled specially:
-- When encoding to JSON, struct fields with `nil` values are omitted from the output if the type includes `nil` as a valid value
-- When decoding from JSON, missing fields become `nil` if the type specification allows it
-
-Example:
-```elixir
-@type t :: %Person{
-  name: String.t(),
-  age: non_neg_integer() | nil  # nil is allowed
-}
-```
-
-### `dynamic()`, `term()` and `any()`
-
-When using types with `dynamic()`, `term()`, or `any()` in your type specifications, Spectral will not reject any data, which means it can return data that may not be valid JSON.
-
-Note: Spectral uses `dynamic()` for runtime-determined types in its own API, following Erlang's gradual typing conventions.
-
-### Unsupported Types
-
-For JSON serialization and schema generation, the following Erlang/Elixir types are not supported:
-- `pid()`, `port()`, `reference()` - Cannot be serialized to JSON
-- `tuple()` (generic tuples without specific structure)
-- Function types - Cannot be serialized
 
 ## Related Projects
 
