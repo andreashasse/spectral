@@ -7,7 +7,7 @@ Guidance for agentic coding agents working in this repository.
 Spectral is a thin Elixir wrapper around the Erlang `:spectra` library. It provides:
 - **Type-safe JSON encoding/decoding** via `Spectral.encode/4` and `Spectral.decode/4`
 - **JSON Schema generation** via `Spectral.schema/3`
-- **OpenAPI 3.0 spec generation** via `Spectral.OpenAPI`
+- **OpenAPI 3.1 spec generation** via `Spectral.OpenAPI`
 - **Type documentation** via the `spectral/1` macro (`use Spectral`)
 
 Most implementation complexity lives in `:spectra`/`:spectra_openapi`. Spectral's job is idiomatic Elixir delegation.

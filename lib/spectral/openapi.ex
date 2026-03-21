@@ -2,7 +2,7 @@ defmodule Spectral.OpenAPI do
   @moduledoc """
   Elixir wrapper for spectra OpenAPI specification generation.
 
-  This module provides idiomatic Elixir functions for generating OpenAPI 3.0
+  This module provides idiomatic Elixir functions for generating OpenAPI 3.1
   specifications from Elixir type definitions using spectra.
 
   ## Response Builder Pattern
