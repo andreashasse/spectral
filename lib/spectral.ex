@@ -2,11 +2,6 @@ defmodule Spectral do
   require Record
 
   Record.defrecord(
-    :type_info,
-    Record.extract(:type_info, from_lib: "spectra/include/spectra_internal.hrl")
-  )
-
-  Record.defrecord(
     :sp_function_spec,
     Record.extract(:sp_function_spec, from_lib: "spectra/include/spectra_internal.hrl")
   )
@@ -31,8 +26,8 @@ defmodule Spectral do
 
   """
 
-  @typedoc "Spectra type information for a module, imported from the `#type_info{}` Erlang record."
-  @type type_info :: record(:type_info)
+  @typedoc "Spectra type information for a module. Alias for `:spectra.type_info()`."
+  @type type_info :: :spectra.type_info()
 
   @typedoc "A reference to a named type `{:type, name, arity}` or record `{:record, name}`."
   @type sp_type_reference :: {:type, atom(), non_neg_integer()} | {:record, atom()}
@@ -57,6 +52,15 @@ defmodule Spectral do
   - `{:pre_decoded, boolean()}` - Explicit boolean form; `false` gives the default behaviour.
   """
   @type decode_option :: :pre_decoded | {:pre_decoded, boolean()}
+
+  @typedoc """
+  Options for `schema/4`.
+
+  - `:pre_encoded` - Skip the final JSON serialization step and return a map instead of
+    iodata. Equivalent to `{:pre_encoded, true}`.
+  - `{:pre_encoded, boolean()}` - Explicit boolean form; `false` gives the default behaviour.
+  """
+  @type schema_option :: :pre_encoded | {:pre_encoded, boolean()}
 
   @doc """
   Adds documentation metadata for a type.
@@ -543,6 +547,39 @@ defmodule Spectral do
   @spec schema(module() | type_info(), atom() | sp_type_or_ref(), atom()) :: iodata()
   def schema(module, type_ref, format \\ :json_schema) do
     :spectra.schema(format, module, type_ref)
+  rescue
+    error in ErlangError ->
+      handle_erlang_error(error, :schema, module, type_ref)
+  end
+
+  @doc """
+  Generates a schema for the specified type, with options.
+
+  Like `schema/3` but accepts an options list.
+
+  ## Parameters
+
+  - `module` - Module containing the type definition
+  - `type_ref` - Type reference (typically an atom like `:t`)
+  - `format` - Schema format (default: `:json_schema`)
+  - `opts` - Options list. Supported options:
+    - `:pre_encoded` - Return a map instead of iodata, skipping JSON encoding.
+
+  ## Returns
+
+  - `iodata()` - Generated schema (default)
+  - `dynamic()` - Schema as a map when `:pre_encoded` option is set
+
+  ## Examples
+
+      iex> schema = Spectral.schema(Person, :t, :json_schema, [:pre_encoded])
+      iex> is_map(schema)
+      true
+  """
+  @spec schema(module() | type_info(), atom() | sp_type_or_ref(), atom(), [schema_option()]) ::
+          iodata() | dynamic()
+  def schema(module, type_ref, format, opts) when is_list(opts) do
+    :spectra.schema(format, module, type_ref, opts)
   rescue
     error in ErlangError ->
       handle_erlang_error(error, :schema, module, type_ref)
