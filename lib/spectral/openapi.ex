@@ -304,6 +304,7 @@ defmodule Spectral.OpenAPI do
           schema: :string
         })
   """
+  @spec with_parameter(dynamic(), module(), map()) :: dynamic()
   def with_parameter(endpoint, module, parameter_spec) do
     :spectra_openapi.with_parameter(endpoint, module, parameter_spec)
   end
