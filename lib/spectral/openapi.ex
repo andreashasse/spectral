@@ -45,17 +45,8 @@ defmodule Spectral.OpenAPI do
       iex> endpoint.doc
       %{summary: "Get user by ID"}
   """
-  @spec endpoint(atom(), binary(), %{
-          optional(:summary) => binary(),
-          optional(:description) => binary(),
-          optional(:operationId) => binary(),
-          optional(:tags) => [binary()],
-          optional(:deprecated) => boolean(),
-          optional(:externalDocs) => %{
-            required(:url) => binary(),
-            optional(:description) => binary()
-          }
-        }) :: dynamic()
+  @spec endpoint(:spectra_openapi.http_method(), binary(), :spectra_openapi.endpoint_doc()) ::
+          :spectra_openapi.endpoint_spec()
   def endpoint(method, path, doc \\ %{}) do
     :spectra_openapi.endpoint(method, path, doc)
   end
@@ -92,7 +83,8 @@ defmodule Spectral.OpenAPI do
 
       endpoint = Spectral.OpenAPI.endpoint(:get, "/users/{id}", MyController, :get_user, 2)
   """
-  @spec endpoint(atom(), binary(), module(), atom(), non_neg_integer()) :: dynamic()
+  @spec endpoint(:spectra_openapi.http_method(), binary(), module(), atom(), non_neg_integer()) ::
+          :spectra_openapi.endpoint_spec()
   def endpoint(method, path, module, function_name, arity)
       when is_atom(method) and is_binary(path) and is_atom(module) and is_atom(function_name) and
              is_integer(arity) and arity >= 0 do
@@ -120,6 +112,8 @@ defmodule Spectral.OpenAPI do
 
       response = Spectral.OpenAPI.response(200, "User found successfully")
   """
+  @spec response(:spectra_openapi.http_status_code(), binary()) ::
+          :spectra_openapi.response_spec()
   def response(status_code, description) do
     :spectra_openapi.response(status_code, description)
   end
@@ -142,6 +136,11 @@ defmodule Spectral.OpenAPI do
       response = Spectral.OpenAPI.response(200, "Success")
         |> Spectral.OpenAPI.response_with_body(Person, :t)
   """
+  @spec response_with_body(
+          :spectra_openapi.response_spec(),
+          module(),
+          atom() | :spectra.sp_type_or_ref()
+        ) :: :spectra_openapi.response_spec()
   def response_with_body(response, module, schema) do
     :spectra_openapi.response_with_body(response, module, schema)
   end
@@ -165,6 +164,12 @@ defmodule Spectral.OpenAPI do
       response = Spectral.OpenAPI.response(200, "Success")
         |> Spectral.OpenAPI.response_with_body(Person, :t, "application/xml")
   """
+  @spec response_with_body(
+          :spectra_openapi.response_spec(),
+          module(),
+          atom() | :spectra.sp_type_or_ref(),
+          binary()
+        ) :: :spectra_openapi.response_spec()
   def response_with_body(response, module, schema, content_type) do
     :spectra_openapi.response_with_body(response, module, schema, content_type)
   end
@@ -196,6 +201,8 @@ defmodule Spectral.OpenAPI do
           schema: :integer
         })
   """
+  @spec response_with_header(:spectra_openapi.response_spec(), binary(), module(), map()) ::
+          :spectra_openapi.response_spec()
   def response_with_header(response, header_name, module, header_spec) do
     :spectra_openapi.response_with_header(response, header_name, module, header_spec)
   end
@@ -222,6 +229,8 @@ defmodule Spectral.OpenAPI do
       endpoint = Spectral.OpenAPI.endpoint(:get, "/users/{id}")
         |> Spectral.OpenAPI.add_response(response)
   """
+  @spec add_response(:spectra_openapi.endpoint_spec(), :spectra_openapi.response_spec()) ::
+          :spectra_openapi.endpoint_spec()
   def add_response(endpoint, response) do
     :spectra_openapi.add_response(endpoint, response)
   end
@@ -244,6 +253,11 @@ defmodule Spectral.OpenAPI do
       endpoint = Spectral.OpenAPI.endpoint(:post, "/users")
         |> Spectral.OpenAPI.with_request_body(Person, :t)
   """
+  @spec with_request_body(
+          :spectra_openapi.endpoint_spec(),
+          module(),
+          atom() | :spectra.sp_type_or_ref()
+        ) :: :spectra_openapi.endpoint_spec()
   def with_request_body(endpoint, module, schema) do
     :spectra_openapi.with_request_body(endpoint, module, schema)
   end
@@ -267,6 +281,12 @@ defmodule Spectral.OpenAPI do
       endpoint = Spectral.OpenAPI.endpoint(:post, "/users")
         |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
   """
+  @spec with_request_body(
+          :spectra_openapi.endpoint_spec(),
+          module(),
+          atom() | :spectra.sp_type_or_ref(),
+          binary()
+        ) :: :spectra_openapi.endpoint_spec()
   def with_request_body(endpoint, module, schema, content_type) when is_binary(content_type) do
     :spectra_openapi.with_request_body(endpoint, module, schema, content_type)
   end
@@ -304,7 +324,11 @@ defmodule Spectral.OpenAPI do
           schema: :string
         })
   """
-  @spec with_parameter(dynamic(), module(), map()) :: dynamic()
+  @spec with_parameter(
+          :spectra_openapi.endpoint_spec(),
+          module(),
+          :spectra_openapi.parameter_input_spec()
+        ) :: :spectra_openapi.endpoint_spec()
   def with_parameter(endpoint, module, parameter_spec) do
     :spectra_openapi.with_parameter(endpoint, module, parameter_spec)
   end
@@ -343,8 +367,10 @@ defmodule Spectral.OpenAPI do
 
       {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
   """
-  @spec endpoints_to_openapi(map(), [dynamic()]) ::
-          {:ok, iodata()} | {:error, [Spectral.Error.t()]}
+  @spec endpoints_to_openapi(
+          :spectra_openapi.openapi_metadata(),
+          [:spectra_openapi.endpoint_spec()]
+        ) :: {:ok, iodata()} | {:error, [Spectral.Error.t()]}
   def endpoints_to_openapi(metadata, endpoints) do
     metadata
     |> :spectra_openapi.endpoints_to_openapi(endpoints)
