@@ -39,7 +39,7 @@ defmodule Spectral.MixProject do
 
   defp description() do
     """
-    Spectral provides type-driven JSON encoding/decoding, JSON Schema generation, and OpenAPI 3.0
+    Spectral provides type-driven JSON encoding/decoding, JSON Schema generation, and OpenAPI 3.1
     specification generation. It uses Elixir's type system to automatically handle serialization
     based on struct type definitions.
     """
