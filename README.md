@@ -250,9 +250,77 @@ Do not raise exceptions or return plain maps from codec callbacks. Construct `%S
 
 The `schema/4` callback is optional. If a codec module does not export it, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. Return `:continue` for types the codec does not handle.
 
-### Static per-type configuration with `type_parameters`
+### Codecs for third-party types
 
-The `type_parameters` key in a `spectral` attribute passes a static value to your codec as the `params` argument. When `type_parameters` is absent, `params` is `:undefined`. This lets you reuse one codec across multiple types with different configuration:
+To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally:
+
+```elixir
+Application.put_env(:spectra, :codecs, %{
+  {SomeLibrary, {:type, :some_type, 0}} => MyCodec
+})
+```
+
+The module is passed as the second argument to all callbacks, so each clause is unambiguous regardless of how the codec was registered.
+
+## Built-in Codecs
+
+Spectral ships with codecs for Elixir's standard date/time types. They are not active by default — register them in `config/config.exs`:
+
+```elixir
+import Config
+
+config :spectra, :codecs, %{
+  {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime,
+  {Date, {:type, :t, 0}} => Spectral.Codec.Date,
+  {MapSet, {:type, :t, 0}} => Spectral.Codec.MapSet,
+  {MapSet, {:type, :t, 1}} => Spectral.Codec.MapSet
+}
+```
+
+| Codec | Elixir type | JSON representation |
+|---|---|---|
+| `Spectral.Codec.DateTime` | `DateTime.t()` | ISO 8601 / RFC 3339 string, e.g. `"2012-04-23T18:25:43.511Z"` |
+| `Spectral.Codec.Date` | `Date.t()` | ISO 8601 date string, e.g. `"2023-04-01"` |
+| `Spectral.Codec.MapSet` | `MapSet.t()` / `MapSet.t(elem)` | JSON array with `uniqueItems: true` in its schema |
+
+The date/time codecs handle `:json` and `:binary_string` formats. A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context.
+
+If you use any of these types without registering the codec, encoding and decoding fall through to spectra's structural codec, which cannot handle these opaque structs. Schema generation raises `{:schema_not_implemented, Module, type_ref}`. Register the codecs before your application starts processing these types.
+
+`Range` and `Stream` do not have built-in codecs. Implement a custom `Spectral.Codec` if needed — PRs welcome.
+
+## Type Parameters
+
+The `type_parameters` key in a `spectral` attribute attaches a static value to a type. This value is available to codecs as the `params` argument (5th argument to `encode/5` and `decode/5`, 4th to `schema/4`). When `type_parameters` is absent, `params` is `:undefined`.
+
+### String and binary constraints
+
+For `String.t()`, `binary()`, `nonempty_binary()`, and `nonempty_string()`, `type_parameters` can enforce structural constraints — **no custom codec required**:
+
+| Key | JSON Schema keyword | Validated at encode/decode? | Notes |
+|---|---|---|---|
+| `min_length` | `minLength` | yes | Unicode codepoint count, not byte count |
+| `max_length` | `maxLength` | yes | Unicode codepoint count, not byte count |
+| `pattern` | `pattern` | yes | PCRE regular expression |
+| `format` | `format` | no | Schema annotation only |
+
+```elixir
+defmodule MyTypes do
+  use Spectral
+
+  spectral type_parameters: %{min_length: 2, max_length: 64}
+  @type username :: String.t()
+
+  spectral type_parameters: %{pattern: "^[a-z0-9_]+$", format: "hostname"}
+  @type slug :: String.t()
+end
+```
+
+Encoding and decoding both enforce the constraints and return an error on failure. `nonempty_binary()` and `nonempty_string()` already imply `minLength: 1`; a `min_length` parameter overrides this.
+
+### Codec-specific configuration
+
+`type_parameters` also lets you reuse one codec across multiple types with different configuration:
 
 ```elixir
 defmodule MyIds do
@@ -297,70 +365,6 @@ defmodule MyIds do
   end
 end
 ```
-
-### Codecs for third-party types
-
-To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally:
-
-```elixir
-Application.put_env(:spectra, :codecs, %{
-  {SomeLibrary, {:type, :some_type, 0}} => MyCodec
-})
-```
-
-The module is passed as the second argument to all callbacks, so each clause is unambiguous regardless of how the codec was registered.
-
-## Built-in Codecs
-
-Spectral ships with codecs for Elixir's standard date/time types. They are not active by default — register them in `config/config.exs`:
-
-```elixir
-import Config
-
-config :spectra, :codecs, %{
-  {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime,
-  {Date, {:type, :t, 0}} => Spectral.Codec.Date,
-  {MapSet, {:type, :t, 0}} => Spectral.Codec.MapSet,
-  {MapSet, {:type, :t, 1}} => Spectral.Codec.MapSet
-}
-```
-
-| Codec | Elixir type | JSON representation |
-|---|---|---|
-| `Spectral.Codec.DateTime` | `DateTime.t()` | ISO 8601 / RFC 3339 string, e.g. `"2012-04-23T18:25:43.511Z"` |
-| `Spectral.Codec.Date` | `Date.t()` | ISO 8601 date string, e.g. `"2023-04-01"` |
-| `Spectral.Codec.MapSet` | `MapSet.t()` / `MapSet.t(elem)` | JSON array with `uniqueItems: true` in its schema |
-
-The date/time codecs handle `:json` and `:binary_string` formats. A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context.
-
-If you use any of these types without registering the codec, encoding and decoding fall through to spectra's structural codec, which cannot handle these opaque structs. Schema generation raises `{:schema_not_implemented, Module, type_ref}`. Register the codecs before your application starts processing these types.
-
-`Range` and `Stream` do not have built-in codecs. Implement a custom `Spectral.Codec` if needed — PRs welcome.
-
-### String and binary constraints
-
-For `String.t()`, `binary()`, `nonempty_binary()`, and `nonempty_string()` you can enforce structural constraints via `type_parameters` — **no custom codec required**:
-
-| Key | JSON Schema keyword | Validated at encode/decode? | Notes |
-|---|---|---|---|
-| `min_length` | `minLength` | yes | Unicode codepoint count, not byte count |
-| `max_length` | `maxLength` | yes | Unicode codepoint count, not byte count |
-| `pattern` | `pattern` | yes | PCRE regular expression |
-| `format` | `format` | no | Schema annotation only |
-
-```elixir
-defmodule MyTypes do
-  use Spectral
-
-  spectral type_parameters: %{min_length: 2, max_length: 64}
-  @type username :: String.t()
-
-  spectral type_parameters: %{pattern: "^[a-z0-9_]+$", format: "hostname"}
-  @type slug :: String.t()
-end
-```
-
-Encoding and decoding both enforce the constraints and return an error on failure. `nonempty_binary()` and `nonempty_string()` already imply `minLength: 1`; a `min_length` parameter overrides this.
 
 ## Documenting Types with `spectral`
 
