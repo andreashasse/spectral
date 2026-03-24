@@ -20,12 +20,12 @@ defmodule Spectral.Codec.MapSet do
   use Spectral.Codec
 
   @impl Spectral.Codec
-  def encode(_format, MapSet, type_ref, %MapSet{} = ms, _params)
+  def encode(_format, MapSet, type_ref, %MapSet{} = ms, _sp_type, _params)
       when type_ref in [{:type, :t, 0}, {:type, :t, 1}] do
     {:ok, MapSet.to_list(ms)}
   end
 
-  def encode(_format, MapSet, type_ref, data, _params)
+  def encode(_format, MapSet, type_ref, data, _sp_type, _params)
       when type_ref in [{:type, :t, 0}, {:type, :t, 1}] do
     {:error,
      [
@@ -38,12 +38,12 @@ defmodule Spectral.Codec.MapSet do
   end
 
   @impl Spectral.Codec
-  def decode(_format, MapSet, type_ref, input, _params)
+  def decode(_format, MapSet, type_ref, input, _sp_type, _params)
       when type_ref in [{:type, :t, 0}, {:type, :t, 1}] and is_list(input) do
     {:ok, MapSet.new(input)}
   end
 
-  def decode(_format, MapSet, type_ref, input, _params)
+  def decode(_format, MapSet, type_ref, input, _sp_type, _params)
       when type_ref in [{:type, :t, 0}, {:type, :t, 1}] do
     {:error,
      [
@@ -56,7 +56,7 @@ defmodule Spectral.Codec.MapSet do
   end
 
   @impl Spectral.Codec
-  def schema(_format, MapSet, type_ref, _params)
+  def schema(_format, MapSet, type_ref, _sp_type, _params)
       when type_ref in [{:type, :t, 0}, {:type, :t, 1}] do
     %{type: "array", uniqueItems: true}
   end

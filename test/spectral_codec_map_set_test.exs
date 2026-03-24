@@ -15,7 +15,14 @@ defmodule SpectralCodecMapSetTest do
       ms = MapSet.new([1, 2, 3])
 
       assert {:ok, result} =
-               Spectral.Codec.MapSet.encode(:json, MapSet, {:type, :t, 0}, ms, :undefined)
+               Spectral.Codec.MapSet.encode(
+                 :json,
+                 MapSet,
+                 {:type, :t, 0},
+                 ms,
+                 :undefined,
+                 :undefined
+               )
 
       assert Enum.sort(result) == [1, 2, 3]
     end
@@ -24,14 +31,28 @@ defmodule SpectralCodecMapSetTest do
       ms = MapSet.new(["a", "b"])
 
       assert {:ok, result} =
-               Spectral.Codec.MapSet.encode(:json, MapSet, {:type, :t, 1}, ms, :undefined)
+               Spectral.Codec.MapSet.encode(
+                 :json,
+                 MapSet,
+                 {:type, :t, 1},
+                 ms,
+                 :undefined,
+                 :undefined
+               )
 
       assert Enum.sort(result) == ["a", "b"]
     end
 
     test "encode returns error for non-MapSet (t/0)" do
       assert {:error, [error]} =
-               Spectral.Codec.MapSet.encode(:json, MapSet, {:type, :t, 0}, [1, 2, 3], :undefined)
+               Spectral.Codec.MapSet.encode(
+                 :json,
+                 MapSet,
+                 {:type, :t, 0},
+                 [1, 2, 3],
+                 :undefined,
+                 :undefined
+               )
 
       assert %Spectral.Error{type: :type_mismatch} = Spectral.Error.from_erlang(error)
     end
@@ -43,6 +64,7 @@ defmodule SpectralCodecMapSetTest do
                  MapSet,
                  {:type, :t, 1},
                  "not a mapset",
+                 :undefined,
                  :undefined
                )
 
@@ -53,14 +75,28 @@ defmodule SpectralCodecMapSetTest do
   describe "Spectral.Codec.MapSet - decode" do
     test "decodes list to MapSet (t/0)" do
       assert {:ok, ms} =
-               Spectral.Codec.MapSet.decode(:json, MapSet, {:type, :t, 0}, [1, 2, 3], :undefined)
+               Spectral.Codec.MapSet.decode(
+                 :json,
+                 MapSet,
+                 {:type, :t, 0},
+                 [1, 2, 3],
+                 :undefined,
+                 :undefined
+               )
 
       assert ms == MapSet.new([1, 2, 3])
     end
 
     test "decodes list to MapSet (t/1)" do
       assert {:ok, ms} =
-               Spectral.Codec.MapSet.decode(:json, MapSet, {:type, :t, 1}, ["a", "b"], :undefined)
+               Spectral.Codec.MapSet.decode(
+                 :json,
+                 MapSet,
+                 {:type, :t, 1},
+                 ["a", "b"],
+                 :undefined,
+                 :undefined
+               )
 
       assert ms == MapSet.new(["a", "b"])
     end
@@ -72,6 +108,7 @@ defmodule SpectralCodecMapSetTest do
                  MapSet,
                  {:type, :t, 0},
                  "not a list",
+                 :undefined,
                  :undefined
                )
 
@@ -80,7 +117,14 @@ defmodule SpectralCodecMapSetTest do
 
     test "decode returns error for non-list (t/1)" do
       assert {:error, [error]} =
-               Spectral.Codec.MapSet.decode(:json, MapSet, {:type, :t, 1}, 42, :undefined)
+               Spectral.Codec.MapSet.decode(
+                 :json,
+                 MapSet,
+                 {:type, :t, 1},
+                 42,
+                 :undefined,
+                 :undefined
+               )
 
       assert %Spectral.Error{type: :type_mismatch} = Spectral.Error.from_erlang(error)
     end
@@ -89,12 +133,12 @@ defmodule SpectralCodecMapSetTest do
   describe "Spectral.Codec.MapSet - schema" do
     test "schema returns array with uniqueItems (t/0)" do
       assert %{type: "array", uniqueItems: true} =
-               Spectral.Codec.MapSet.schema(:json, MapSet, {:type, :t, 0}, :undefined)
+               Spectral.Codec.MapSet.schema(:json, MapSet, {:type, :t, 0}, :undefined, :undefined)
     end
 
     test "schema returns array with uniqueItems (t/1)" do
       assert %{type: "array", uniqueItems: true} =
-               Spectral.Codec.MapSet.schema(:json, MapSet, {:type, :t, 1}, :undefined)
+               Spectral.Codec.MapSet.schema(:json, MapSet, {:type, :t, 1}, :undefined, :undefined)
     end
   end
 end

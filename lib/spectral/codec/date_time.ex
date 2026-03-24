@@ -20,16 +20,16 @@ defmodule Spectral.Codec.DateTime do
   use Spectral.Codec
 
   @impl Spectral.Codec
-  def encode(format, DateTime, {:type, :t, 0}, %DateTime{} = dt, _params)
+  def encode(format, DateTime, {:type, :t, 0}, %DateTime{} = dt, _sp_type, _params)
       when format in [:json, :binary] do
     {:ok, DateTime.to_iso8601(dt)}
   end
 
-  def encode(:string, DateTime, {:type, :t, 0}, %DateTime{} = dt, _params) do
+  def encode(:string, DateTime, {:type, :t, 0}, %DateTime{} = dt, _sp_type, _params) do
     {:ok, String.to_charlist(DateTime.to_iso8601(dt))}
   end
 
-  def encode(_format, DateTime, {:type, :t, 0}, data, _params) do
+  def encode(_format, DateTime, {:type, :t, 0}, data, _sp_type, _params) do
     {:error,
      [
        %Spectral.Error{
@@ -41,7 +41,7 @@ defmodule Spectral.Codec.DateTime do
   end
 
   @impl Spectral.Codec
-  def decode(format, DateTime, {:type, :t, 0}, input, _params)
+  def decode(format, DateTime, {:type, :t, 0}, input, _sp_type, _params)
       when format in [:json, :binary] and is_binary(input) do
     case DateTime.from_iso8601(input) do
       {:ok, dt, _offset} ->
@@ -59,7 +59,7 @@ defmodule Spectral.Codec.DateTime do
     end
   end
 
-  def decode(:string, DateTime, {:type, :t, 0}, input, _params) when is_list(input) do
+  def decode(:string, DateTime, {:type, :t, 0}, input, _sp_type, _params) when is_list(input) do
     case DateTime.from_iso8601(List.to_string(input)) do
       {:ok, dt, _offset} ->
         {:ok, dt}
@@ -76,7 +76,7 @@ defmodule Spectral.Codec.DateTime do
     end
   end
 
-  def decode(_format, DateTime, {:type, :t, 0}, data, _params) do
+  def decode(_format, DateTime, {:type, :t, 0}, data, _sp_type, _params) do
     {:error,
      [
        %Spectral.Error{
@@ -88,7 +88,7 @@ defmodule Spectral.Codec.DateTime do
   end
 
   @impl Spectral.Codec
-  def schema(_format, DateTime, {:type, :t, 0}, _params) do
+  def schema(_format, DateTime, {:type, :t, 0}, _sp_type, _params) do
     %{type: "string", format: "date-time"}
   end
 end
