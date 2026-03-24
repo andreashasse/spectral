@@ -2,5 +2,5 @@ defmodule MapSetModule do
   @moduledoc false
   use Spectral
 
-  @type int_set :: MapSet.t(integer())
+  @type date_set :: MapSet.t(Date.t())
 end

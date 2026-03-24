@@ -4,7 +4,8 @@ defmodule SpectralCodecMapSetTest do
   setup_all do
     Application.put_env(:spectra, :codecs, %{
       {MapSet, {:type, :t, 0}} => Spectral.Codec.MapSet,
-      {MapSet, {:type, :t, 1}} => Spectral.Codec.MapSet
+      {MapSet, {:type, :t, 1}} => Spectral.Codec.MapSet,
+      {Date, {:type, :t, 0}} => Spectral.Codec.Date
     })
 
     on_exit(fn -> Application.delete_env(:spectra, :codecs) end)
@@ -155,27 +156,29 @@ defmodule SpectralCodecMapSetTest do
   end
 
   describe "Spectral.Codec.MapSet - t/1 element-type-aware (integration)" do
-    test "encode recursively encodes elements according to their type" do
-      ms = MapSet.new([1, 2, 3])
-      assert {:ok, json} = Spectral.encode(ms, MapSetModule, :int_set)
+    test "encode applies per-element codec: Date structs become ISO 8601 strings" do
+      ms = MapSet.new([~D[2024-01-01], ~D[2024-06-15]])
+      assert {:ok, json} = Spectral.encode(ms, MapSetModule, :date_set)
       decoded = json |> Jason.decode!() |> Enum.sort()
-      assert decoded == [1, 2, 3]
+      assert decoded == ["2024-01-01", "2024-06-15"]
     end
 
-    test "decode recursively decodes elements and rejects wrong types" do
-      json = ~s([1, 2, 3])
-      assert {:ok, ms} = Spectral.decode(json, MapSetModule, :int_set)
-      assert ms == MapSet.new([1, 2, 3])
+    test "decode applies per-element codec: ISO 8601 strings become Date structs" do
+      json = ~s(["2024-01-01", "2024-06-15"])
+      assert {:ok, ms} = Spectral.decode(json, MapSetModule, :date_set)
+      assert ms == MapSet.new([~D[2024-01-01], ~D[2024-06-15]])
     end
 
-    test "decode returns error when an element has the wrong type" do
-      json = ~s([1, "not_an_int", 3])
-      assert {:error, [_ | _]} = Spectral.decode(json, MapSetModule, :int_set)
+    test "decode returns error when an element fails its codec" do
+      json = ~s(["2024-01-01", "not-a-date"])
+      assert {:error, [_ | _]} = Spectral.decode(json, MapSetModule, :date_set)
     end
 
-    test "schema includes items constraint for typed elements" do
-      schema = Spectral.schema(MapSetModule, :int_set, :json_schema, [:pre_encoded])
-      assert %{type: "array", uniqueItems: true, items: %{type: "integer"}} = schema
+    test "schema includes items constraint driven by element codec" do
+      schema = Spectral.schema(MapSetModule, :date_set, :json_schema, [:pre_encoded])
+
+      assert %{type: "array", uniqueItems: true, items: %{type: "string", format: "date"}} =
+               schema
     end
   end
 end
