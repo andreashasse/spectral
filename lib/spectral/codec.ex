@@ -64,10 +64,10 @@ defmodule Spectral.Codec do
   `sp_type()` instantiation node from the type traversal. For generic types (those with
   type variables, such as `dict:dict(key, value)`) this is the reference node and carries
   the concrete type-variable bindings of the current instantiation. Use
-  `:spectra_type.type_args/1` to extract them for recursive encoding/decoding.
+  `Spectral.Type.type_args/1` to extract them for recursive encoding/decoding.
 
   For non-generic types this argument is the resolved type definition and
-  `:spectra_type.type_args/1` returns `[]`.
+  `Spectral.Type.type_args/1` returns `[]`.
 
   ## Return Values
 
