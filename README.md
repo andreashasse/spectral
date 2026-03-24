@@ -155,12 +155,6 @@ Each `%Spectral.Error{}` has:
 - `context` — additional context, e.g. `%{expected: :integer, got: "not a number"}`
 - `message` — human-readable error message
 
-### Codec errors
-
-`use Spectral.Codec` imports `type_mismatch/2,3` helpers for constructing errors in codec callbacks. Pass an optional context map as the third argument — for example `%{reason: :invalid_format}` when the value has the right type but the wrong shape.
-
-Do not raise exceptions or return plain maps from codec callbacks. Spectral's behaviour converts `%Spectral.Error{}` structs to the Erlang record format spectra expects, collecting errors from multiple locations and attaching path information as it traverses nested structures.
-
 ## Nil Values, Extra Fields, and Special Types
 
 ### Nil values
@@ -203,6 +197,119 @@ The following types cannot be serialized to JSON:
 - `tuple()` (generic unstructured tuples)
 - Function types
 
+## Custom Codecs
+
+You can write a codec for any type by implementing the `Spectral.Codec` behaviour. Add `use Spectral.Codec` to your module — spectra auto-detects it via the `@behaviour` attribute in the compiled BEAM, so no registration is needed for types defined in your own module.
+
+Here is a codec that serializes a `point` tuple as a two-element JSON array:
+
+```elixir
+defmodule MyGeoModule do
+  use Spectral.Codec
+
+  @opaque point :: {float(), float()}
+
+  @impl Spectral.Codec
+  def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _params)
+      when is_number(x) and is_number(y) do
+    {:ok, [x, y]}
+  end
+
+  def encode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
+    {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
+  end
+
+  def encode(_format, _module, _type_ref, _data, _params), do: :continue
+
+  @impl Spectral.Codec
+  def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _params)
+      when is_number(x) and is_number(y) do
+    {:ok, {x, y}}
+  end
+
+  def decode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
+    {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
+  end
+
+  def decode(_format, _module, _type_ref, _input, _params), do: :continue
+
+  @impl Spectral.Codec
+  def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _params) do
+    %{type: "array", items: %{type: "number"}, minItems: 2, maxItems: 2}
+  end
+end
+```
+
+Each callback must return `{:ok, result}`, `{:error, errors}`, or `:continue`. Return `{:error, ...}` when the data is invalid for a type your codec *owns*, and `:continue` for types your codec does not handle.
+
+### Codec errors
+
+Do not raise exceptions or return plain maps from codec callbacks. Construct `%Spectral.Error{}` structs with `type: :type_mismatch` for errors (as shown above). Spectral's behaviour converts these structs to the Erlang record format spectra expects, collecting errors from multiple locations and attaching path information as it traverses nested structures.
+
+### Optional `schema/4` callback
+
+The `schema/4` callback is optional. If a codec module does not export it, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. Return `:continue` for types the codec does not handle.
+
+### Static per-type configuration with `type_parameters`
+
+The `type_parameters` key in a `spectral` attribute passes a static value to your codec as the `params` argument. When `type_parameters` is absent, `params` is `:undefined`. This lets you reuse one codec across multiple types with different configuration:
+
+```elixir
+defmodule MyIds do
+  use Spectral.Codec
+  use Spectral
+
+  spectral(type_parameters: "user_")
+  @type user_id :: String.t()
+
+  spectral(type_parameters: "org_")
+  @type org_id :: String.t()
+
+  @impl Spectral.Codec
+  def encode(_format, MyIds, {:type, type, 0}, id, prefix)
+      when type in [:user_id, :org_id] and is_binary(id) do
+    {:ok, prefix <> id}
+  end
+
+  def encode(_format, MyIds, {:type, type, 0}, data, _prefix)
+      when type in [:user_id, :org_id] do
+    {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, type, 0}, value: data}}]}
+  end
+
+  def encode(_format, _module, _type_ref, _data, _params), do: :continue
+
+  @impl Spectral.Codec
+  def decode(_format, MyIds, {:type, type, 0}, encoded, prefix)
+      when type in [:user_id, :org_id] and is_binary(encoded) do
+    prefix_len = byte_size(prefix)
+
+    case encoded do
+      <<^prefix::binary-size(prefix_len), id::binary>> -> {:ok, id}
+      _ -> {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, type, 0}, value: encoded}}]}
+    end
+  end
+
+  def decode(_format, _module, _type_ref, _input, _params), do: :continue
+
+  @impl Spectral.Codec
+  def schema(_format, MyIds, {:type, type, 0}, prefix) when type in [:user_id, :org_id] do
+    %{type: "string", pattern: "^" <> prefix}
+  end
+end
+```
+
+### Codecs for third-party types
+
+To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally:
+
+```elixir
+Application.put_env(:spectra, :codecs, %{
+  {SomeLibrary, {:type, :some_type, 0}} => MyCodec
+})
+```
+
+The module is passed as the second argument to all callbacks, so each clause is unambiguous regardless of how the codec was registered.
+
 ## Built-in Codecs
 
 Spectral ships with codecs for Elixir's standard date/time types. They are not active by default — register them in `config/config.exs`:
@@ -230,60 +337,6 @@ If you use any of these types without registering the codec, encoding and decodi
 
 `Range` and `Stream` do not have built-in codecs. Implement a custom `Spectral.Codec` if needed — PRs welcome.
 
-## Custom Codecs
-
-You can write a codec for any type by implementing the `Spectral.Codec` behaviour. Add `use Spectral.Codec` to your module — spectra auto-detects it via the `@behaviour` attribute in the compiled BEAM, so no registration is needed for types defined in your own module.
-
-If a codec module does not export `schema/4`, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. The `schema/4` callback is optional — return `:continue` for types the codec does not handle.
-
-### Static per-type configuration with `type_parameters`
-
-The `type_parameters` key in a `spectral` attribute passes a static value to your codec as the `params` argument. When `type_parameters` is absent, `params` is `:undefined`. This lets you reuse one codec across multiple types with different configuration:
-
-```elixir
-defmodule MyIds do
-  use Spectral.Codec
-  use Spectral
-
-  spectral(type_parameters: "user_")
-  @type user_id :: String.t()
-
-  spectral(type_parameters: "org_")
-  @type org_id :: String.t()
-
-  @impl Spectral.Codec
-  def encode(_format, MyIds, {:type, type, 0}, id, prefix)
-      when type in [:user_id, :org_id] and is_binary(id) do
-    {:ok, prefix <> id}
-  end
-
-  def encode(_format, MyIds, {:type, type, 0}, data, _prefix)
-      when type in [:user_id, :org_id] do
-    {:error, [type_mismatch({:type, type, 0}, data)]}
-  end
-
-  def encode(_format, _module, _type_ref, _data, _params), do: :continue
-
-  @impl Spectral.Codec
-  def decode(_format, MyIds, {:type, type, 0}, encoded, prefix)
-      when type in [:user_id, :org_id] and is_binary(encoded) do
-    prefix_len = byte_size(prefix)
-
-    case encoded do
-      <<^prefix::binary-size(prefix_len), id::binary>> -> {:ok, id}
-      _ -> {:error, [type_mismatch({:type, type, 0}, encoded)]}
-    end
-  end
-
-  def decode(_format, _module, _type_ref, _input, _params), do: :continue
-
-  @impl Spectral.Codec
-  def schema(_format, MyIds, {:type, type, 0}, prefix) when type in [:user_id, :org_id] do
-    %{type: "string", pattern: "^" <> prefix}
-  end
-end
-```
-
 ### String and binary constraints
 
 For `String.t()`, `binary()`, `nonempty_binary()`, and `nonempty_string()` you can enforce structural constraints via `type_parameters` — **no custom codec required**:
@@ -308,18 +361,6 @@ end
 ```
 
 Encoding and decoding both enforce the constraints and return an error on failure. `nonempty_binary()` and `nonempty_string()` already imply `minLength: 1`; a `min_length` parameter overrides this.
-
-### Codecs for third-party types
-
-To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally:
-
-```elixir
-Application.put_env(:spectra, :codecs, %{
-  {SomeLibrary, {:type, :some_type, 0}} => MyCodec
-})
-```
-
-The module is passed as the second argument to all callbacks, so each clause is unambiguous regardless of how the codec was registered.
 
 ## Documenting Types with `spectral`
 
