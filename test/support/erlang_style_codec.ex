@@ -9,26 +9,26 @@ defmodule ErlangStyleCodec do
   @type t :: String.t()
 
   @impl Spectral.Codec
-  def encode(_format, ErlangStyleCodec, {:type, :t, 0}, data, _params)
+  def encode(_format, ErlangStyleCodec, {:type, :t, 0}, data, _sp_type, _params)
       when is_binary(data) do
     {:ok, data}
   end
 
-  def encode(_format, ErlangStyleCodec, {:type, :t, 0}, data, _params) do
+  def encode(_format, ErlangStyleCodec, {:type, :t, 0}, data, _sp_type, _params) do
     {:error, [:sp_error.type_mismatch({:type, :t, 0}, data)]}
   end
 
-  def encode(_format, _module, _type_ref, _data, _params), do: :continue
+  def encode(_format, _module, _type_ref, _data, _sp_type, _params), do: :continue
 
   @impl Spectral.Codec
-  def decode(_format, ErlangStyleCodec, {:type, :t, 0}, input, _params)
+  def decode(_format, ErlangStyleCodec, {:type, :t, 0}, input, _sp_type, _params)
       when is_binary(input) do
     {:ok, input}
   end
 
-  def decode(_format, ErlangStyleCodec, {:type, :t, 0}, input, _params) do
+  def decode(_format, ErlangStyleCodec, {:type, :t, 0}, input, _sp_type, _params) do
     {:error, [:sp_error.type_mismatch({:type, :t, 0}, input)]}
   end
 
-  def decode(_format, _module, _type_ref, _input, _params), do: :continue
+  def decode(_format, _module, _type_ref, _input, _sp_type, _params), do: :continue
 end

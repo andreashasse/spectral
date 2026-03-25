@@ -21,42 +21,53 @@ defmodule Spectral.Codec do
         @opaque point :: {float(), float()}
 
         @impl Spectral.Codec
-        def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _params)
+        def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _sp_type, _params)
             when is_number(x) and is_number(y) do
           {:ok, [x, y]}
         end
 
-        def encode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
+        def encode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params) do
           {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
         end
 
         # Types not handled by this codec → continue to default
-        def encode(_format, _module, _type_ref, _data, _params), do: :continue
+        def encode(_format, _module, _type_ref, _data, _sp_type, _params), do: :continue
 
         @impl Spectral.Codec
-        def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _params)
+        def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _sp_type, _params)
             when is_number(x) and is_number(y) do
           {:ok, {x, y}}
         end
 
-        def decode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
+        def decode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params) do
           {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
         end
 
-        def decode(_format, _module, _type_ref, _input, _params), do: :continue
+        def decode(_format, _module, _type_ref, _input, _sp_type, _params), do: :continue
 
         @impl Spectral.Codec
-        def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _params) do
+        def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _sp_type, _params) do
           %{type: "array", items: %{type: "number"}, minItems: 2, maxItems: 2}
         end
       end
 
   ## The `params` argument
 
-  The fifth argument to each callback is the value of the `type_parameters` key
-  in the `spectral` attribute placed before the type definition, or `:undefined`
-  if no such attribute is present. It is a static, per-type configuration value —
-  it is **not** related to Erlang type variables.
+  The sixth argument to `encode/6` and `decode/6`, and the fifth to `schema/5`, is the
+  value of the `type_parameters` key in the `spectral` attribute placed before the type
+  definition, or `:undefined` if no such attribute is present. It is a static,
+  per-type configuration value — it is **not** related to Erlang type variables.
+
+  ## The `sp_type` argument
+
+  The fifth argument to `encode/6` and `decode/6`, and the fourth to `schema/5`, is the
+  `sp_type()` instantiation node from the type traversal. For generic types (those with
+  type variables, such as `dict:dict(key, value)`) this is the reference node and carries
+  the concrete type-variable bindings of the current instantiation. Use
+  `Spectral.Type.type_args/1` to extract them for recursive encoding/decoding.
+
+  For non-generic types this argument is the resolved type definition and
+  `Spectral.Type.type_args/1` returns `[]`.
 
   ## Return Values
 
@@ -80,10 +91,10 @@ defmodule Spectral.Codec do
       })
   """
 
-  @typedoc "Return value for `encode/5` callback."
+  @typedoc "Return value for `encode/6` callback."
   @type encode_result :: {:ok, term()} | {:error, [Spectral.Error.t()]} | :continue
 
-  @typedoc "Return value for `decode/5` callback."
+  @typedoc "Return value for `decode/6` callback."
   @type decode_result :: {:ok, term()} | {:error, [Spectral.Error.t()]} | :continue
 
   @doc """
@@ -93,6 +104,7 @@ defmodule Spectral.Codec do
   Return `{:error, errors}` when the data is invalid for a type your codec handles,
   or `:continue` for types this codec does not recognise.
 
+  `sp_type` is the instantiation node from the type traversal (see module doc).
   `params` is the value of `type_parameters` from the `spectral` attribute on the
   type definition, or `:undefined` if absent.
   """
@@ -101,6 +113,7 @@ defmodule Spectral.Codec do
               module :: module(),
               type_ref :: Spectral.sp_type_reference(),
               data :: term(),
+              sp_type :: term(),
               params :: term()
             ) :: encode_result()
 
@@ -111,6 +124,7 @@ defmodule Spectral.Codec do
   Return `{:error, errors}` when the input is invalid for a type your codec handles,
   or `:continue` for types this codec does not recognise.
 
+  `sp_type` is the instantiation node from the type traversal (see module doc).
   `params` is the value of `type_parameters` from the `spectral` attribute on the
   type definition, or `:undefined` if absent.
   """
@@ -119,6 +133,7 @@ defmodule Spectral.Codec do
               module :: module(),
               type_ref :: Spectral.sp_type_reference(),
               input :: term(),
+              sp_type :: term(),
               params :: term()
             ) :: decode_result()
 
@@ -129,6 +144,7 @@ defmodule Spectral.Codec do
   `{:schema_not_implemented, module, type_ref}` when schema generation is requested
   for a type owned by this codec.
 
+  `sp_type` is the instantiation node from the type traversal (see module doc).
   `params` is the value of `type_parameters` from the `spectral` attribute on the
   type definition, or `:undefined` if absent.
   """
@@ -136,10 +152,11 @@ defmodule Spectral.Codec do
               format :: atom(),
               module :: module(),
               type_ref :: Spectral.sp_type_reference(),
+              sp_type :: term(),
               params :: term()
             ) :: map()
 
-  @optional_callbacks schema: 4
+  @optional_callbacks schema: 5
 
   @doc false
   def __convert_result__({:error, errors}) when is_list(errors) do
@@ -154,17 +171,17 @@ defmodule Spectral.Codec do
   @doc false
   defmacro __before_compile__(_env) do
     quote do
-      defoverridable encode: 5, decode: 5
+      defoverridable encode: 6, decode: 6
 
       @impl Spectral.Codec
-      def encode(format, module, type_ref, data, params) do
-        super(format, module, type_ref, data, params)
+      def encode(format, module, type_ref, data, sp_type, params) do
+        super(format, module, type_ref, data, sp_type, params)
         |> Spectral.Codec.__convert_result__()
       end
 
       @impl Spectral.Codec
-      def decode(format, module, type_ref, input, params) do
-        super(format, module, type_ref, input, params)
+      def decode(format, module, type_ref, input, sp_type, params) do
+        super(format, module, type_ref, input, sp_type, params)
         |> Spectral.Codec.__convert_result__()
       end
     end
