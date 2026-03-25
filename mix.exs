@@ -29,8 +29,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra,
-       github: "andreashasse/spectra", branch: "sp-type-in-codec-callbacks", override: true},
+      {:spectra, "~> 0.9.0"},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
