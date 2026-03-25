@@ -100,12 +100,18 @@ schema =
 The `binary_string` and `string` formats decode a single value from a binary or string — useful for path variables and query parameters:
 
 ```elixir
-# Decode a date from a path variable like "/events/2024-04-01"
-{:ok, date} = Spectral.decode("2024-04-01", Date, :t, :binary_string)
-# Returns: {:ok, ~D[2024-04-01]}
+defmodule MyTypes do
+  use Spectral
 
-# Encode a date back to a plain string
-{:ok, "2024-04-01"} = Spectral.encode(~D[2024-04-01], Date, :t, :binary_string)
+  @type role :: :admin | :user
+end
+
+# Decode a role from a query parameter like "?role=admin"
+{:ok, :admin} = Spectral.decode("admin", MyTypes, :role, :binary_string)
+{:error, _} = Spectral.decode("superuser", MyTypes, :role, :binary_string)
+
+# Encode a role back to a plain string
+{:ok, "admin"} = Spectral.encode(:admin, MyTypes, :role, :binary_string)
 ```
 
 ### Options
