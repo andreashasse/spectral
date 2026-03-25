@@ -7,15 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.2] - 2026-03-21
+## [0.9.0] - 2026-03-25
 
 ### Added
-- `deprecated` is now a documented `spectral` field for types — marks a type as deprecated, emitted as `"deprecated": true` in the generated JSON Schema (was already implemented in spectra but missing from Spectral's documentation)
+- `Spectral.Type` module with `type_args/1` — extracts concrete type-variable bindings from the `sp_type` argument passed to codec callbacks, enabling codecs to recursively encode/decode generic types
+- `deprecated` is now a documented `spectral` field for types — marks a type as deprecated, emitted as `"deprecated": true` in the generated JSON Schema
 - `examples_function` added to the `spectral/1` macro `@doc` and `use Spectral` moduledoc
 
 ### Changed
+- **BREAKING**: `Spectral.Codec` callbacks changed from 5-arg to 6-arg. A new `sp_type` argument is inserted as the 5th argument (before `params`) in `encode/6`, `decode/6`, and `schema/5`. Update all codec implementations by adding a `_sp_type` parameter before `params` in every callback clause.
+- `Spectral.Codec.MapSet` for `MapSet.t(elem)` now recursively encodes, decodes, and generates schemas for each element according to its type, using `Spectral.Type.type_args/1`
 - `spectral/1` macro `@doc` split into separate `@type` and `@spec` field sections, so function spec fields (`summary`, `description`, `deprecated`) are now documented on the macro itself
-- Upgraded spectra dependency to `~> 0.8.2`
+- Upgraded spectra dependency to `~> 0.9.0`
 
 ## [0.8.1] - 2026-03-21
 
