@@ -90,7 +90,7 @@ schema =
 
 ### Data Serialization API
 
-**Parameters** for `encode/3-5`, `decode/3-5`, and `schema/2-3`:
+**Parameters** for `encode/3-5`, `decode/3-5`, and `schema/2-4`:
 
 - `data` — The data to encode/decode (Elixir value for encode, binary/iodata for decode)
 - `module` — The module where the type is defined (e.g., `Person`)
@@ -259,7 +259,7 @@ Each callback must return `{:ok, result}`, `{:error, errors}`, or `:continue`. R
 
 ### Codec errors
 
-Construct `%Spectral.Error{}` structs or errors (as shown above). Spectral collect errors from multiple locations and attaching path information as it traverses nested structures. See existing usages of `%Spectral.Error{}` in the codebase for examples.
+Construct `%Spectral.Error{}` structs and always return them in `{:error, [%Spectral.Error{}]}` tuples (as shown above). Spectral collects errors from multiple locations and attaches path information as it traverses nested structures. See existing usages of `%Spectral.Error{}` in the codebase for examples.
 
 ### Optional `schema/5` callback
 
@@ -267,7 +267,7 @@ The `schema/5` callback is optional. If a codec module does not export it, calli
 
 ### Codecs for third-party types
 
-To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally (Note: you are configuring the erlang library `spectra` here, not `spectral`):
+To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally (Note: you are configuring the Erlang library `spectra` here, not `spectral`):
 
 ```elixir
 Application.put_env(:spectra, :codecs, %{
