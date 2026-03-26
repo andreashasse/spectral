@@ -88,7 +88,7 @@ schema =
   |> IO.iodata_to_binary()
 ```
 
-## Data Serialization API
+### Data Serialization API
 
 **Parameters** for `encode/3-5`, `decode/3-5`, and `schema/2-3`:
 
@@ -114,7 +114,7 @@ end
 {:ok, "admin"} = Spectral.encode(:admin, MyTypes, :role, :binary_string)
 ```
 
-### Options
+#### Options
 
 `encode/5` and `decode/5` accept an options list as the last argument:
 
@@ -170,7 +170,7 @@ Each `%Spectral.Error{}` has:
 - `context` — additional context, e.g. `%{expected: :integer, got: "not a number"}`
 - `message` — human-readable error message
 
-## Nil Values, Extra Fields, and Special Types
+## Nil Values, Extra Fields, and Unsupported Types
 
 ### Nil values
 
@@ -201,9 +201,9 @@ Spectral.decode(json, Person, :t, :json)
 # Returns: {:ok, %Person{name: "Alice", age: 30, address: nil}}
 ```
 
-### `dynamic()`, `term()`, and `any()`
+### Unvalidated types
 
-Spectral does not validate or reject data of these types. The result may not be valid JSON if encoding such data.
+`dynamic()`, `term()`, and `any()` pass through without validation. The result may not be valid JSON if encoding such data.
 
 ### Unsupported types
 
@@ -214,7 +214,7 @@ The following types cannot be serialized to JSON:
 
 ## Custom Codecs
 
-You can write a codec for any type by implementing the `Spectral.Codec` behaviour. Add `use Spectral.Codec` to your module — spectra auto-detects it via the `@behaviour` attribute in the compiled BEAM, so no registration is needed for types defined in your own module.
+A codec is a module that provides custom encode, decode, and schema logic for a type. Implement the `Spectral.Codec` behaviour and add `use Spectral.Codec` to your module — spectra auto-detects it via the `@behaviour` attribute in the compiled BEAM, so no registration is needed for types defined in your own module.
 
 Here is a codec that serializes a `point` tuple as a two-element JSON array:
 
@@ -259,7 +259,7 @@ Each callback must return `{:ok, result}`, `{:error, errors}`, or `:continue`. R
 
 ### Codec errors
 
-Do not raise exceptions or return plain maps from codec callbacks. Construct `%Spectral.Error{}` structs with `type: :type_mismatch` for errors (as shown above). Spectral's behaviour converts these structs to the Erlang record format spectra expects, collecting errors from multiple locations and attaching path information as it traverses nested structures.
+Construct `%Spectral.Error{}` structs or errors (as shown above). Spectral collect errors from multiple locations and attaching path information as it traverses nested structures. See existing usages of `%Spectral.Error{}` in the codebase for examples.
 
 ### Optional `schema/5` callback
 
@@ -267,7 +267,7 @@ The `schema/5` callback is optional. If a codec module does not export it, calli
 
 ### Codecs for third-party types
 
-To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally:
+To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally (Note: you are configuring the erlang library `spectra` here, not `spectral`):
 
 ```elixir
 Application.put_env(:spectra, :codecs, %{
@@ -275,11 +275,9 @@ Application.put_env(:spectra, :codecs, %{
 })
 ```
 
-The module is passed as the second argument to all callbacks, so each clause is unambiguous regardless of how the codec was registered.
-
 ## Built-in Codecs
 
-Spectral ships with codecs for Elixir's standard date/time types. They are not active by default — register them in `config/config.exs`:
+Spectral ships with codecs for Elixir's standard date/time types and MapSet. They are not active by default — register them in `config/config.exs`:
 
 ```elixir
 import Config
@@ -299,8 +297,6 @@ config :spectra, :codecs, %{
 | `Spectral.Codec.MapSet` | `MapSet.t()` / `MapSet.t(elem)` | JSON array with `uniqueItems: true` in its schema |
 
 The date/time codecs handle `:json` and `:binary_string` formats. A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context.
-
-If you use any of these types without registering the codec, encoding and decoding fall through to spectra's structural codec, which cannot handle these opaque structs. Schema generation raises `{:schema_not_implemented, Module, type_ref}`. Register the codecs before your application starts processing these types.
 
 `Range` and `Stream` do not have built-in codecs. Implement a custom `Spectral.Codec` if needed — PRs welcome.
 
