@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - String constraint parameters (`min_length`, `max_length`, `pattern`, `format`) are now correctly enforced when the type is defined as an alias for `String.t()` — e.g. `@type slug :: String.t()` with `spectral type_parameters: %{pattern: "^[a-z]+$"}`. Previously the constraint was silently ignored at encode/decode time and omitted from schema output. Requires spectra `~> 0.9.1`.
+- `Spectral.Codec.Date` and `Spectral.Codec.DateTime` now correctly handle the `:binary_string` format. They previously matched on `:binary` (which is not a valid spectra format), causing them to silently return `:continue` when called via `Spectral.encode/decode` with `:binary_string` — the correct format for path variables and query parameters.
 
 ### Changed
 - Upgraded spectra dependency to `~> 0.9.1`
