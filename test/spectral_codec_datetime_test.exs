@@ -111,6 +111,34 @@ defmodule SpectralCodecDateTimeTest do
       refute Map.has_key?(ctx, :reason)
     end
 
+    test "encodes DateTime to binary string for :binary_string format" do
+      {:ok, dt, _} = DateTime.from_iso8601("2012-04-23T18:25:43.511Z")
+
+      assert {:ok, "2012-04-23T18:25:43.511Z"} =
+               Spectral.Codec.DateTime.encode(
+                 :binary_string,
+                 DateTime,
+                 {:type, :t, 0},
+                 dt,
+                 :undefined,
+                 :undefined
+               )
+    end
+
+    test "decodes ISO 8601 binary to DateTime for :binary_string format" do
+      {:ok, dt, _} = DateTime.from_iso8601("2012-04-23T18:25:43.511Z")
+
+      assert {:ok, ^dt} =
+               Spectral.Codec.DateTime.decode(
+                 :binary_string,
+                 DateTime,
+                 {:type, :t, 0},
+                 "2012-04-23T18:25:43.511Z",
+                 :undefined,
+                 :undefined
+               )
+    end
+
     test "schema returns date-time format" do
       assert %{type: "string", format: "date-time"} =
                Spectral.Codec.DateTime.schema(
@@ -208,6 +236,34 @@ defmodule SpectralCodecDateTimeTest do
                Spectral.Error.from_erlang(error)
 
       refute Map.has_key?(ctx, :reason)
+    end
+
+    test "encodes Date to binary string for :binary_string format" do
+      {:ok, d} = Date.from_iso8601("2023-04-01")
+
+      assert {:ok, "2023-04-01"} =
+               Spectral.Codec.Date.encode(
+                 :binary_string,
+                 Date,
+                 {:type, :t, 0},
+                 d,
+                 :undefined,
+                 :undefined
+               )
+    end
+
+    test "decodes ISO 8601 binary to Date for :binary_string format" do
+      {:ok, d} = Date.from_iso8601("2023-04-01")
+
+      assert {:ok, ^d} =
+               Spectral.Codec.Date.decode(
+                 :binary_string,
+                 Date,
+                 {:type, :t, 0},
+                 "2023-04-01",
+                 :undefined,
+                 :undefined
+               )
     end
 
     test "schema returns date format" do

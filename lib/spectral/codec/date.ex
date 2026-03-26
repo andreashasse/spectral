@@ -3,7 +3,7 @@ defmodule Spectral.Codec.Date do
   Built-in codec for `Date.t()`.
 
   Encodes `Date` structs to ISO 8601 strings (e.g. `"2023-04-01"`) and decodes
-  them back. Handles `:json` and `:binary` formats (returning a binary string)
+  them back. Handles `:json` and `:binary_string` formats (returning a binary string)
   and `:string` format (returning a charlist).
 
   ## Registration
@@ -20,7 +20,7 @@ defmodule Spectral.Codec.Date do
 
   @impl Spectral.Codec
   def encode(format, Date, {:type, :t, 0}, %Date{} = d, _sp_type, _params)
-      when format in [:json, :binary] do
+      when format in [:json, :binary_string] do
     {:ok, Date.to_iso8601(d)}
   end
 
@@ -41,7 +41,7 @@ defmodule Spectral.Codec.Date do
 
   @impl Spectral.Codec
   def decode(format, Date, {:type, :t, 0}, input, _sp_type, _params)
-      when format in [:json, :binary] and is_binary(input) do
+      when format in [:json, :binary_string] and is_binary(input) do
     case Date.from_iso8601(input) do
       {:ok, d} ->
         {:ok, d}

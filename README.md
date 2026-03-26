@@ -15,7 +15,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.9.0"}
+    {:spectral, "~> 0.9.1"}
   ]
 end
 ```
@@ -58,14 +58,14 @@ person = %Person{
   address: %Person.Address{street: "Ystader Straße", city: "Berlin"}
 }
 
-with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
+with {:ok, json_iodata} <- Spectral.encode(person, Person, :t, :json) do
   IO.iodata_to_binary(json_iodata)
   # Returns: "{\"address\":{\"city\":\"Berlin\",\"street\":\"Ystader Straße\"},\"age\":30,\"name\":\"Alice\"}"
 end
 
 # Decode JSON to a struct
 json_string = ~s({"name":"Alice","age":30,"address":{"street":"Ystader Straße","city":"Berlin"}})
-{:ok, person} = Spectral.decode(json_string, Person, :t)
+{:ok, person} = Spectral.decode(json_string, Person, :t, :json)
 
 # Generate a JSON schema
 schema_iodata = Spectral.schema(Person, :t)
@@ -77,10 +77,10 @@ Bang variants raise instead of returning error tuples:
 ```elixir
 json =
   person
-  |> Spectral.encode!(Person, :t)
+  |> Spectral.encode!(Person, :t, :json)
   |> IO.iodata_to_binary()
 
-person = Spectral.decode!(json_string, Person, :t)
+person = Spectral.decode!(json_string, Person, :t, :json)
 
 schema =
   Person
@@ -88,18 +88,33 @@ schema =
   |> IO.iodata_to_binary()
 ```
 
-## Data Serialization API
+### Data Serialization API
 
-**Parameters** for `encode/3-5`, `decode/3-5`, and `schema/2-3`:
+**Parameters** for `encode/3-5`, `decode/3-5`, and `schema/2-4`:
 
 - `data` — The data to encode/decode (Elixir value for encode, binary/iodata for decode)
 - `module` — The module where the type is defined (e.g., `Person`)
 - `type_ref` — The type reference, typically an atom like `:t` for `@type t`
 - `format` — (optional) The data format: `:json` (default), `:binary_string`, or `:string`
 
-The `binary_string` and `string` formats decode a single value from a binary or string — useful for path variables and query parameters.
+The `binary_string` and `string` formats decode a single value from a binary or string — useful for path variables and query parameters:
 
-### Options
+```elixir
+defmodule MyTypes do
+  use Spectral
+
+  @type role :: :admin | :user
+end
+
+# Decode a role from a query parameter like "?role=admin"
+{:ok, :admin} = Spectral.decode("admin", MyTypes, :role, :binary_string)
+{:error, _} = Spectral.decode("superuser", MyTypes, :role, :binary_string)
+
+# Encode a role back to a plain string
+{:ok, "admin"} = Spectral.encode(:admin, MyTypes, :role, :binary_string)
+```
+
+#### Options
 
 `encode/5` and `decode/5` accept an options list as the last argument:
 
@@ -138,7 +153,7 @@ Use `with` for clean error handling:
 ```elixir
 bad_json = ~s({"name":"Alice","age":"not a number"})
 
-with {:ok, person} <- Spectral.decode(bad_json, Person, :t) do
+with {:ok, person} <- Spectral.decode(bad_json, Person, :t, :json) do
   process_person(person)
 end
 ```
@@ -155,7 +170,7 @@ Each `%Spectral.Error{}` has:
 - `context` — additional context, e.g. `%{expected: :integer, got: "not a number"}`
 - `message` — human-readable error message
 
-## Nil Values, Extra Fields, and Special Types
+## Nil Values, Extra Fields, and Unsupported Types
 
 ### Nil values
 
@@ -164,15 +179,15 @@ Struct fields with `nil` values are omitted when encoding if the type allows `ni
 ```elixir
 person = %Person{name: "Alice"}  # age and address are nil
 
-with {:ok, json_iodata} <- Spectral.encode(person, Person, :t) do
+with {:ok, json_iodata} <- Spectral.encode(person, Person, :t, :json) do
   IO.iodata_to_binary(json_iodata)
   # Returns: "{\"name\":\"Alice\"}"  (age and address omitted)
 end
 
-Spectral.decode(~s({"name":"Alice"}), Person, :t)
+Spectral.decode(~s({"name":"Alice"}), Person, :t, :json)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 
-Spectral.decode(~s({"name":"Alice","age":null}), Person, :t)
+Spectral.decode(~s({"name":"Alice","age":null}), Person, :t, :json)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
 
@@ -182,13 +197,13 @@ Extra JSON fields not present in the type specification are silently ignored, en
 
 ```elixir
 json = ~s({"name":"Alice","age":30,"unknown_field":"ignored"})
-Spectral.decode(json, Person, :t)
+Spectral.decode(json, Person, :t, :json)
 # Returns: {:ok, %Person{name: "Alice", age: 30, address: nil}}
 ```
 
-### `dynamic()`, `term()`, and `any()`
+### Unvalidated types
 
-Spectral does not validate or reject data of these types. The result may not be valid JSON if encoding such data.
+`dynamic()`, `term()`, and `any()` pass through without validation. The result may not be valid JSON if encoding such data.
 
 ### Unsupported types
 
@@ -199,7 +214,7 @@ The following types cannot be serialized to JSON:
 
 ## Custom Codecs
 
-You can write a codec for any type by implementing the `Spectral.Codec` behaviour. Add `use Spectral.Codec` to your module — spectra auto-detects it via the `@behaviour` attribute in the compiled BEAM, so no registration is needed for types defined in your own module.
+A codec is a module that provides custom encode, decode, and schema logic for a type. Implement the `Spectral.Codec` behaviour and add `use Spectral.Codec` to your module — spectra auto-detects it via the `@behaviour` attribute in the compiled BEAM, so no registration is needed for types defined in your own module.
 
 Here is a codec that serializes a `point` tuple as a two-element JSON array:
 
@@ -210,31 +225,31 @@ defmodule MyGeoModule do
   @opaque point :: {float(), float()}
 
   @impl Spectral.Codec
-  def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _params)
+  def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _sp_type, _params)
       when is_number(x) and is_number(y) do
     {:ok, [x, y]}
   end
 
-  def encode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
+  def encode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params) do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
   end
 
-  def encode(_format, _module, _type_ref, _data, _params), do: :continue
+  def encode(_format, _module, _type_ref, _data, _sp_type, _params), do: :continue
 
   @impl Spectral.Codec
-  def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _params)
+  def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _sp_type, _params)
       when is_number(x) and is_number(y) do
     {:ok, {x, y}}
   end
 
-  def decode(_format, MyGeoModule, {:type, :point, 0}, data, _params) do
+  def decode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params) do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
   end
 
-  def decode(_format, _module, _type_ref, _input, _params), do: :continue
+  def decode(_format, _module, _type_ref, _input, _sp_type, _params), do: :continue
 
   @impl Spectral.Codec
-  def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _params) do
+  def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _sp_type, _params) do
     %{type: "array", items: %{type: "number"}, minItems: 2, maxItems: 2}
   end
 end
@@ -244,15 +259,15 @@ Each callback must return `{:ok, result}`, `{:error, errors}`, or `:continue`. R
 
 ### Codec errors
 
-Do not raise exceptions or return plain maps from codec callbacks. Construct `%Spectral.Error{}` structs with `type: :type_mismatch` for errors (as shown above). Spectral's behaviour converts these structs to the Erlang record format spectra expects, collecting errors from multiple locations and attaching path information as it traverses nested structures.
+Construct `%Spectral.Error{}` structs and always return them in `{:error, [%Spectral.Error{}]}` tuples (as shown above). Spectral collects errors from multiple locations and attaches path information as it traverses nested structures. See existing usages of `%Spectral.Error{}` in the codebase for examples.
 
-### Optional `schema/4` callback
+### Optional `schema/5` callback
 
-The `schema/4` callback is optional. If a codec module does not export it, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. Return `:continue` for types the codec does not handle.
+The `schema/5` callback is optional. If a codec module does not export it, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. Return `:continue` for types the codec does not handle.
 
 ### Codecs for third-party types
 
-To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally:
+To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally (Note: you are configuring the Erlang library `spectra` here, not `spectral`):
 
 ```elixir
 Application.put_env(:spectra, :codecs, %{
@@ -260,11 +275,9 @@ Application.put_env(:spectra, :codecs, %{
 })
 ```
 
-The module is passed as the second argument to all callbacks, so each clause is unambiguous regardless of how the codec was registered.
-
 ## Built-in Codecs
 
-Spectral ships with codecs for Elixir's standard date/time types. They are not active by default — register them in `config/config.exs`:
+Spectral ships with codecs for Elixir's standard date/time types and MapSet. They are not active by default — register them in `config/config.exs`:
 
 ```elixir
 import Config
@@ -285,13 +298,11 @@ config :spectra, :codecs, %{
 
 The date/time codecs handle `:json` and `:binary_string` formats. A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context.
 
-If you use any of these types without registering the codec, encoding and decoding fall through to spectra's structural codec, which cannot handle these opaque structs. Schema generation raises `{:schema_not_implemented, Module, type_ref}`. Register the codecs before your application starts processing these types.
-
 `Range` and `Stream` do not have built-in codecs. Implement a custom `Spectral.Codec` if needed — PRs welcome.
 
 ## Type Parameters
 
-The `type_parameters` key in a `spectral` attribute attaches a static value to a type. This value is available to codecs as the `params` argument (5th argument to `encode/5` and `decode/5`, 4th to `schema/4`). When `type_parameters` is absent, `params` is `:undefined`.
+The `type_parameters` key in a `spectral` attribute attaches a static value to a type. This value is available to codecs as the `params` argument (6th argument to `encode/6` and `decode/6`, 5th to `schema/5`). When `type_parameters` is absent, `params` is `:undefined`.
 
 ### String and binary constraints
 
@@ -334,20 +345,20 @@ defmodule MyIds do
   @type org_id :: String.t()
 
   @impl Spectral.Codec
-  def encode(_format, MyIds, {:type, type, 0}, id, prefix)
+  def encode(_format, MyIds, {:type, type, 0}, id, _sp_type, prefix)
       when type in [:user_id, :org_id] and is_binary(id) do
     {:ok, prefix <> id}
   end
 
-  def encode(_format, MyIds, {:type, type, 0}, data, _prefix)
+  def encode(_format, MyIds, {:type, type, 0}, data, _sp_type, _prefix)
       when type in [:user_id, :org_id] do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, type, 0}, value: data}}]}
   end
 
-  def encode(_format, _module, _type_ref, _data, _params), do: :continue
+  def encode(_format, _module, _type_ref, _data, _sp_type, _params), do: :continue
 
   @impl Spectral.Codec
-  def decode(_format, MyIds, {:type, type, 0}, encoded, prefix)
+  def decode(_format, MyIds, {:type, type, 0}, encoded, _sp_type, prefix)
       when type in [:user_id, :org_id] and is_binary(encoded) do
     prefix_len = byte_size(prefix)
 
@@ -357,10 +368,10 @@ defmodule MyIds do
     end
   end
 
-  def decode(_format, _module, _type_ref, _input, _params), do: :continue
+  def decode(_format, _module, _type_ref, _input, _sp_type, _params), do: :continue
 
   @impl Spectral.Codec
-  def schema(_format, MyIds, {:type, type, 0}, prefix) when type in [:user_id, :org_id] do
+  def schema(_format, MyIds, {:type, type, 0}, _sp_type, prefix) when type in [:user_id, :org_id] do
     %{type: "string", pattern: "^" <> prefix}
   end
 end
