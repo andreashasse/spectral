@@ -4,7 +4,7 @@ defmodule Spectral.Codec.DateTime do
 
   Encodes `DateTime` structs to ISO 8601 / RFC 3339 strings
   (e.g. `"2012-04-23T18:25:43.511Z"`) and decodes them back.
-  Handles `:json` and `:binary` formats (returning a binary string) and
+  Handles `:json` and `:binary_string` formats (returning a binary string) and
   `:string` format (returning a charlist).
 
   ## Registration
@@ -21,7 +21,7 @@ defmodule Spectral.Codec.DateTime do
 
   @impl Spectral.Codec
   def encode(format, DateTime, {:type, :t, 0}, %DateTime{} = dt, _sp_type, _params)
-      when format in [:json, :binary] do
+      when format in [:json, :binary_string] do
     {:ok, DateTime.to_iso8601(dt)}
   end
 
@@ -42,7 +42,7 @@ defmodule Spectral.Codec.DateTime do
 
   @impl Spectral.Codec
   def decode(format, DateTime, {:type, :t, 0}, input, _sp_type, _params)
-      when format in [:json, :binary] and is_binary(input) do
+      when format in [:json, :binary_string] and is_binary(input) do
     case DateTime.from_iso8601(input) do
       {:ok, dt, _offset} ->
         {:ok, dt}
