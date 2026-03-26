@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-03-26
+
+### Fixed
+- String constraint parameters (`min_length`, `max_length`, `pattern`, `format`) are now correctly enforced when the type is defined as an alias for `String.t()` — e.g. `@type slug :: String.t()` with `spectral type_parameters: %{pattern: "^[a-z]+$"}`. Previously the constraint was silently ignored at encode/decode time and omitted from schema output. Requires spectra `~> 0.9.1`.
+
+### Changed
+- Upgraded spectra dependency to `~> 0.9.1`
+- README: corrected all encode/decode examples to use explicit `:json` format argument; updated codec callback signatures to 6-arg form; improved section headings and structure
+
 ## [0.9.0] - 2026-03-25
 
 ### Added
