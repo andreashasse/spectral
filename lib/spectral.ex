@@ -282,9 +282,6 @@ defmodule Spectral do
 
     spec_attrs = Module.get_attribute(env.module, :spec) || []
 
-    # The :spectral attribute accumulates in reverse order (LIFO), so reverse it to get source order.
-    spectral_in_order = Enum.reverse(spectral_attrs)
-
     types_with_lines =
       type_attrs
       |> Enum.map(fn type_ast ->
@@ -332,31 +329,38 @@ defmodule Spectral do
         end
       end)
 
-    all_declarations =
-      Enum.sort_by(types_with_lines ++ specs_with_lines, fn {line, _, _} -> line end)
+    # Merge spectral annotations with type/spec declarations, sort by line, then do a
+    # single left-to-right scan. Each spectral sets a pending doc that is consumed by
+    # the next declaration — O(N log N) vs the previous O(N²) Enum.find approach.
+    all_items =
+      (Enum.map(spectral_attrs, fn {line, doc} -> {line, :spectral, doc} end) ++
+         types_with_lines ++
+         specs_with_lines)
+      |> Enum.sort_by(fn {line, _, _} -> line end)
 
-    # Semantic pairing: match each @spectral with the @type or @spec that comes immediately after it
-    paired_docs =
-      Enum.map(spectral_in_order, fn spectral_doc ->
-        {spectral_line, doc} =
-          case spectral_doc do
-            {line, map} when is_integer(line) and is_map(map) ->
-              {line, map}
+    {pairs_reversed, leftover} =
+      Enum.reduce(all_items, {[], nil}, fn
+        {line, :spectral, doc}, {pairs, _pending} ->
+          # New spectral replaces any previous pending (last one before a declaration wins)
+          {pairs, {line, doc}}
 
-            other ->
-              # This should never happen if spectral/1 macro validation is working
-              raise ArgumentError,
-                    "Internal error: Invalid @spectral attribute format: #{inspect(other)} in #{inspect(env.module)}. " <>
-                      "This is a bug in Spectral - please report it at https://github.com/andreashasse/spectral/issues"
-          end
+        {_line, _kind, _ref}, {pairs, nil} ->
+          # No pending spectral — this declaration is undocumented
+          {pairs, nil}
 
-        {_decl_line, kind, ref} =
-          Enum.find(all_declarations, fn {decl_line, _, _} -> decl_line > spectral_line end) ||
-            raise ArgumentError,
-                  "spectral call on line #{spectral_line} in #{inspect(env.module)} has no corresponding @type or @spec definition after it"
-
-        {kind, ref, doc}
+        {_line, kind, ref}, {pairs, {_spectral_line, doc}} ->
+          # Consume the pending spectral
+          {[{kind, ref, doc} | pairs], nil}
       end)
+
+    if leftover != nil do
+      {spectral_line, _doc} = leftover
+
+      raise ArgumentError,
+            "spectral call on line #{spectral_line} in #{inspect(env.module)} has no corresponding @type or @spec definition after it"
+    end
+
+    paired_docs = Enum.reverse(pairs_reversed)
 
     type_docs_to_add =
       paired_docs

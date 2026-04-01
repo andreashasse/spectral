@@ -595,6 +595,30 @@ endpoints = [
 {:ok, spec_map} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints, [:pre_encoded])
 ```
 
+## Configuration
+
+Spectral is configured via the underlying `:spectra` application environment. Put this in `config/config.exs` (or an environment-specific file):
+
+```elixir
+import Config
+
+config :spectra,
+  # Enable the type-info cache (recommended in production).
+  # Type information is read from BEAM abstract code on every encode/decode/schema
+  # call by default. The cache stores it in persistent_term, keyed by module
+  # version, so it invalidates automatically on code reloads.
+  use_module_types_cache: true,
+
+  # Register codecs for types you cannot annotate directly (stdlib, third-party).
+  # See the Built-in Codecs and Custom Codecs sections for details.
+  codecs: %{
+    {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime,
+    {Date, {:type, :t, 0}} => Spectral.Codec.Date,
+    {MapSet, {:type, :t, 0}} => Spectral.Codec.MapSet,
+    {MapSet, {:type, :t, 1}} => Spectral.Codec.MapSet
+  }
+```
+
 ## Related Projects
 
 - **[spectra](https://github.com/andreashasse/spectra)** - The underlying Erlang library that powers Spectral
