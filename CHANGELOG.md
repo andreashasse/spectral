@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-04-01
+
+### Changed
+- Upgraded spectra dependency to `~> 0.9.3`
+- Internal: replaced O(N²) spectral pairing loop with an O(N log N) state machine — no behaviour change, compile times for large modules may improve
+- README: added Configuration section documenting `spectra` application environment options
+
 ## [0.9.1] - 2026-03-26
 
 ### Fixed
