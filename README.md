@@ -191,6 +191,74 @@ Spectral.decode(~s({"name":"Alice","age":null}), Person, :t, :json)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
 
+### Struct defaults
+
+When decoding JSON into an Elixir struct, missing fields are filled from the struct's default
+values — the same values you get from `%MyStruct{}`. This means a JSON object that omits a
+field is decoded as if the struct was constructed normally and the provided fields were patched
+in.
+
+Whether a field is **required** or **optional** in the JSON depends on its struct default and
+its type:
+
+| Struct default | Type allows `nil`? | JSON field missing → |
+|---|---|---|
+| any non-`nil` value | either | struct default used |
+| `nil` | yes | `nil` |
+| `nil` | no | **error** — field is required |
+
+```elixir
+defmodule Article do
+  use Spectral
+
+  defstruct title: nil, views: 0, published: false
+
+  @type t :: %Article{
+          title: String.t(),        # nil default, non-nullable → required in JSON
+          views: non_neg_integer(), # non-nil default → optional in JSON
+          published: boolean()      # non-nil default → optional in JSON
+        }
+end
+
+Spectral.decode(~s({"title":"Hello"}), Article, :t)
+# {:ok, %Article{title: "Hello", views: 0, published: false}}
+
+Spectral.decode(~s({"title":"Hello","views":42,"published":true}), Article, :t)
+# {:ok, %Article{title: "Hello", views: 42, published: true}}
+
+Spectral.decode(~s({"views":42}), Article, :t)
+# {:error, [...]}  — title is missing and required
+```
+
+Nested struct fields follow the same rules. If a field's type is another struct and that
+struct has non-nil defaults, those defaults apply when the nested object is decoded with
+missing sub-fields:
+
+```elixir
+defmodule Config do
+  use Spectral
+
+  defstruct timeout: 30, retries: 3
+
+  @type t :: %Config{timeout: pos_integer(), retries: non_neg_integer()}
+end
+
+Spectral.decode(~s({"timeout":60}), Config, :t)
+# {:ok, %Config{timeout: 60, retries: 3}}  — retries filled from struct default
+```
+
+#### Ecto schemas
+
+Ecto schemas compile to regular Elixir structs with `__struct__/0`, so struct defaults work
+automatically. Fields declared without an explicit `:default` option have a `nil` default,
+making them required in JSON if their type is non-nullable.
+
+Association fields (`has_many`, `belongs_to`, `has_one`) default to
+`%Ecto.Association.NotLoaded{}`, not `nil`. Since `NotLoaded` is non-nil, those fields are
+treated as optional and the `NotLoaded` struct would be used if the association is absent from
+JSON. In practice you almost always want to **exclude association fields entirely** using
+`only` (see below) rather than decode into them.
+
 ### Extra fields
 
 Extra JSON fields not present in the type specification are silently ignored, enabling forward compatibility:
@@ -402,6 +470,7 @@ end
 - `examples` — list of example values
 - `examples_function` — `{module, function_name, args}` tuple; the function is called at schema generation time to produce examples. Use this instead of `examples` when constructing values inline is awkward. The function must be exported.
 - `type_parameters` — passed as `params` to codec callbacks (see [Custom Codecs](#custom-codecs))
+- `only` — list of field name atoms to include; all other fields are excluded from encode, decode, and schema generation (see [Field Filtering with `only`](#field-filtering-with-only))
 
 ```elixir
 defmodule Person do
@@ -440,6 +509,97 @@ defmodule MyModule do
   @type internal_type :: atom()
 end
 ```
+
+### Field Filtering with `only`
+
+The `only` key restricts which struct fields are included when encoding, decoding, and
+generating schemas — similar to `@derive {Jason.Encoder, only: [...]}`. This is useful for
+controlling what your API exposes without defining a separate struct.
+
+```elixir
+defmodule User do
+  use Spectral
+
+  defstruct [:id, :name, :email, :password_hash]
+
+  # Full type — used internally, includes all fields
+  @type t :: %User{
+          id: pos_integer(),
+          name: String.t(),
+          email: String.t(),
+          password_hash: binary() | nil
+        }
+
+  # Public type — password_hash excluded from encode, decode, and schema
+  spectral only: [:id, :name, :email]
+  @type public_t :: %User{
+          id: pos_integer(),
+          name: String.t(),
+          email: String.t(),
+          password_hash: binary() | nil
+        }
+end
+```
+
+```elixir
+user = %User{id: 1, name: "Alice", email: "alice@example.com", password_hash: "secret"}
+
+Spectral.encode(user, User, :public_t)
+# {:ok, ~s({"email":"alice@example.com","id":1,"name":"Alice"})}
+# password_hash is excluded
+
+Spectral.decode(~s({"id":1,"name":"Alice","email":"alice@example.com"}), User, :public_t)
+# {:ok, %User{id: 1, name: "Alice", email: "alice@example.com", password_hash: nil}}
+# password_hash gets its struct default (nil)
+```
+
+Excluded fields present in the incoming JSON are silently ignored. Fields excluded by `only`
+are filled from the struct's default values on decode (see [Struct defaults](#struct-defaults)).
+
+`only` also works on union types such as `MyStruct | nil`:
+
+```elixir
+spectral only: [:id, :name]
+@type t_or_nil :: %User{...} | nil
+```
+
+#### Ecto schemas and `only`
+
+`only` is particularly useful with Ecto schemas, which typically contain fields you do not
+want to expose via an API — timestamps, internal flags, association fields, and sensitive
+columns such as `password_hash`:
+
+```elixir
+defmodule MyApp.User do
+  use Ecto.Schema
+  use Spectral
+
+  schema "users" do
+    field :name, :string
+    field :email, :string
+    field :password_hash, :string
+    has_many :posts, MyApp.Post
+    timestamps()
+  end
+
+  # Only expose name and email. Timestamps, password_hash, and the posts
+  # association are all excluded. Spectral never tries to decode the
+  # %Ecto.Association.NotLoaded{} default for :posts.
+  spectral only: [:name, :email]
+  @type public_t :: %MyApp.User{
+          name: String.t() | nil,
+          email: String.t() | nil,
+          password_hash: String.t() | nil,
+          posts: term(),
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+end
+```
+
+You can define multiple types on the same module for different API contexts — for example a
+`create_t` that accepts `name` and `email` on input, and a `response_t` that returns `id`,
+`name`, and `email` on output.
 
 ### Documenting Functions (Endpoint Metadata)
 
