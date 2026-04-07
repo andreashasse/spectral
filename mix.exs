@@ -71,7 +71,8 @@ defmodule Spectral.MixProject do
           TypeWithParams,
           OnlyPerson,
           DefaultValues,
-          DefaultValues.Config
+          DefaultValues.Config,
+          EctoUser
         ]
       end
     ]

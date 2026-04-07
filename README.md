@@ -601,6 +601,60 @@ You can define multiple types on the same module for different API contexts — 
 `create_t` that accepts `name` and `email` on input, and a `response_t` that returns `id`,
 `name`, and `email` on output.
 
+#### Keeping timestamps in the type
+
+Rather than excluding `inserted_at` and `updated_at` with `only`, you can include them in the
+type as `DateTime.t() | nil`. Because Ecto sets their struct default to `nil`, the standard
+nil-default rules apply:
+
+- **Encode**: nil timestamps are omitted from JSON — a pre-insert struct serialises cleanly
+  without them.
+- **Decode**: timestamps absent from JSON (e.g. a client create or update request) simply
+  produce `nil` — no error, because the type allows it.
+
+This means a single type works for both write requests and read responses:
+
+```elixir
+defmodule MyApp.User do
+  use Ecto.Schema
+  use Spectral
+
+  schema "users" do
+    field :name, :string
+    field :email, :string
+    timestamps(type: :utc_datetime)
+  end
+
+  # Works for both input (timestamps absent/nil) and output (timestamps set by DB).
+  # Register Spectral.Codec.DateTime to handle the DateTime.t() fields.
+  @type t :: %MyApp.User{
+          name: String.t() | nil,
+          email: String.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+end
+```
+
+```elixir
+# Decode a client create request — timestamps absent, no error
+Spectral.decode(~s({"name":"Alice","email":"alice@example.com"}), MyApp.User, :t)
+# {:ok, %MyApp.User{name: "Alice", email: "alice@example.com", inserted_at: nil, updated_at: nil}}
+
+# Encode a struct fetched from the DB — timestamps present in JSON
+user = %MyApp.User{name: "Alice", email: "alice@example.com",
+                   inserted_at: ~U[2024-01-01 00:00:00Z], updated_at: ~U[2024-06-01 12:00:00Z]}
+Spectral.encode(user, MyApp.User, :t)
+# {:ok, ~s({"email":"alice@example.com","inserted_at":"2024-01-01T00:00:00Z",...})}
+
+# Encode a pre-insert struct — timestamps nil, omitted from JSON
+Spectral.encode(%MyApp.User{name: "Alice", email: "alice@example.com"}, MyApp.User, :t)
+# {:ok, ~s({"email":"alice@example.com","name":"Alice"})}
+```
+
+`DateTime.t() | nil` requires the `Spectral.Codec.DateTime` codec to be registered — see
+[Built-in Codecs](#built-in-codecs).
+
 ### Documenting Functions (Endpoint Metadata)
 
 The `spectral` macro also works before `@spec` definitions to attach OpenAPI endpoint documentation:

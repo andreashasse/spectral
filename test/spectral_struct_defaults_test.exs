@@ -117,6 +117,70 @@ defmodule SpectralStructDefaultsTest do
   end
 
   # ---------------------------------------------------------------------------
+  # Ecto-style timestamps in the type (not excluded with `only`)
+  #
+  # Ecto's timestamps() adds inserted_at and updated_at with nil defaults.
+  # Including them in the type (as T | nil) means:
+  #   - Encode: omitted when nil (e.g. before the record is persisted)
+  #   - Decode: get nil when absent from JSON (e.g. a client create request)
+  # The same type therefore works for both write requests and read responses.
+  # ---------------------------------------------------------------------------
+
+  test "ecto timestamps: missing from JSON on create request → nil, no error" do
+    json = ~s({"name":"Alice","email":"alice@example.com"})
+
+    assert {:ok,
+            %EctoUser{
+              name: "Alice",
+              email: "alice@example.com",
+              inserted_at: nil,
+              updated_at: nil
+            }} =
+             Spectral.decode(json, EctoUser, :t)
+  end
+
+  test "ecto timestamps: present in JSON on read response → decoded normally" do
+    json =
+      ~s({"name":"Alice","email":"alice@example.com","inserted_at":"2024-01-01T00:00:00Z","updated_at":"2024-06-01T12:00:00Z"})
+
+    assert {:ok,
+            %EctoUser{
+              name: "Alice",
+              email: "alice@example.com",
+              inserted_at: "2024-01-01T00:00:00Z",
+              updated_at: "2024-06-01T12:00:00Z"
+            }} = Spectral.decode(json, EctoUser, :t)
+  end
+
+  test "ecto timestamps: nil on encode → omitted from JSON" do
+    user = %EctoUser{name: "Alice", email: "alice@example.com"}
+    {:ok, json} = Spectral.encode(user, EctoUser, :t)
+    decoded = json |> IO.iodata_to_binary() |> Jason.decode!()
+    assert decoded == %{"name" => "Alice", "email" => "alice@example.com"}
+    refute Map.has_key?(decoded, "inserted_at")
+    refute Map.has_key?(decoded, "updated_at")
+  end
+
+  test "ecto timestamps: set on encode → included in JSON" do
+    user = %EctoUser{
+      name: "Alice",
+      email: "alice@example.com",
+      inserted_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-06-01T12:00:00Z"
+    }
+
+    {:ok, json} = Spectral.encode(user, EctoUser, :t)
+    decoded = json |> IO.iodata_to_binary() |> Jason.decode!()
+
+    assert decoded == %{
+             "name" => "Alice",
+             "email" => "alice@example.com",
+             "inserted_at" => "2024-01-01T00:00:00Z",
+             "updated_at" => "2024-06-01T12:00:00Z"
+           }
+  end
+
+  # ---------------------------------------------------------------------------
   # All-nil-default baseline: existing Person behaviour is unchanged
   # ---------------------------------------------------------------------------
 
