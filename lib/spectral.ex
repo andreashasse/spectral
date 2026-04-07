@@ -88,6 +88,9 @@ defmodule Spectral do
     generation time to produce examples. The function must be exported.
   - `type_parameters` - Static configuration forwarded as the `params` argument
     to `Spectral.Codec` callbacks for this type (any term)
+  - `only` - List of field name atoms to include when encoding, decoding, and generating
+    schemas. Fields not in the list are silently dropped. For Elixir structs, excluded
+    fields are filled from the struct's defaults on decode.
 
   ## Fields — before a `@spec`
 
@@ -155,6 +158,9 @@ defmodule Spectral do
     generation time to produce examples. The function must be exported.
   - `type_parameters` - Static configuration passed as the `params` argument to
     `Spectral.Codec` callbacks for this type (any term)
+  - `only` - List of field name atoms to include when encoding, decoding, and generating
+    schemas. Fields not in the list are silently dropped. For Elixir structs, excluded
+    fields are filled from the struct's defaults on decode.
 
   ## Annotating Functions (Endpoint Documentation)
 
@@ -397,11 +403,15 @@ defmodule Spectral do
             fn {name, arity, doc}, acc_type_info ->
               case :spectra_type_info.find_type(acc_type_info, name, arity) do
                 {:ok, existing_type} ->
-                  {type_params, doc_without_params} = Map.pop(doc, :type_parameters)
+                  {type_params, doc1} = Map.pop(doc, :type_parameters)
+                  {only, doc_clean} = Map.pop(doc1, :only)
 
                   updated_type =
                     existing_type
-                    |> :spectra_type.add_doc_to_type(doc_without_params)
+                    |> then(fn t ->
+                      if only != nil, do: :spectra_abstract_code.apply_only(t, only), else: t
+                    end)
+                    |> :spectra_type.add_doc_to_type(doc_clean)
                     |> then(fn t ->
                       if type_params != nil do
                         meta = :spectra_type.get_meta(t)

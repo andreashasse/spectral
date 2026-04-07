@@ -29,7 +29,8 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.9.3"},
+      {:spectra,
+       github: "andreashasse/spectra", branch: "elixir-struct-defaults", override: true},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
@@ -67,7 +68,10 @@ defmodule Spectral.MixProject do
           MultiTypeModuleFirstMissing,
           MultiSpectralHandler,
           SemanticPairingTestModule,
-          TypeWithParams
+          TypeWithParams,
+          OnlyPerson,
+          DefaultValues,
+          DefaultValues.Config
         ]
       end
     ]
