@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-08
+
+### Added
+- **Struct defaults on decode**: missing JSON fields are now filled from the struct's default values (`StructName.__struct__/0`) rather than defaulting to `nil`. Non-nullable fields with a `nil` default still produce a `missing_data` error.
+- **`only` field filtering**: new `only` key in `spectral/1` accepts a list of field atoms — restricts which fields participate in encode, decode, and schema generation. Excluded fields are filled from struct defaults on decode and ignored on encode.
+
+### Changed
+- Upgraded spectra dependency to `~> 0.10.0`
+
 ## [0.9.2] - 2026-04-01
 
 ### Changed

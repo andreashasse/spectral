@@ -630,6 +630,52 @@ defmodule SpectralTest do
     assert schema_doc["description"] == "This type has docs"
   end
 
+  # `only` field filtering via @spectral attribute
+
+  test "only: encode excludes fields not in the only list" do
+    person = %OnlyPerson{name: "Alice", age: 30, email: "alice@example.com"}
+    {:ok, json} = Spectral.encode(person, OnlyPerson, :t)
+    decoded = json |> IO.iodata_to_binary() |> Jason.decode!()
+    assert decoded == %{"name" => "Alice", "age" => 30}
+    refute Map.has_key?(decoded, "email")
+  end
+
+  test "only: decode ignores fields not in the only list, filling from struct defaults" do
+    json = ~s({"name":"Alice","age":30,"email":"alice@example.com"})
+
+    assert {:ok, %OnlyPerson{name: "Alice", age: 30, email: nil}} =
+             Spectral.decode(json, OnlyPerson, :t)
+  end
+
+  test "only: decode with missing optional field uses struct default" do
+    json = ~s({"name":"Alice"})
+
+    assert {:ok, %OnlyPerson{name: "Alice", age: nil, email: nil}} =
+             Spectral.decode(json, OnlyPerson, :t)
+  end
+
+  test "only: schema includes only listed fields" do
+    schema =
+      Spectral.schema(OnlyPerson, :t)
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    assert Map.has_key?(schema["properties"], "name")
+    assert Map.has_key?(schema["properties"], "age")
+    refute Map.has_key?(schema["properties"], "email")
+  end
+
+  test "only: works through union type (t_or_nil)" do
+    person = %OnlyPerson{name: "Bob", age: 25, email: "bob@example.com"}
+    {:ok, json} = Spectral.encode(person, OnlyPerson, :t_or_nil)
+    decoded = json |> IO.iodata_to_binary() |> Jason.decode!()
+    assert decoded == %{"name" => "Bob", "age" => 25}
+  end
+
+  test "only: decode nil through union type (t_or_nil)" do
+    assert {:ok, nil} = Spectral.decode("null", OnlyPerson, :t_or_nil)
+  end
+
   # Error handling tests for type AST validation
 
   test "spectral works with types that have parameters" do
