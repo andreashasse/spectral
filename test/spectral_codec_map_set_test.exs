@@ -22,6 +22,7 @@ defmodule SpectralCodecMapSetTest do
                  {:type, :t, 0},
                  ms,
                  :undefined,
+                 :undefined,
                  :undefined
                )
 
@@ -38,6 +39,7 @@ defmodule SpectralCodecMapSetTest do
                  {:type, :t, 1},
                  ms,
                  :undefined,
+                 :undefined,
                  :undefined
                )
 
@@ -52,6 +54,7 @@ defmodule SpectralCodecMapSetTest do
                  {:type, :t, 0},
                  [1, 2, 3],
                  :undefined,
+                 :undefined,
                  :undefined
                )
 
@@ -65,6 +68,7 @@ defmodule SpectralCodecMapSetTest do
                  MapSet,
                  {:type, :t, 1},
                  "not a mapset",
+                 :undefined,
                  :undefined,
                  :undefined
                )
@@ -82,6 +86,7 @@ defmodule SpectralCodecMapSetTest do
                  {:type, :t, 0},
                  [1, 2, 3],
                  :undefined,
+                 :undefined,
                  :undefined
                )
 
@@ -95,6 +100,7 @@ defmodule SpectralCodecMapSetTest do
                  MapSet,
                  {:type, :t, 1},
                  ["a", "b"],
+                 :undefined,
                  :undefined,
                  :undefined
                )
@@ -110,6 +116,7 @@ defmodule SpectralCodecMapSetTest do
                  {:type, :t, 0},
                  "not a list",
                  :undefined,
+                 :undefined,
                  :undefined
                )
 
@@ -123,6 +130,7 @@ defmodule SpectralCodecMapSetTest do
                  MapSet,
                  {:type, :t, 1},
                  42,
+                 :undefined,
                  :undefined,
                  :undefined
                )
@@ -139,6 +147,7 @@ defmodule SpectralCodecMapSetTest do
                  MapSet,
                  {:type, :t, 0},
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -149,6 +158,7 @@ defmodule SpectralCodecMapSetTest do
                  :json_schema,
                  MapSet,
                  {:type, :t, 1},
+                 :undefined,
                  :undefined,
                  :undefined
                )
