@@ -92,11 +92,8 @@ defmodule Spectral.Codec.MapSet do
     end
   end
 
-  # Extract the cache mode from the sp_config record (field index 1, 0-based)
-  # and call :spectra_module_types.get/2 to retrieve the type_info for the module.
   defp get_type_info(mod, config) do
-    cache_mode = elem(config, 1)
-    :spectra_module_types.get(mod, cache_mode)
+    :spectra_module_types.get(mod, config)
   end
 
   defp encode_elements(elems, mod, elem_type, config) do

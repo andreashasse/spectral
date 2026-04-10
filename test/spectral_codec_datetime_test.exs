@@ -151,7 +151,7 @@ defmodule SpectralCodecDateTimeTest do
     test "schema returns date-time format" do
       assert %{type: "string", format: "date-time"} =
                Spectral.Codec.DateTime.schema(
-                 :json,
+                 :json_schema,
                  DateTime,
                  {:type, :t, 0},
                  :undefined,
@@ -302,7 +302,7 @@ defmodule SpectralCodecDateTimeTest do
     test "schema returns date format" do
       assert %{type: "string", format: "date"} =
                Spectral.Codec.Date.schema(
-                 :json,
+                 :json_schema,
                  Date,
                  {:type, :t, 0},
                  :undefined,
