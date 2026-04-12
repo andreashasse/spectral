@@ -325,6 +325,8 @@ end
 
 Each callback must return `{:ok, result}`, `{:error, errors}`, or `:continue`. Return `{:error, ...}` when the data is invalid for a type your codec *owns*, and `:continue` for types your codec does not handle.
 
+For container types that need to recursively encode or decode their elements, use `Spectral.Codec.encode/4`, `Spectral.Codec.decode/4`, and `Spectral.Codec.schema/3` — these preserve the runtime `config` across the traversal, unlike calling `Spectral.encode/5` directly which would start a fresh traversal.
+
 ### Codec errors
 
 Construct `%Spectral.Error{}` structs and always return them in `{:error, [%Spectral.Error{}]}` tuples (as shown above). Spectral collects errors from multiple locations and attaches path information as it traverses nested structures. See existing usages of `%Spectral.Error{}` in the codebase for examples.
@@ -370,7 +372,7 @@ The date/time codecs handle `:json` and `:binary_string` formats. A string that 
 
 ## Type Parameters
 
-The `type_parameters` key in a `spectral` attribute attaches a static value to a type. This value is available to codecs as the `params` argument (6th argument to `encode/6` and `decode/6`, 5th to `schema/5`). When `type_parameters` is absent, `params` is `:undefined`.
+The `type_parameters` key in a `spectral` attribute attaches a static value to a type. This value is available to codecs as the `params` argument (6th argument to `encode/7` and `decode/7`, 5th to `schema/6`). When `type_parameters` is absent, `params` is `:undefined`.
 
 ### String and binary constraints
 
