@@ -98,29 +98,19 @@ defmodule Spectral.Codec do
   @type decode_result :: {:ok, term()} | {:error, [Spectral.Error.t()]} | :continue
 
   @doc """
-  Returns the `type_info` for `module`, using the cache settings from `config`.
+  Recursively encodes `data` of `type_ref` (defined in `module`) inside a codec callback.
 
-  Call this once before a loop of `encode/4`, `decode/4`, or `schema/3` calls to avoid
-  repeated cache lookups.
+  Use this for recursive encode calls from within a codec — it preserves the runtime
+  `config` (cache mode, codecs, format) across the traversal, unlike `Spectral.encode/5`
+  which starts a fresh traversal.
+
+  Returns `{:ok, term()}` (a pre-encoded JSON term) or `{:error, [Spectral.Error.t()]}`.
   """
-  @spec type_info(module(), term()) :: Spectral.type_info()
-  def type_info(module, config) do
-    :spectra_module_types.get(module, config)
-  end
-
-  @doc """
-  Recursively encodes `data` of `type_ref` inside a codec callback.
-
-  `type_info` is the resolved type_info for the module that owns `type_ref` — obtain it
-  once via `type_info/2` and reuse it across calls (e.g. in a loop over collection elements).
-
-  Preserves the runtime `config` across the traversal, unlike `Spectral.encode/5` which
-  starts a fresh traversal. Returns `{:ok, term()}` (pre-encoded JSON term) or
-  `{:error, [Spectral.Error.t()]}`.
-  """
-  @spec encode(Spectral.type_info(), Spectral.sp_type_or_ref(), term(), term()) ::
+  @spec encode(module(), Spectral.sp_type_or_ref(), term(), term()) ::
           {:ok, term()} | {:error, [Spectral.Error.t()]}
-  def encode(type_info, type_ref, data, config) do
+  def encode(module, type_ref, data, config) do
+    type_info = :spectra_module_types.get(module, config)
+
     case :spectra_json.to_json(type_info, type_ref, data, config) do
       {:ok, _} = ok -> ok
       {:error, errors} -> {:error, Spectral.Error.from_erlang_list(errors)}
@@ -128,17 +118,19 @@ defmodule Spectral.Codec do
   end
 
   @doc """
-  Recursively decodes `input` to `type_ref` inside a codec callback.
+  Recursively decodes `input` to `type_ref` (defined in `module`) inside a codec callback.
 
-  `type_info` is the resolved type_info for the module that owns `type_ref` — obtain it
-  once via `type_info/2` and reuse it across calls (e.g. in a loop over collection elements).
+  Use this for recursive decode calls from within a codec — it preserves the runtime
+  `config` (cache mode, codecs, format) across the traversal, unlike `Spectral.decode/5`
+  which starts a fresh traversal.
 
-  Preserves the runtime `config` across the traversal, unlike `Spectral.decode/5` which
-  starts a fresh traversal. Returns `{:ok, term()}` or `{:error, [Spectral.Error.t()]}`.
+  Returns `{:ok, term()}` or `{:error, [Spectral.Error.t()]}`.
   """
-  @spec decode(Spectral.type_info(), Spectral.sp_type_or_ref(), term(), term()) ::
+  @spec decode(module(), Spectral.sp_type_or_ref(), term(), term()) ::
           {:ok, term()} | {:error, [Spectral.Error.t()]}
-  def decode(type_info, type_ref, input, config) do
+  def decode(module, type_ref, input, config) do
+    type_info = :spectra_module_types.get(module, config)
+
     case :spectra_json.from_json(type_info, type_ref, input, config) do
       {:ok, _} = ok -> ok
       {:error, errors} -> {:error, Spectral.Error.from_erlang_list(errors)}
@@ -146,13 +138,14 @@ defmodule Spectral.Codec do
   end
 
   @doc """
-  Generates a schema map for `type_ref` inside a codec `schema/6` callback.
+  Generates a schema map for `type_ref` (defined in `module`) inside a codec `schema/6` callback.
 
-  `type_info` is the resolved type_info for the module that owns `type_ref` — obtain it
-  once via `type_info/2` and reuse across calls. Returns a pre-encoded schema map.
+  Use this for recursive schema generation within a codec callback — it preserves the
+  runtime `config` across the traversal. Returns a pre-encoded schema map.
   """
-  @spec schema(Spectral.type_info(), Spectral.sp_type_or_ref(), term()) :: map()
-  def schema(type_info, type_ref, config) do
+  @spec schema(module(), Spectral.sp_type_or_ref(), term()) :: map()
+  def schema(module, type_ref, config) do
+    type_info = :spectra_module_types.get(module, config)
     :spectra_json_schema.to_schema(type_info, type_ref, config)
   end
 
