@@ -98,6 +98,60 @@ defmodule Spectral.Codec do
   @type decode_result :: {:ok, term()} | {:error, [Spectral.Error.t()]} | :continue
 
   @doc """
+  Recursively encodes `data` of `type_ref` (defined in `module`) inside a codec callback.
+
+  Use this for recursive encode calls from within a codec — it preserves the runtime
+  `config` (cache mode, codecs, format) across the traversal, unlike `Spectral.encode/5`
+  which starts a fresh traversal.
+
+  Returns `{:ok, term()}` (a pre-encoded JSON term) or `{:error, [Spectral.Error.t()]}`.
+  """
+  @spec encode(module(), Spectral.sp_type_or_ref(), term(), term()) ::
+          {:ok, term()} | {:error, [Spectral.Error.t()]}
+  def encode(module, type_ref, data, config) do
+    type_info = :spectra_module_types.get(module, config)
+
+    case :spectra_json.to_json(type_info, type_ref, data, config) do
+      {:ok, _} = ok -> ok
+      {:error, errors} -> {:error, Spectral.Error.from_erlang_list(errors)}
+    end
+  end
+
+  @doc """
+  Recursively decodes `input` to `type_ref` (defined in `module`) inside a codec callback.
+
+  Use this for recursive decode calls from within a codec — it preserves the runtime
+  `config` (cache mode, codecs, format) across the traversal, unlike `Spectral.decode/5`
+  which starts a fresh traversal.
+
+  Returns `{:ok, term()}` or `{:error, [Spectral.Error.t()]}`.
+  """
+  @spec decode(module(), Spectral.sp_type_or_ref(), term(), term()) ::
+          {:ok, term()} | {:error, [Spectral.Error.t()]}
+  def decode(module, type_ref, input, config) do
+    type_info = :spectra_module_types.get(module, config)
+
+    case :spectra_json.from_json(type_info, type_ref, input, config) do
+      {:ok, _} = ok -> ok
+      {:error, errors} -> {:error, Spectral.Error.from_erlang_list(errors)}
+    end
+  end
+
+  @doc """
+  Generates a schema map for `type_ref` (defined in `module`) inside a codec `schema/6` callback.
+
+  Use this for recursive schema generation within a codec callback — it preserves the
+  runtime `config` across the traversal.
+
+  Returns a pre-encoded schema map.
+  """
+  @spec schema(module(), Spectral.sp_type_or_ref(), term()) :: map()
+  def schema(module, type_ref, config) do
+    type_info = :spectra_module_types.get(module, config)
+    :spectra_json_schema.to_schema(type_info, type_ref, config)
+  end
+
+  @doc """
   Encodes `data` of the given `type_ref` (defined in `module`) to `format`.
 
   Called by spectra when encoding a value whose type is defined in a codec module.
@@ -107,9 +161,9 @@ defmodule Spectral.Codec do
   `sp_type` is the instantiation node from the type traversal (see module doc).
   `params` is the value of `type_parameters` from the `spectral` attribute on the
   type definition, or `:undefined` if absent.
-  `config` is the runtime `sp_config` record; use it for recursive encode/decode calls
-  via `:spectra_json.to_json/4` and `:spectra_json.from_json/4` instead of calling the
-  public `Spectral` API (which would clear the module-type cache mid-traversal).
+  `config` is the runtime `sp_config` record; use `Spectral.Codec.encode/4`,
+  `Spectral.Codec.decode/4`, and `Spectral.Codec.schema/3` for recursive calls within
+  this callback.
   """
   @callback encode(
               format :: atom(),
@@ -131,9 +185,9 @@ defmodule Spectral.Codec do
   `sp_type` is the instantiation node from the type traversal (see module doc).
   `params` is the value of `type_parameters` from the `spectral` attribute on the
   type definition, or `:undefined` if absent.
-  `config` is the runtime `sp_config` record; use it for recursive encode/decode calls
-  via `:spectra_json.to_json/4` and `:spectra_json.from_json/4` instead of calling the
-  public `Spectral` API (which would clear the module-type cache mid-traversal).
+  `config` is the runtime `sp_config` record; use `Spectral.Codec.encode/4`,
+  `Spectral.Codec.decode/4`, and `Spectral.Codec.schema/3` for recursive calls within
+  this callback.
   """
   @callback decode(
               format :: atom(),
@@ -155,7 +209,8 @@ defmodule Spectral.Codec do
   `sp_type` is the instantiation node from the type traversal (see module doc).
   `params` is the value of `type_parameters` from the `spectral` attribute on the
   type definition, or `:undefined` if absent.
-  `config` is the runtime `sp_config` record.
+  `config` is the runtime `sp_config` record; use `Spectral.Codec.schema/3` for recursive
+  schema generation within this callback.
   """
   @callback schema(
               format :: atom(),

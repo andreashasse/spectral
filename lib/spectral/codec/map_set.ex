@@ -79,12 +79,10 @@ defmodule Spectral.Codec.MapSet do
   def schema(:json_schema, mod, {:type, :t, 1}, sp_type, _params, config) do
     case Spectral.Type.type_args(sp_type) do
       [elem_type] ->
-        type_info = get_type_info(mod, config)
-
         %{
           type: "array",
           uniqueItems: true,
-          items: :spectra_json_schema.to_schema(type_info, elem_type, config)
+          items: Spectral.Codec.schema(mod, elem_type, config)
         }
 
       [] ->
@@ -92,47 +90,33 @@ defmodule Spectral.Codec.MapSet do
     end
   end
 
-  defp get_type_info(mod, config) do
-    :spectra_module_types.get(mod, config)
-  end
-
   defp encode_elements(elems, mod, elem_type, config) do
-    type_info = get_type_info(mod, config)
-
     result =
       Enum.reduce_while(elems, [], fn elem, acc ->
-        case :spectra_json.to_json(type_info, elem_type, elem, config) do
+        case Spectral.Codec.encode(mod, elem_type, elem, config) do
           {:ok, encoded} -> {:cont, [encoded | acc]}
           {:error, _} = err -> {:halt, err}
         end
       end)
 
     case result do
-      {:error, errors} ->
-        {:error, Enum.map(errors, &Spectral.Error.from_erlang/1)}
-
-      list ->
-        {:ok, list}
+      {:error, _} = err -> err
+      list -> {:ok, list}
     end
   end
 
   defp decode_elements(elems, mod, elem_type, config) do
-    type_info = get_type_info(mod, config)
-
     result =
       Enum.reduce_while(elems, [], fn elem, acc ->
-        case :spectra_json.from_json(type_info, elem_type, elem, config) do
+        case Spectral.Codec.decode(mod, elem_type, elem, config) do
           {:ok, decoded} -> {:cont, [decoded | acc]}
           {:error, _} = err -> {:halt, err}
         end
       end)
 
     case result do
-      {:error, errors} ->
-        {:error, Enum.map(errors, &Spectral.Error.from_erlang/1)}
-
-      list ->
-        {:ok, MapSet.new(list)}
+      {:error, _} = err -> err
+      list -> {:ok, MapSet.new(list)}
     end
   end
 end
