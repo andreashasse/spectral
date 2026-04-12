@@ -81,6 +81,29 @@ defmodule Spectral.Codec do
   when the data has the wrong shape for a type your codec *owns*, and `:continue` for
   type references your codec does not recognise at all.
 
+  ## Recursive Calls
+
+  When your codec handles a container type and needs to encode or decode its elements
+  according to their types, use the helper functions on this module rather than calling
+  `Spectral.encode/5` or `Spectral.decode/5`. The helpers preserve the runtime `config`
+  (cache mode, codec registry, format) across the traversal; the public `Spectral` API
+  would start a fresh traversal and lose that context.
+
+      @impl Spectral.Codec
+      def encode(:json, MyModule, {:type, :wrapper, 1}, %Wrapper{value: v}, sp_type, _params, config) do
+        case Spectral.Type.type_args(sp_type) do
+          [elem_type] ->
+            case Spectral.Codec.encode(MyModule, elem_type, v, config) do
+              {:ok, encoded} -> {:ok, %{"value" => encoded}}
+              error -> error
+            end
+          [] -> {:ok, %{"value" => v}}
+        end
+      end
+
+  Use `Spectral.Type.type_args/1` to extract the concrete type arguments from `sp_type`
+  when handling generic types (see the `sp_type` section above).
+
   ## Global Codec Registry
 
   To use a codec for types defined in a *different* module (e.g., a stdlib or
