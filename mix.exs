@@ -4,7 +4,7 @@ defmodule Spectral.MixProject do
   def project do
     [
       app: :spectral,
-      version: "0.10.0",
+      version: "0.11.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       description: description(),
@@ -29,7 +29,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.10.0"},
+      {:spectra, "~> 0.11.1"},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},

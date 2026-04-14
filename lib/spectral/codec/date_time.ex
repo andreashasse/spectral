@@ -20,16 +20,16 @@ defmodule Spectral.Codec.DateTime do
   use Spectral.Codec
 
   @impl Spectral.Codec
-  def encode(format, DateTime, {:type, :t, 0}, %DateTime{} = dt, _sp_type, _params)
+  def encode(format, DateTime, {:type, :t, 0}, %DateTime{} = dt, _sp_type, _params, _config)
       when format in [:json, :binary_string] do
     {:ok, DateTime.to_iso8601(dt)}
   end
 
-  def encode(:string, DateTime, {:type, :t, 0}, %DateTime{} = dt, _sp_type, _params) do
+  def encode(:string, DateTime, {:type, :t, 0}, %DateTime{} = dt, _sp_type, _params, _config) do
     {:ok, String.to_charlist(DateTime.to_iso8601(dt))}
   end
 
-  def encode(_format, DateTime, {:type, :t, 0}, data, _sp_type, _params) do
+  def encode(_format, DateTime, {:type, :t, 0}, data, _sp_type, _params, _config) do
     {:error,
      [
        %Spectral.Error{
@@ -41,7 +41,7 @@ defmodule Spectral.Codec.DateTime do
   end
 
   @impl Spectral.Codec
-  def decode(format, DateTime, {:type, :t, 0}, input, _sp_type, _params)
+  def decode(format, DateTime, {:type, :t, 0}, input, _sp_type, _params, _config)
       when format in [:json, :binary_string] and is_binary(input) do
     case DateTime.from_iso8601(input) do
       {:ok, dt, _offset} ->
@@ -59,7 +59,8 @@ defmodule Spectral.Codec.DateTime do
     end
   end
 
-  def decode(:string, DateTime, {:type, :t, 0}, input, _sp_type, _params) when is_list(input) do
+  def decode(:string, DateTime, {:type, :t, 0}, input, _sp_type, _params, _config)
+      when is_list(input) do
     case DateTime.from_iso8601(List.to_string(input)) do
       {:ok, dt, _offset} ->
         {:ok, dt}
@@ -76,7 +77,7 @@ defmodule Spectral.Codec.DateTime do
     end
   end
 
-  def decode(_format, DateTime, {:type, :t, 0}, data, _sp_type, _params) do
+  def decode(_format, DateTime, {:type, :t, 0}, data, _sp_type, _params, _config) do
     {:error,
      [
        %Spectral.Error{
@@ -88,7 +89,7 @@ defmodule Spectral.Codec.DateTime do
   end
 
   @impl Spectral.Codec
-  def schema(_format, DateTime, {:type, :t, 0}, _sp_type, _params) do
+  def schema(_format, DateTime, {:type, :t, 0}, _sp_type, _params, _config) do
     %{type: "string", format: "date-time"}
   end
 end

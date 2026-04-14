@@ -21,6 +21,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  dt,
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -35,6 +36,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  dt,
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -46,6 +48,7 @@ defmodule SpectralCodecDateTimeTest do
                  DateTime,
                  {:type, :t, 0},
                  "not a datetime",
+                 :undefined,
                  :undefined,
                  :undefined
                )
@@ -61,6 +64,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  "2012-04-23T18:25:43.511Z",
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -75,6 +79,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  ~c"2012-04-23T18:25:43.511Z",
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -86,6 +91,7 @@ defmodule SpectralCodecDateTimeTest do
           DateTime,
           {:type, :t, 0},
           "not-a-date",
+          :undefined,
           :undefined,
           :undefined
         )
@@ -101,6 +107,7 @@ defmodule SpectralCodecDateTimeTest do
           DateTime,
           {:type, :t, 0},
           12_345,
+          :undefined,
           :undefined,
           :undefined
         )
@@ -121,6 +128,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  dt,
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -135,6 +143,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  "2012-04-23T18:25:43.511Z",
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -142,9 +151,10 @@ defmodule SpectralCodecDateTimeTest do
     test "schema returns date-time format" do
       assert %{type: "string", format: "date-time"} =
                Spectral.Codec.DateTime.schema(
-                 :json,
+                 :json_schema,
                  DateTime,
                  {:type, :t, 0},
+                 :undefined,
                  :undefined,
                  :undefined
                )
@@ -156,7 +166,15 @@ defmodule SpectralCodecDateTimeTest do
       {:ok, d} = Date.from_iso8601("2023-04-01")
 
       assert {:ok, "2023-04-01"} =
-               Spectral.Codec.Date.encode(:json, Date, {:type, :t, 0}, d, :undefined, :undefined)
+               Spectral.Codec.Date.encode(
+                 :json,
+                 Date,
+                 {:type, :t, 0},
+                 d,
+                 :undefined,
+                 :undefined,
+                 :undefined
+               )
     end
 
     test "encodes Date to charlist for :string format" do
@@ -169,6 +187,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  d,
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -180,6 +199,7 @@ defmodule SpectralCodecDateTimeTest do
                  Date,
                  {:type, :t, 0},
                  "not a date",
+                 :undefined,
                  :undefined,
                  :undefined
                )
@@ -195,6 +215,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  "2023-04-01",
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -209,6 +230,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  ~c"2023-04-01",
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -221,6 +243,7 @@ defmodule SpectralCodecDateTimeTest do
           {:type, :t, 0},
           "not-a-date",
           :undefined,
+          :undefined,
           :undefined
         )
 
@@ -230,7 +253,15 @@ defmodule SpectralCodecDateTimeTest do
 
     test "decode returns type_mismatch for non-string input" do
       {:error, [error]} =
-        Spectral.Codec.Date.decode(:json, Date, {:type, :t, 0}, 12_345, :undefined, :undefined)
+        Spectral.Codec.Date.decode(
+          :json,
+          Date,
+          {:type, :t, 0},
+          12_345,
+          :undefined,
+          :undefined,
+          :undefined
+        )
 
       assert %Spectral.Error{type: :type_mismatch, context: ctx} =
                Spectral.Error.from_erlang(error)
@@ -248,6 +279,7 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  d,
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
@@ -262,13 +294,21 @@ defmodule SpectralCodecDateTimeTest do
                  {:type, :t, 0},
                  "2023-04-01",
                  :undefined,
+                 :undefined,
                  :undefined
                )
     end
 
     test "schema returns date format" do
       assert %{type: "string", format: "date"} =
-               Spectral.Codec.Date.schema(:json, Date, {:type, :t, 0}, :undefined, :undefined)
+               Spectral.Codec.Date.schema(
+                 :json_schema,
+                 Date,
+                 {:type, :t, 0},
+                 :undefined,
+                 :undefined,
+                 :undefined
+               )
     end
   end
 end

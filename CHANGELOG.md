@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-04-14
+
+### Added
+- `Spectral.Codec.encode/4`, `decode/4`, and `schema/3` helper functions for codec implementers — allow codecs to recursively encode, decode, and generate schemas for nested types without needing to call the top-level `Spectral` API directly
+
+### Changed
+- Upgraded spectra dependency to `~> 0.11.1`
+
+### Fixed
+- Callback arities corrected in built-in codecs (`Spectral.Codec.Date`, `Spectral.Codec.DateTime`, `Spectral.Codec.MapSet`)
+
 ## [0.10.0] - 2026-04-08
 
 ### Added

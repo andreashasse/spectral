@@ -11,12 +11,12 @@ defmodule PrefixedIdCodec do
   @type org_id :: String.t()
 
   @impl Spectral.Codec
-  def encode(_format, PrefixedIdCodec, {:type, type, 0}, id, _sp_type, prefix)
+  def encode(_format, PrefixedIdCodec, {:type, type, 0}, id, _sp_type, prefix, _config)
       when type in [:user_id, :org_id] and is_binary(id) and is_binary(prefix) do
     {:ok, prefix <> id}
   end
 
-  def encode(_format, PrefixedIdCodec, {:type, type, 0}, data, _sp_type, _prefix)
+  def encode(_format, PrefixedIdCodec, {:type, type, 0}, data, _sp_type, _prefix, _config)
       when type in [:user_id, :org_id] do
     {:error,
      [
@@ -28,10 +28,10 @@ defmodule PrefixedIdCodec do
      ]}
   end
 
-  def encode(_format, _module, _type_ref, _data, _sp_type, _params), do: :continue
+  def encode(_format, _module, _type_ref, _data, _sp_type, _params, _config), do: :continue
 
   @impl Spectral.Codec
-  def decode(_format, PrefixedIdCodec, {:type, type, 0}, encoded, _sp_type, prefix)
+  def decode(_format, PrefixedIdCodec, {:type, type, 0}, encoded, _sp_type, prefix, _config)
       when type in [:user_id, :org_id] and is_binary(encoded) and is_binary(prefix) do
     prefix_len = byte_size(prefix)
 
@@ -51,10 +51,10 @@ defmodule PrefixedIdCodec do
     end
   end
 
-  def decode(_format, _module, _type_ref, _input, _sp_type, _params), do: :continue
+  def decode(_format, _module, _type_ref, _input, _sp_type, _params, _config), do: :continue
 
   @impl Spectral.Codec
-  def schema(_format, PrefixedIdCodec, {:type, type, 0}, _sp_type, prefix)
+  def schema(_format, PrefixedIdCodec, {:type, type, 0}, _sp_type, prefix, _config)
       when type in [:user_id, :org_id] do
     %{type: "string", pattern: "^" <> prefix}
   end

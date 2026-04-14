@@ -19,16 +19,16 @@ defmodule Spectral.Codec.Date do
   use Spectral.Codec
 
   @impl Spectral.Codec
-  def encode(format, Date, {:type, :t, 0}, %Date{} = d, _sp_type, _params)
+  def encode(format, Date, {:type, :t, 0}, %Date{} = d, _sp_type, _params, _config)
       when format in [:json, :binary_string] do
     {:ok, Date.to_iso8601(d)}
   end
 
-  def encode(:string, Date, {:type, :t, 0}, %Date{} = d, _sp_type, _params) do
+  def encode(:string, Date, {:type, :t, 0}, %Date{} = d, _sp_type, _params, _config) do
     {:ok, String.to_charlist(Date.to_iso8601(d))}
   end
 
-  def encode(_format, Date, {:type, :t, 0}, data, _sp_type, _params) do
+  def encode(_format, Date, {:type, :t, 0}, data, _sp_type, _params, _config) do
     {:error,
      [
        %Spectral.Error{
@@ -40,7 +40,7 @@ defmodule Spectral.Codec.Date do
   end
 
   @impl Spectral.Codec
-  def decode(format, Date, {:type, :t, 0}, input, _sp_type, _params)
+  def decode(format, Date, {:type, :t, 0}, input, _sp_type, _params, _config)
       when format in [:json, :binary_string] and is_binary(input) do
     case Date.from_iso8601(input) do
       {:ok, d} ->
@@ -58,7 +58,8 @@ defmodule Spectral.Codec.Date do
     end
   end
 
-  def decode(:string, Date, {:type, :t, 0}, input, _sp_type, _params) when is_list(input) do
+  def decode(:string, Date, {:type, :t, 0}, input, _sp_type, _params, _config)
+      when is_list(input) do
     case Date.from_iso8601(List.to_string(input)) do
       {:ok, d} ->
         {:ok, d}
@@ -75,7 +76,7 @@ defmodule Spectral.Codec.Date do
     end
   end
 
-  def decode(_format, Date, {:type, :t, 0}, data, _sp_type, _params) do
+  def decode(_format, Date, {:type, :t, 0}, data, _sp_type, _params, _config) do
     {:error,
      [
        %Spectral.Error{
@@ -87,7 +88,7 @@ defmodule Spectral.Codec.Date do
   end
 
   @impl Spectral.Codec
-  def schema(_format, Date, {:type, :t, 0}, _sp_type, _params) do
+  def schema(_format, Date, {:type, :t, 0}, _sp_type, _params, _config) do
     %{type: "string", format: "date"}
   end
 end
