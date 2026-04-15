@@ -90,17 +90,6 @@ defmodule Spectral.TypeInfo do
   @doc """
   Adds a type to the type_info structure.
 
-  ## Parameters
-
-  - `type_info` - The type_info structure to add to
-  - `name` - The type name (atom)
-  - `arity` - The type arity (non-negative integer)
-  - `type` - The sp_type record to add
-
-  ## Returns
-
-  Updated type_info structure with the type added.
-
   ## Examples
 
       iex> type_info = Person.__spectra_type_info__()
@@ -117,18 +106,7 @@ defmodule Spectral.TypeInfo do
   end
 
   @doc """
-  Finds a type in the type_info structure.
-
-  ## Parameters
-
-  - `type_info` - The type_info structure to search
-  - `name` - The type name (atom)
-  - `arity` - The type arity (non-negative integer)
-
-  ## Returns
-
-  - `{:ok, type}` - If the type is found
-  - `:error` - If the type is not found
+  Finds a type in the type_info structure. Returns `{:ok, type}` or `:error`.
 
   ## Examples
 
@@ -147,21 +125,7 @@ defmodule Spectral.TypeInfo do
   end
 
   @doc """
-  Gets a type from the type_info structure, raising if not found.
-
-  ## Parameters
-
-  - `type_info` - The type_info structure to search
-  - `name` - The type name (atom)
-  - `arity` - The type arity (non-negative integer)
-
-  ## Returns
-
-  The sp_type record.
-
-  ## Raises
-
-  - `ErlangError` with `{:type_not_found, name, arity}` if the type doesn't exist
+  Gets a type from the type_info structure, raising `{:type_not_found, name, arity}` if absent.
 
   ## Examples
 
@@ -177,21 +141,6 @@ defmodule Spectral.TypeInfo do
 
   @doc """
   Adds a record to the type_info structure.
-
-  ## Parameters
-
-  - `type_info` - The type_info structure to add to
-  - `name` - The record name (atom)
-  - `record` - The sp_rec record to add
-
-  ## Returns
-
-  Updated type_info structure with the record added.
-
-  ## Examples
-
-      type_info = Spectral.TypeInfo.new(:nomodule, false)
-      updated = Spectral.TypeInfo.add_record(type_info, :my_record, some_record)
   """
   @spec add_record(type_info(), atom(), term()) :: type_info()
   def add_record(type_info, name, record) when is_atom(name) do
@@ -199,17 +148,7 @@ defmodule Spectral.TypeInfo do
   end
 
   @doc """
-  Finds a record in the type_info structure.
-
-  ## Parameters
-
-  - `type_info` - The type_info structure to search
-  - `name` - The record name (atom)
-
-  ## Returns
-
-  - `{:ok, record}` - If the record is found
-  - `:error` - If the record is not found
+  Finds a record in the type_info structure. Returns `{:ok, record}` or `:error`.
 
   ## Examples
 
@@ -223,25 +162,7 @@ defmodule Spectral.TypeInfo do
   end
 
   @doc """
-  Gets a record from the type_info structure, raising if not found.
-
-  ## Parameters
-
-  - `type_info` - The type_info structure to search
-  - `name` - The record name (atom)
-
-  ## Returns
-
-  The sp_rec record.
-
-  ## Raises
-
-  - `ErlangError` with `{:record_not_found, name}` if the record doesn't exist
-
-  ## Examples
-
-      type_info = Person.__spectra_type_info__()
-      record = Spectral.TypeInfo.get_record(type_info, :person)
+  Gets a record from the type_info structure, raising `{:record_not_found, name}` if absent.
   """
   @spec get_record(type_info(), atom()) :: term()
   def get_record(type_info, name) when is_atom(name) do
@@ -250,22 +171,6 @@ defmodule Spectral.TypeInfo do
 
   @doc """
   Adds a function specification to the type_info structure.
-
-  ## Parameters
-
-  - `type_info` - The type_info structure to add to
-  - `name` - The function name (atom)
-  - `arity` - The function arity (non-negative integer)
-  - `func_spec` - The function spec to add (list of sp_function_spec records)
-
-  ## Returns
-
-  Updated type_info structure with the function spec added.
-
-  ## Examples
-
-      type_info = Spectral.TypeInfo.new(:nomodule, false)
-      updated = Spectral.TypeInfo.add_function(type_info, :my_func, 2, func_spec)
   """
   @spec add_function(type_info(), atom(), arity(), [term()]) :: type_info()
   def add_function(type_info, name, arity, func_spec)
@@ -274,18 +179,7 @@ defmodule Spectral.TypeInfo do
   end
 
   @doc """
-  Finds a function specification in the type_info structure.
-
-  ## Parameters
-
-  - `type_info` - The type_info structure to search
-  - `name` - The function name (atom)
-  - `arity` - The function arity (non-negative integer)
-
-  ## Returns
-
-  - `{:ok, func_spec}` - If the function spec is found (list of sp_function_spec records)
-  - `:error` - If the function spec is not found
+  Finds a function specification in the type_info structure. Returns `{:ok, specs}` or `:error`.
 
   ## Examples
 

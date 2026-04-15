@@ -11,7 +11,8 @@ defmodule Spectral.OpenAPI do
 
       response = Spectral.OpenAPI.response(200, "Success")
         |> Spectral.OpenAPI.response_with_body(Person, :t)
-        |> Spectral.OpenAPI.response_with_header("X-Rate-Limit", RateLimit, :t, %{
+        |> Spectral.OpenAPI.response_with_header("X-Rate-Limit", RateLimit, %{
+          schema: :t,
           description: "Remaining requests",
           required: false
         })
@@ -183,10 +184,10 @@ defmodule Spectral.OpenAPI do
   - `header_name` - Name of the response header (e.g., `"X-Rate-Limit"`)
   - `module` - Module containing the type definition for the header value
   - `header_spec` - Header specification map with keys:
+    - `:schema` - Schema reference for the header value (atom like `:t`, or a type ref tuple)
     - `:description` (optional) - Description of the header
     - `:required` (optional) - Whether the header is required (default: false)
     - `:deprecated` (optional) - Whether the header is deprecated (boolean)
-    - `:schema` - Schema for the header value
 
   ## Returns
 
@@ -195,10 +196,10 @@ defmodule Spectral.OpenAPI do
   ## Example
 
       response = Spectral.OpenAPI.response(200, "Success")
-        |> Spectral.OpenAPI.response_with_header("X-Rate-Limit", RateLimit, :t, %{
+        |> Spectral.OpenAPI.response_with_header("X-Rate-Limit", RateLimit, %{
+          schema: :t,
           description: "Requests remaining",
-          required: false,
-          schema: :integer
+          required: false
         })
   """
   @spec response_with_header(:spectra_openapi.response_spec(), binary(), module(), map()) ::

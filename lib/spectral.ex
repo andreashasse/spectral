@@ -125,17 +125,16 @@ defmodule Spectral do
   end
 
   @doc """
-  Sets up the Spectral macros and injects `__spectra_type_info__/0` function.
+  Sets up the Spectral macros and injects `__spectra_type_info__/0`.
 
-  When you `use Spectral`, the following happens:
-  - The `spectral/1` macro is imported for documenting types and functions
-  - A `__spectra_type_info__/0` function is injected that returns type information
-  - The `@spectral` attribute is registered (used internally by the `spectral/1` macro)
+  When you `use Spectral`, the `spectral/1` macro is imported and a
+  `__spectra_type_info__/0` function is injected that Spectral's encode, decode,
+  and schema functions use internally.
 
   ## Annotating Types
 
-  Place `spectral/1` immediately before a `@type` definition to attach documentation
-  that will appear in generated JSON schemas and OpenAPI component schemas:
+  Place `spectral/1` immediately before a `@type` to attach documentation
+  to generated JSON schemas and OpenAPI component schemas:
 
       defmodule Person do
         use Spectral
@@ -146,27 +145,13 @@ defmodule Spectral do
         @type t :: %Person{name: String.t(), age: non_neg_integer()}
       end
 
-  Types without a `spectral` call will not have title/description in their JSON schemas.
-
-  ### Type Documentation Fields
-
-  - `title` - A short title for the type (string)
-  - `description` - A detailed description (string)
-  - `deprecated` - Whether the type is deprecated (boolean)
-  - `examples` - Example values (list)
-  - `examples_function` - `{module, function_name, args}` tuple; called at schema
-    generation time to produce examples. The function must be exported.
-  - `type_parameters` - Static configuration passed as the `params` argument to
-    `Spectral.Codec` callbacks for this type (any term)
-  - `only` - List of field name atoms to include when encoding, decoding, and generating
-    schemas. Fields not in the list are silently dropped. For Elixir structs, excluded
-    fields are filled from the struct's defaults on decode.
+  Types without a `spectral` call will not have title/description in their schemas.
+  See `spectral/1` for the full list of supported annotation fields.
 
   ## Annotating Functions (Endpoint Documentation)
 
-  Place `spectral/1` immediately before a `@spec` definition to attach endpoint
-  documentation. This metadata is used by `Spectral.OpenAPI.endpoint/5` to automatically
-  populate the OpenAPI operation fields:
+  Place `spectral/1` immediately before a `@spec` to attach endpoint metadata,
+  which `Spectral.OpenAPI.endpoint/5` reads automatically:
 
       defmodule MyController do
         use Spectral
@@ -176,96 +161,7 @@ defmodule Spectral do
         def show(_conn, _params), do: %{}
       end
 
-      # Build the endpoint — docs are read automatically from the function's metadata
       endpoint = Spectral.OpenAPI.endpoint(:get, "/users/{id}", MyController, :show, 2)
-
-  ### Function Documentation Fields
-
-  - `summary` - Short summary of the endpoint operation (string)
-  - `description` - Longer description of the operation (string)
-  - `deprecated` - Whether the endpoint is deprecated (boolean)
-
-  ## Multiple Annotations
-
-  A module can mix type and function annotations freely:
-
-      defmodule MyModule do
-        use Spectral
-
-        spectral title: "Public API", description: "The public interface"
-        @type public_api :: map()
-
-        spectral summary: "List items", description: "Returns all items"
-        @spec index(map(), map()) :: map()
-        def index(_conn, _params), do: %{}
-      end
-
-  ## The `__spectra_type_info__/0` Function
-
-  The injected `__spectra_type_info__/0` function returns detailed type information for the module.
-  It extracts type definitions from the module's compiled BEAM file and enriches them with
-  documentation from `spectral` attributes.
-
-  ### Return Value Structure
-
-  Returns a `type_info` record (Erlang record from spectra library):
-
-      {:type_info, types, records, functions}
-
-  #### Fields:
-
-  - **`types`** - Map of `{type_name, arity}` tuples to `sp_type` records. Each `sp_type` contains:
-    - Type structure information (e.g., `sp_map`, `sp_simple_type`, `sp_union`, etc.)
-    - A `meta` field containing optional documentation
-
-  - **`records`** - Map of record names (atoms) to `sp_rec` records containing record field information
-
-  - **`functions`** - Map of `{function_name, arity}` tuples to lists of `sp_function_spec` records.
-    When annotated with `spectral/1`, each spec's `meta.doc` field holds the endpoint documentation.
-
-  #### Type Documentation (meta field)
-
-  When you use the `spectral` macro to document a type, the documentation is stored in that
-  type's `meta` field as:
-
-      %{doc: %{title: "...", description: "...", examples: [...]}}
-
-  #### Function Documentation (sp_function_spec meta field)
-
-  When you use the `spectral` macro to document a function, the documentation is stored in
-  each matching `sp_function_spec`'s `meta` field as:
-
-      %{doc: %{summary: "...", description: "..."}}
-
-  Use `Spectral.TypeInfo.get_function_doc/3` to retrieve it.
-
-  ### Example Usage
-
-      defmodule Person do
-        use Spectral
-
-        spectral title: "Person", description: "A person record"
-        @type t :: %Person{name: String.t()}
-      end
-
-      # Access type information
-      {:type_info, types, records, functions} = Person.__spectra_type_info__()
-
-      # Get the type definition for Person.t/0
-      person_type = types[{:t, 0}]
-
-      # Extract documentation from the type's meta field
-      meta = :spectra_type.get_meta(person_type)
-      # => %{doc: %{title: "Person", description: "A person record"}}
-
-  ### Use Cases
-
-  This function is primarily used internally by Spectral's encoding, decoding, and schema
-  generation functions, but can be called directly for:
-  - Introspection and debugging
-  - Custom tooling that needs access to type information
-  - Documentation generation
-  - Type analysis and validation tools
   """
   defmacro __using__(_opts) do
     quote do

@@ -28,7 +28,7 @@ defmodule Spectral.Type do
   ## Example
 
       # In a codec for MapSet.t(elem):
-      def encode(:json, mod, {:type, :t, 1}, %MapSet{} = ms, sp_type, _params) do
+      def encode(:json, mod, {:type, :t, 1}, %MapSet{} = ms, sp_type, _params, _config) do
         case Spectral.Type.type_args(sp_type) do
           [elem_type] ->
             # recursively encode each element using elem_type
