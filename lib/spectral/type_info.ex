@@ -12,6 +12,12 @@ defmodule Spectral.TypeInfo do
   Provides functions for creating and manipulating type information structures
   that contain types, records, and function specifications.
 
+  > #### Advanced integrations {: .info}
+  >
+  > This module is intended for advanced integrations, such as building custom
+  > web framework plugins or other tooling on top of Spectral. Most applications
+  > will not need to use it directly.
+
   ## Type Info Structure
 
   A type_info record (Erlang record from spectra library) has the structure:

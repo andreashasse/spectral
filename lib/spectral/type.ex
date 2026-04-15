@@ -5,6 +5,12 @@ defmodule Spectral.Type do
   Provides functions for inspecting `sp_type()` values. These are most useful
   inside `Spectral.Codec` callbacks, where the `sp_type` argument carries the
   instantiation node from the type traversal.
+
+  > #### Advanced integrations {: .info}
+  >
+  > This module is intended for advanced integrations, such as building custom
+  > web framework plugins or other tooling on top of Spectral. Most applications
+  > will not need to use it directly.
   """
 
   @doc """
