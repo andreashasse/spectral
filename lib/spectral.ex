@@ -275,6 +275,7 @@ defmodule Spectral do
       |> Enum.map(fn {:function, {name, arity}, doc} -> {name, arity, doc} end)
 
     quote do
+      @doc false
       def __spectra_type_info__ do
         beam_path =
           case :code.which(__MODULE__) do

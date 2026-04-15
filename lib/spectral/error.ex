@@ -38,7 +38,7 @@ defmodule Spectral.Error do
           location: [String.t() | atom()],
           type: error_type(),
           context: dynamic(),
-          message: String.t()
+          message: String.t() | nil
         }
 
   defexception [:location, :type, :context, :message]

@@ -51,8 +51,13 @@ defmodule Spectral.TypeInfo do
   Records are indexed by their name (atom).
   """
 
+  @typedoc "A type information structure. Alias for `:spectra_type_info.type_info()`."
   @type type_info :: :spectra_type_info.type_info()
+
+  @typedoc "A key identifying a type. Alias for `:spectra_type_info.type_key()`."
   @type type_key :: :spectra_type_info.type_key()
+
+  @typedoc "A key identifying a function. Alias for `:spectra_type_info.function_key()`."
   @type function_key :: :spectra_type_info.function_key()
 
   @doc """
@@ -60,7 +65,7 @@ defmodule Spectral.TypeInfo do
 
   Pass `implements_codec: true` when the module implements `Spectral.Codec`.
   In practice you rarely need to call this directly — type info is normally
-  obtained via `Module.__spectra_type_info__/0`.
+  obtained via a module's `__spectra_type_info__/0` function.
 
   ## Examples
 

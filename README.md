@@ -293,31 +293,31 @@ defmodule MyGeoModule do
   @opaque point :: {float(), float()}
 
   @impl Spectral.Codec
-  def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _sp_type, _params)
+  def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _sp_type, _params, _config)
       when is_number(x) and is_number(y) do
     {:ok, [x, y]}
   end
 
-  def encode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params) do
+  def encode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params, _config) do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
   end
 
-  def encode(_format, _module, _type_ref, _data, _sp_type, _params), do: :continue
+  def encode(_format, _module, _type_ref, _data, _sp_type, _params, _config), do: :continue
 
   @impl Spectral.Codec
-  def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _sp_type, _params)
+  def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _sp_type, _params, _config)
       when is_number(x) and is_number(y) do
     {:ok, {x, y}}
   end
 
-  def decode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params) do
+  def decode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params, _config) do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
   end
 
-  def decode(_format, _module, _type_ref, _input, _sp_type, _params), do: :continue
+  def decode(_format, _module, _type_ref, _input, _sp_type, _params, _config), do: :continue
 
   @impl Spectral.Codec
-  def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _sp_type, _params) do
+  def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _sp_type, _params, _config) do
     %{type: "array", items: %{type: "number"}, minItems: 2, maxItems: 2}
   end
 end
@@ -331,9 +331,9 @@ For container types that need to recursively encode or decode their elements, us
 
 Construct `%Spectral.Error{}` structs and always return them in `{:error, [%Spectral.Error{}]}` tuples (as shown above). Spectral collects errors from multiple locations and attaches path information as it traverses nested structures. See existing usages of `%Spectral.Error{}` in the codebase for examples.
 
-### Optional `schema/5` callback
+### Optional `schema/6` callback
 
-The `schema/5` callback is optional. If a codec module does not export it, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. Return `:continue` for types the codec does not handle.
+The `schema/6` callback is optional. If a codec module does not export it, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. Return `:continue` for types the codec does not handle.
 
 ### Codecs for third-party types
 
@@ -415,20 +415,20 @@ defmodule MyIds do
   @type org_id :: String.t()
 
   @impl Spectral.Codec
-  def encode(_format, MyIds, {:type, type, 0}, id, _sp_type, prefix)
+  def encode(_format, MyIds, {:type, type, 0}, id, _sp_type, prefix, _config)
       when type in [:user_id, :org_id] and is_binary(id) do
     {:ok, prefix <> id}
   end
 
-  def encode(_format, MyIds, {:type, type, 0}, data, _sp_type, _prefix)
+  def encode(_format, MyIds, {:type, type, 0}, data, _sp_type, _prefix, _config)
       when type in [:user_id, :org_id] do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, type, 0}, value: data}}]}
   end
 
-  def encode(_format, _module, _type_ref, _data, _sp_type, _params), do: :continue
+  def encode(_format, _module, _type_ref, _data, _sp_type, _params, _config), do: :continue
 
   @impl Spectral.Codec
-  def decode(_format, MyIds, {:type, type, 0}, encoded, _sp_type, prefix)
+  def decode(_format, MyIds, {:type, type, 0}, encoded, _sp_type, prefix, _config)
       when type in [:user_id, :org_id] and is_binary(encoded) do
     prefix_len = byte_size(prefix)
 
@@ -438,10 +438,10 @@ defmodule MyIds do
     end
   end
 
-  def decode(_format, _module, _type_ref, _input, _sp_type, _params), do: :continue
+  def decode(_format, _module, _type_ref, _input, _sp_type, _params, _config), do: :continue
 
   @impl Spectral.Codec
-  def schema(_format, MyIds, {:type, type, 0}, _sp_type, prefix) when type in [:user_id, :org_id] do
+  def schema(_format, MyIds, {:type, type, 0}, _sp_type, prefix, _config) when type in [:user_id, :org_id] do
     %{type: "string", pattern: "^" <> prefix}
   end
 end
@@ -609,7 +609,7 @@ Rather than excluding `inserted_at` and `updated_at` with `only`, you can includ
 type as `DateTime.t() | nil`. Because Ecto sets their struct default to `nil`, the standard
 nil-default rules apply:
 
-- **Encode**: nil timestamps are omitted from JSON — a pre-insert struct serialises cleanly
+- **Encode**: nil timestamps are omitted from JSON — a pre-insert struct serializes cleanly
   without them.
 - **Decode**: timestamps absent from JSON (e.g. a client create or update request) simply
   produce `nil` — no error, because the type allows it.
@@ -798,7 +798,7 @@ endpoints = [
 {:ok, json} = Spectral.OpenAPI.endpoints_to_openapi(metadata, endpoints)
 ```
 
-`endpoints_to_openapi/2` returns `{:ok, iodata}` — the complete OpenAPI 3.1 spec serialised as JSON, ready to write to a file or serve over HTTP.
+`endpoints_to_openapi/2` returns `{:ok, iodata}` — the complete OpenAPI 3.1 spec serialized as JSON, ready to write to a file or serve over HTTP.
 
 `endpoints_to_openapi/3` accepts the same `pre_encoded` option as `encode/5`:
 

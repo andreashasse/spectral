@@ -122,11 +122,14 @@ defmodule Spectral.OpenAPI do
   @doc """
   Adds a response body to a response builder.
 
+  You can optionally provide a `content_type` as a 4th argument.
+
   ## Parameters
 
   - `response` - Response builder from `response/2`
   - `module` - Module containing the type definition
   - `schema` - Schema reference (typically an atom like `:t`)
+  - `content_type` - Optional content type (e.g., `"application/json"`, `"application/xml"`)
 
   ## Returns
 
@@ -136,6 +139,9 @@ defmodule Spectral.OpenAPI do
 
       response = Spectral.OpenAPI.response(200, "Success")
         |> Spectral.OpenAPI.response_with_body(Person, :t)
+
+      response_xml = Spectral.OpenAPI.response(200, "Success")
+        |> Spectral.OpenAPI.response_with_body(Person, :t, "application/xml")
   """
   @spec response_with_body(
           :spectra_openapi.response_spec(),
@@ -146,25 +152,7 @@ defmodule Spectral.OpenAPI do
     :spectra_openapi.response_with_body(response, module, schema)
   end
 
-  @doc """
-  Adds a response body with custom content type to a response builder.
-
-  ## Parameters
-
-  - `response` - Response builder from `response/2`
-  - `module` - Module containing the type definition
-  - `schema` - Schema reference (typically an atom like `:t`)
-  - `content_type` - Content type (e.g., `"application/json"`, `"application/xml"`)
-
-  ## Returns
-
-  - `response` - Updated response builder with body schema and content type
-
-  ## Example
-
-      response = Spectral.OpenAPI.response(200, "Success")
-        |> Spectral.OpenAPI.response_with_body(Person, :t, "application/xml")
-  """
+  @doc false
   @spec response_with_body(
           :spectra_openapi.response_spec(),
           module(),
@@ -239,11 +227,14 @@ defmodule Spectral.OpenAPI do
   @doc """
   Adds a request body specification to an endpoint.
 
+  You can optionally provide a `content_type` as a 4th argument.
+
   ## Parameters
 
   - `endpoint` - The endpoint to modify
   - `module` - Module containing type definitions
   - `schema` - Schema reference (typically an atom like `:t`)
+  - `content_type` - Optional content type binary (e.g., `"application/xml"`; defaults to `"application/json"`)
 
   ## Returns
 
@@ -253,6 +244,9 @@ defmodule Spectral.OpenAPI do
 
       endpoint = Spectral.OpenAPI.endpoint(:post, "/users")
         |> Spectral.OpenAPI.with_request_body(Person, :t)
+
+      endpoint_xml = Spectral.OpenAPI.endpoint(:post, "/users")
+        |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
   """
   @spec with_request_body(
           :spectra_openapi.endpoint_spec(),
@@ -263,25 +257,7 @@ defmodule Spectral.OpenAPI do
     :spectra_openapi.with_request_body(endpoint, module, schema)
   end
 
-  @doc """
-  Adds a request body specification with a custom content type to an endpoint.
-
-  ## Parameters
-
-  - `endpoint` - The endpoint to modify
-  - `module` - Module containing type definitions
-  - `schema` - Schema reference (typically an atom like `:t`)
-  - `content_type` - Content type binary (e.g., `"application/xml"`; defaults to `"application/json"`)
-
-  ## Returns
-
-  - `endpoint` - Modified endpoint with request body
-
-  ## Example
-
-      endpoint = Spectral.OpenAPI.endpoint(:post, "/users")
-        |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
-  """
+  @doc false
   @spec with_request_body(
           :spectra_openapi.endpoint_spec(),
           module(),
