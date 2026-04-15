@@ -38,7 +38,7 @@ defmodule Spectral.Error do
           location: [String.t() | atom()],
           type: error_type(),
           context: dynamic(),
-          message: String.t()
+          message: String.t() | nil
         }
 
   defexception [:location, :type, :context, :message]
@@ -53,28 +53,7 @@ defmodule Spectral.Error do
     format_error(error)
   end
 
-  @doc """
-  Converts an Erlang error record from `:spectra` to a `Spectral.Error` struct.
-
-  ## Parameters
-
-  - `erlang_error` - An error record from the `:spectra` library
-
-  ## Returns
-
-  - `%Spectral.Error{}` - The error as an Elixir struct
-
-  ## Example
-
-      iex> erlang_error = {:sp_error, ["user", "age"], :type_mismatch, %{expected: :integer}, nil}
-      iex> Spectral.Error.from_erlang(erlang_error)
-      %Spectral.Error{
-        location: ["user", "age"],
-        type: :type_mismatch,
-        context: %{expected: :integer},
-        message: nil
-      }
-  """
+  @doc false
   def from_erlang(sp_error(location: location, type: type, ctx: ctx)) do
     %__MODULE__{
       location: location,
@@ -84,23 +63,7 @@ defmodule Spectral.Error do
     }
   end
 
-  @doc """
-  Converts a list of Erlang error records to Elixir structs.
-
-  ## Parameters
-
-  - `erlang_errors` - A list of error records from the `:spectra` library
-
-  ## Returns
-
-  - `[%Spectral.Error{}]` - List of errors as Elixir structs
-
-  ## Example
-
-      iex> errors = [{:sp_error, [], :decode_error, %{reason: "invalid JSON"}, nil}]
-      iex> Spectral.Error.from_erlang_list(errors)
-      [%Spectral.Error{location: [], type: :decode_error, context: %{reason: "invalid JSON"}, message: nil}]
-  """
+  @doc false
   def from_erlang_list(erlang_errors) when is_list(erlang_errors) do
     Enum.map(erlang_errors, &from_erlang/1)
   end
