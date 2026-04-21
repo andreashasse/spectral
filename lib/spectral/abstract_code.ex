@@ -135,7 +135,7 @@ defmodule Spectral.AbstractCode do
   def convert_type_ast(ast, current_module \\ nil, aliases \\ []) do
     alias_map = build_alias_map(aliases)
     resolved = resolve_ast_refs(ast, current_module, alias_map)
-    do_convert(resolved)
+    convert_type(resolved)
   end
 
   @doc false
@@ -149,7 +149,7 @@ defmodule Spectral.AbstractCode do
   def convert_spec_ast(spec_ast, current_module \\ nil, aliases \\ []) do
     alias_map = build_alias_map(aliases)
     resolved = resolve_ast_refs(spec_ast, current_module, alias_map)
-    do_convert_spec(resolved)
+    convert_spec(resolved)
   end
 
   # Build a map from short alias atom to full module atom.
@@ -171,15 +171,15 @@ defmodule Spectral.AbstractCode do
 
   # Pre-pass: replace __MODULE__ and resolve aliases in the type AST
   defp resolve_ast_refs(ast, current_module, alias_map) do
-    do_resolve(ast, current_module, alias_map)
+    resolve_ref(ast, current_module, alias_map)
   end
 
-  defp do_resolve({:__MODULE__, meta, nil}, mod, _alias_map) when is_atom(mod) do
+  defp resolve_ref({:__MODULE__, meta, nil}, mod, _alias_map) when is_atom(mod) do
     {:__aliases__, meta, [mod]}
   end
 
   # Resolve __aliases__ with a single short name using alias_map
-  defp do_resolve({:__aliases__, meta, [short_name]}, _mod, alias_map)
+  defp resolve_ref({:__aliases__, meta, [short_name]}, _mod, alias_map)
        when is_atom(short_name) and map_size(alias_map) > 0 do
     case Map.fetch(alias_map, short_name) do
       {:ok, full_module} -> {:__aliases__, meta, [full_module]}
@@ -187,108 +187,108 @@ defmodule Spectral.AbstractCode do
     end
   end
 
-  defp do_resolve({tag, meta, args}, mod, alias_map) when is_list(args) do
-    {do_resolve(tag, mod, alias_map), meta, Enum.map(args, &do_resolve(&1, mod, alias_map))}
+  defp resolve_ref({tag, meta, args}, mod, alias_map) when is_list(args) do
+    {resolve_ref(tag, mod, alias_map), meta, Enum.map(args, &resolve_ref(&1, mod, alias_map))}
   end
 
-  defp do_resolve({tag, meta, args}, _mod, _alias_map) when not is_list(args) do
+  defp resolve_ref({tag, meta, args}, _mod, _alias_map) when not is_list(args) do
     {tag, meta, args}
   end
 
-  defp do_resolve(list, mod, alias_map) when is_list(list) do
-    Enum.map(list, &do_resolve(&1, mod, alias_map))
+  defp resolve_ref(list, mod, alias_map) when is_list(list) do
+    Enum.map(list, &resolve_ref(&1, mod, alias_map))
   end
 
-  defp do_resolve({k, v}, mod, alias_map) do
-    {do_resolve(k, mod, alias_map), do_resolve(v, mod, alias_map)}
+  defp resolve_ref({k, v}, mod, alias_map) do
+    {resolve_ref(k, mod, alias_map), resolve_ref(v, mod, alias_map)}
   end
 
-  defp do_resolve(other, _mod, _alias_map), do: other
+  defp resolve_ref(other, _mod, _alias_map), do: other
 
   # ---------------------------------------------------------------------------
   # Type AST → sp_type()
   # ---------------------------------------------------------------------------
 
   # Annotated type  (var :: type)
-  defp do_convert({:"::", _meta, [{_var, _, nil}, type_ast]}) do
-    do_convert(type_ast)
+  defp convert_type({:"::", _meta, [{_var, _, nil}, type_ast]}) do
+    convert_type(type_ast)
   end
 
   # Literal nil value  (bare nil in a union, e.g. MyStruct | nil)
-  defp do_convert(nil) do
+  defp convert_type(nil) do
     sp_literal(value: nil, binary_value: "nil")
   end
 
   # Literal boolean values
-  defp do_convert(true) do
+  defp convert_type(true) do
     sp_literal(value: true, binary_value: "true")
   end
 
-  defp do_convert(false) do
+  defp convert_type(false) do
     sp_literal(value: false, binary_value: "false")
   end
 
   # Literal atom (e.g. :ok, :error, :hello)
-  defp do_convert(value) when is_atom(value) do
+  defp convert_type(value) when is_atom(value) do
     sp_literal(value: value, binary_value: Atom.to_string(value))
   end
 
   # Literal integer
-  defp do_convert(value) when is_integer(value) do
+  defp convert_type(value) when is_integer(value) do
     sp_literal(value: value, binary_value: Integer.to_string(value))
   end
 
   # Type variable  (e.g. `a` in `@type t(a) :: a`)
-  defp do_convert({name, _meta, nil}) when is_atom(name) do
+  defp convert_type({name, _meta, nil}) when is_atom(name) do
     sp_var(name: name)
   end
 
   # Union  {:|, meta, [left, right]}  — right-nested in AST, must flatten
-  defp do_convert({:|, _meta, [left, right]}) do
-    left_type = do_convert(left)
+  defp convert_type({:|, _meta, [left, right]}) do
+    left_type = convert_type(left)
     right_types = flatten_union(right)
     sp_union(types: [left_type | right_types])
   end
 
   # Range  {:.., meta, [lower, upper]}
-  defp do_convert({:.., _meta, [lower, upper]}) do
+  defp convert_type({:.., _meta, [lower, upper]}) do
     sp_range(type: :integer, lower_bound: integer_value(lower), upper_bound: integer_value(upper))
   end
 
   # Unary negation on integer literal (e.g. -1 in ranges)
-  defp do_convert({:-, _meta, [operand]}) when is_integer(operand) do
+  defp convert_type({:-, _meta, [operand]}) when is_integer(operand) do
     sp_literal(value: -operand, binary_value: Integer.to_string(-operand))
   end
 
   # Function type with arrow  (arg1, arg2 -> return)
   # AST: [{:->, meta, [[arg_asts...], return_ast]}]
-  defp do_convert([{:->, _meta, [arg_asts, return_ast]}]) when is_list(arg_asts) do
-    args = Enum.map(arg_asts, &do_convert/1)
-    return = do_convert(return_ast)
+  defp convert_type([{:->, _meta, [arg_asts, return_ast]}]) when is_list(arg_asts) do
+    args = Enum.map(arg_asts, &convert_type/1)
+    return = convert_type(return_ast)
     sp_function(args: args, return: return)
   end
 
   # Shorthand list type  [elem_type]  — means list(elem_type), i.e. possibly empty
-  defp do_convert([elem_ast]) do
-    sp_list(type: do_convert(elem_ast))
+  defp convert_type([elem_ast]) do
+    sp_list(type: convert_type(elem_ast))
   end
 
   # Empty list literal  []  → nil literal (same as Erlang nil)
-  defp do_convert([]) do
+  defp convert_type([]) do
     sp_literal(value: [], binary_value: "[]")
   end
 
   # Remote type  Module.type()  — {{:., meta, [aliases, :type]}, meta, args}
-  defp do_convert({{:., _dmeta, [{:__aliases__, _ameta, aliases}, type_name]}, _meta, args})
+  defp convert_type({{:., _dmeta, [{:__aliases__, _ameta, aliases}, type_name]}, _meta, args})
        when is_atom(type_name) and is_list(args) do
     module = Module.concat(aliases)
-    converted_args = Enum.map(args, &do_convert/1)
+    converted_args = Enum.map(args, &convert_type/1)
     sp_remote_type(mfargs: {module, type_name, converted_args}, arity: length(converted_args))
   end
 
   # Struct  %MyStruct{field: type, ...}
   # AST: {:%, meta, [{:__aliases__, _, [...]}, {:%{}, meta, fields}]}
-  defp do_convert({:%, _meta, [{:__aliases__, _, aliases}, {:%{}, _mmeta, kv_pairs}]}) do
+  defp convert_type({:%, _meta, [{:__aliases__, _, aliases}, {:%{}, _mmeta, kv_pairs}]}) do
     struct_module = Module.concat(aliases)
 
     field_entries =
@@ -298,7 +298,7 @@ defmodule Spectral.AbstractCode do
           kind: :exact,
           name: key,
           binary_name: Atom.to_string(key),
-          val_type: do_convert(val_ast)
+          val_type: convert_type(val_ast)
         )
       end)
       |> Enum.sort_by(fn f -> literal_map_field(f, :name) end)
@@ -307,7 +307,7 @@ defmodule Spectral.AbstractCode do
   end
 
   # Map  %{...}  — {:%{}, meta, fields}
-  defp do_convert({:%{}, _meta, fields}) when is_list(fields) do
+  defp convert_type({:%{}, _meta, fields}) when is_list(fields) do
     map_fields = Enum.flat_map(fields, &convert_map_field/1)
     {struct_name, final_fields} = extract_struct_name(map_fields)
     # Non-struct maps use :undefined (matching Erlang spectra convention)
@@ -315,21 +315,21 @@ defmodule Spectral.AbstractCode do
   end
 
   # Tuple  {A, B}  — 2-element tuple shorthand
-  defp do_convert({:{}, _meta, field_asts}) do
-    sp_tuple(fields: Enum.map(field_asts, &do_convert/1))
+  defp convert_type({:{}, _meta, field_asts}) do
+    sp_tuple(fields: Enum.map(field_asts, &convert_type/1))
   end
 
-  defp do_convert({a, b}) do
-    sp_tuple(fields: [do_convert(a), do_convert(b)])
+  defp convert_type({a, b}) do
+    sp_tuple(fields: [convert_type(a), convert_type(b)])
   end
 
   # Named types with no module qualifier — could be built-in or user-defined
-  defp do_convert({name, _meta, args}) when is_atom(name) and is_list(args) do
+  defp convert_type({name, _meta, args}) when is_atom(name) and is_list(args) do
     convert_named_type(name, args)
   end
 
   # Catch-all
-  defp do_convert(other) do
+  defp convert_type(other) do
     raise ArgumentError,
           "Spectral.AbstractCode: unsupported type AST: #{inspect(other, pretty: true)}"
   end
@@ -419,7 +419,7 @@ defmodule Spectral.AbstractCode do
   end
 
   defp convert_named_type(:list, [elem_ast]) do
-    sp_list(type: do_convert(elem_ast))
+    sp_list(type: convert_type(elem_ast))
   end
 
   defp convert_named_type(:nonempty_list, []) do
@@ -427,7 +427,7 @@ defmodule Spectral.AbstractCode do
   end
 
   defp convert_named_type(:nonempty_list, [elem_ast]) do
-    sp_nonempty_list(type: do_convert(elem_ast))
+    sp_nonempty_list(type: convert_type(elem_ast))
   end
 
   defp convert_named_type(:maybe_improper_list, []) do
@@ -438,11 +438,11 @@ defmodule Spectral.AbstractCode do
   end
 
   defp convert_named_type(:maybe_improper_list, [elem_ast, tail_ast]) do
-    sp_maybe_improper_list(elements: do_convert(elem_ast), tail: do_convert(tail_ast))
+    sp_maybe_improper_list(elements: convert_type(elem_ast), tail: convert_type(tail_ast))
   end
 
   defp convert_named_type(:nonempty_improper_list, [elem_ast, tail_ast]) do
-    sp_nonempty_improper_list(elements: do_convert(elem_ast), tail: do_convert(tail_ast))
+    sp_nonempty_improper_list(elements: convert_type(elem_ast), tail: convert_type(tail_ast))
   end
 
   # fun()  →  sp_function(args: any, return: term)
@@ -458,7 +458,7 @@ defmodule Spectral.AbstractCode do
   # (... -> return)  AST from fun with args
   # In Elixir, (type1, type2 -> return) becomes {:fun, meta, [{:->, meta, [[args...], return]}]}
   # but quoted as a list-with-arrow literal: [{:->, meta, [[arg1, arg2], return]}]
-  # We handle this through the list path - see do_convert for [elem] and [] patterns.
+  # We handle this through the list path - see convert_type for [elem] and [] patterns.
   # For fun/function with args, they appear as: {:fun, meta, [{:->, meta, [args, ret]}]}
   # where args is a list.
 
@@ -468,12 +468,12 @@ defmodule Spectral.AbstractCode do
   end
 
   defp convert_named_type(:keyword, [type_ast]) do
-    sp_remote_type(mfargs: {:elixir, :keyword, [do_convert(type_ast)]}, arity: 1)
+    sp_remote_type(mfargs: {:elixir, :keyword, [convert_type(type_ast)]}, arity: 1)
   end
 
   # User-defined type reference (local)
   defp convert_named_type(name, args) when is_atom(name) do
-    converted_args = Enum.map(args, &do_convert/1)
+    converted_args = Enum.map(args, &convert_type/1)
     sp_user_type_ref(type_name: name, variables: converted_args, arity: length(converted_args))
   end
 
@@ -482,14 +482,13 @@ defmodule Spectral.AbstractCode do
   # ---------------------------------------------------------------------------
 
   # Simple spec: (arg1, arg2 -> return)
-  defp do_convert_spec({:"::", _meta, [{_name, _nmeta, arg_asts}, return_ast]}) do
-    args = if is_list(arg_asts), do: Enum.map(arg_asts, &do_convert/1), else: []
-    return = do_convert(return_ast)
+  defp convert_spec({:"::", _meta, [{_name, _nmeta, arg_asts}, return_ast]}) do
+    args = if is_list(arg_asts), do: Enum.map(arg_asts, &convert_type/1), else: []
+    return = convert_type(return_ast)
     sp_function_spec(args: args, return: return)
   end
 
-  # Bounded spec: (when [var: type, ...])
-  defp do_convert_spec({:when, _meta, [{:"::", _imeta, [head, return_ast]}, constraints]}) do
+  defp convert_spec({:when, _meta, [{:"::", _imeta, [head, return_ast]}, constraints]}) do
     # Store raw ASTs in constraint_map so substitute_vars returns ASTs (not sp_types)
     constraint_map =
       constraints
@@ -507,8 +506,8 @@ defmodule Spectral.AbstractCode do
     return = substitute_vars(return_ast, constraint_map)
 
     sp_function_spec(
-      args: Enum.map(args, &do_convert/1),
-      return: do_convert(return)
+      args: Enum.map(args, &convert_type/1),
+      return: convert_type(return)
     )
   end
 
@@ -517,11 +516,11 @@ defmodule Spectral.AbstractCode do
   # ---------------------------------------------------------------------------
 
   defp flatten_union({:|, _meta, [left, right]}) do
-    [do_convert(left) | flatten_union(right)]
+    [convert_type(left) | flatten_union(right)]
   end
 
   defp flatten_union(other) do
-    [do_convert(other)]
+    [convert_type(other)]
   end
 
   defp integer_value(v) when is_integer(v), do: v
@@ -541,7 +540,7 @@ defmodule Spectral.AbstractCode do
             kind: :exact,
             name: key,
             binary_name: Atom.to_string(key),
-            val_type: do_convert(val_ast)
+            val_type: convert_type(val_ast)
           )
         ]
 
@@ -549,8 +548,8 @@ defmodule Spectral.AbstractCode do
         [
           typed_map_field(
             kind: :exact,
-            key_type: do_convert(key_ast),
-            val_type: do_convert(val_ast)
+            key_type: convert_type(key_ast),
+            val_type: convert_type(val_ast)
           )
         ]
     end
@@ -564,7 +563,7 @@ defmodule Spectral.AbstractCode do
             kind: :assoc,
             name: key,
             binary_name: Atom.to_string(key),
-            val_type: do_convert(val_ast)
+            val_type: convert_type(val_ast)
           )
         ]
 
@@ -572,8 +571,8 @@ defmodule Spectral.AbstractCode do
         [
           typed_map_field(
             kind: :assoc,
-            key_type: do_convert(key_ast),
-            val_type: do_convert(val_ast)
+            key_type: convert_type(key_ast),
+            val_type: convert_type(val_ast)
           )
         ]
     end
@@ -585,14 +584,20 @@ defmodule Spectral.AbstractCode do
         kind: :exact,
         name: key,
         binary_name: Atom.to_string(key),
-        val_type: do_convert(val_ast)
+        val_type: convert_type(val_ast)
       )
     ]
   end
 
   # Plain key_type => val_type (no required/optional wrapper) is exact in Erlang abstract format
   defp convert_map_field({key_ast, val_ast}) do
-    [typed_map_field(kind: :exact, key_type: do_convert(key_ast), val_type: do_convert(val_ast))]
+    [
+      typed_map_field(
+        kind: :exact,
+        key_type: convert_type(key_ast),
+        val_type: convert_type(val_ast)
+      )
+    ]
   end
 
   defp extract_struct_name(map_fields) do
