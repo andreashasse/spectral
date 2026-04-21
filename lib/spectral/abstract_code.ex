@@ -260,9 +260,17 @@ defmodule Spectral.AbstractCode do
     sp_literal(value: -operand, binary_value: Integer.to_string(-operand))
   end
 
-  # Shorthand non-empty list  [elem_type]  (1-element list literal)
+  # Function type with arrow  (arg1, arg2 -> return)
+  # AST: [{:->, meta, [[arg_asts...], return_ast]}]
+  defp do_convert([{:->, _meta, [arg_asts, return_ast]}]) when is_list(arg_asts) do
+    args = Enum.map(arg_asts, &do_convert/1)
+    return = do_convert(return_ast)
+    sp_function(args: args, return: return)
+  end
+
+  # Shorthand list type  [elem_type]  — means list(elem_type), i.e. possibly empty
   defp do_convert([elem_ast]) do
-    sp_nonempty_list(type: do_convert(elem_ast))
+    sp_list(type: do_convert(elem_ast))
   end
 
   # Empty list literal  []  → nil literal (same as Erlang nil)
@@ -300,7 +308,8 @@ defmodule Spectral.AbstractCode do
   defp do_convert({:%{}, _meta, fields}) when is_list(fields) do
     map_fields = Enum.flat_map(fields, &convert_map_field/1)
     {struct_name, final_fields} = extract_struct_name(map_fields)
-    sp_map(fields: final_fields, struct_name: struct_name)
+    # Non-struct maps use :undefined (matching Erlang spectra convention)
+    sp_map(fields: final_fields, struct_name: struct_name || :undefined)
   end
 
   # Tuple  {A, B}  — 2-element tuple shorthand
@@ -399,7 +408,7 @@ defmodule Spectral.AbstractCode do
           val_type: sp_simple_type(type: :term)
         )
       ],
-      struct_name: nil
+      struct_name: :undefined
     )
   end
 
@@ -579,8 +588,9 @@ defmodule Spectral.AbstractCode do
     ]
   end
 
+  # Plain key_type => val_type (no required/optional wrapper) is exact in Erlang abstract format
   defp convert_map_field({key_ast, val_ast}) do
-    [typed_map_field(kind: :assoc, key_type: do_convert(key_ast), val_type: do_convert(val_ast))]
+    [typed_map_field(kind: :exact, key_type: do_convert(key_ast), val_type: do_convert(val_ast))]
   end
 
   defp extract_struct_name(map_fields) do

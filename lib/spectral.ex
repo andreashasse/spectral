@@ -73,7 +73,7 @@ defmodule Spectral do
 
       defmodule Person do
         use Spectral
-        
+
         spectral title: "Person", description: "A person record"
         @type t :: %Person{name: String.t()}
       end
