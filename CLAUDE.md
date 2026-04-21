@@ -68,3 +68,14 @@ Builder pattern for OpenAPI specs. Use `endpoint/2-5` then pipe through `add_res
 
 - `Spectral.TypeInfo.new(:nomodule, false)` produces a blank type_info for use in tests.
 - Test support modules live in `test/support/` and are compiled in `:test` env via `elixirc_paths`.
+
+## Coverage
+
+Use `cover_diff` to check for dead or untested code introduced by a change:
+
+```bash
+mix test --cover --export-coverage default
+mix cover_diff --base-branch main
+```
+
+When adding new code, run `cover_diff` to confirm all new lines are exercised by tests. Uncovered lines in a diff are a signal to either add tests or remove dead code.

@@ -31,6 +31,7 @@ defmodule Spectral.MixProject do
     [
       {:spectra, "~> 0.11.1"},
       {:stream_data, "~> 1.1", only: :test},
+      {:cover_diff, "~> 0.1.0", only: :test, runtime: false},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
