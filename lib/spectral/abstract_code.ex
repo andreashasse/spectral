@@ -158,9 +158,9 @@ defmodule Spectral.AbstractCode do
   defp build_alias_map([]), do: %{}
 
   defp build_alias_map(aliases) do
-    Map.new(aliases, fn {_aliased_as, full_module} ->
+    Map.new(aliases, fn {aliased_as, full_module} ->
       short_name =
-        full_module
+        aliased_as
         |> Module.split()
         |> List.last()
         |> String.to_atom()
@@ -292,7 +292,8 @@ defmodule Spectral.AbstractCode do
     struct_module = Module.concat(aliases)
 
     field_entries =
-      Enum.map(kv_pairs, fn {key, val_ast} when is_atom(key) ->
+      kv_pairs
+      |> Enum.map(fn {key, val_ast} when is_atom(key) ->
         literal_map_field(
           kind: :exact,
           name: key,
@@ -300,6 +301,7 @@ defmodule Spectral.AbstractCode do
           val_type: do_convert(val_ast)
         )
       end)
+      |> Enum.sort_by(fn f -> literal_map_field(f, :name) end)
 
     sp_map(fields: field_entries, struct_name: struct_module)
   end

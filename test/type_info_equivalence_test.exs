@@ -99,6 +99,64 @@ defmodule TypeInfoEquivalenceTest do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  # Custom alias (alias Foo.Bar, as: Baz) — regression for build_alias_map bug
+  # ---------------------------------------------------------------------------
+
+  test "CustomAliasModule: compile-time type_info matches runtime" do
+    compile_time = CustomAliasModule.__spectra_type_info__()
+    runtime = runtime_type_info(CustomAliasModule)
+
+    assert compile_time == runtime,
+           """
+           Mismatch for CustomAliasModule (custom as: alias).
+
+           Compile-time: #{inspect(compile_time, pretty: true)}
+           Runtime:      #{inspect(runtime, pretty: true)}
+           """
+  end
+
+  # ---------------------------------------------------------------------------
+  # BoundedSpecModule: bounded specs with nested type vars — regression for
+  # non-recursive substitute_vars bug
+  # ---------------------------------------------------------------------------
+
+  test "BoundedSpecModule: compile-time function specs match runtime" do
+    compile_time = BoundedSpecModule.__spectra_type_info__()
+    runtime = runtime_type_info(BoundedSpecModule)
+
+    assert function_keys(compile_time) == function_keys(runtime)
+
+    # Each spec's args/return must match runtime — vars must be fully substituted
+    ct_fns = functions_map(compile_time)
+    rt_fns = functions_map(runtime)
+
+    for key <- Map.keys(rt_fns) do
+      assert Map.get(ct_fns, key) == Map.get(rt_fns, key),
+             "Function spec mismatch for #{inspect(key)}:\n" <>
+               "  compile: #{inspect(Map.get(ct_fns, key))}\n" <>
+               "  runtime: #{inspect(Map.get(rt_fns, key))}"
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # MultiClauseSpecModule: multi-clause spec order — regression for reversed
+  # spec accumulation bug
+  # ---------------------------------------------------------------------------
+
+  test "MultiClauseSpecModule: compile-time spec clause order matches runtime" do
+    compile_time = MultiClauseSpecModule.__spectra_type_info__()
+    runtime = runtime_type_info(MultiClauseSpecModule)
+
+    ct_fns = functions_map(compile_time)
+    rt_fns = functions_map(runtime)
+
+    assert Map.get(ct_fns, {:classify, 1}) == Map.get(rt_fns, {:classify, 1}),
+           "Multi-clause spec order mismatch:\n" <>
+             "  compile: #{inspect(Map.get(ct_fns, {:classify, 1}))}\n" <>
+             "  runtime: #{inspect(Map.get(rt_fns, {:classify, 1}))}"
+  end
+
   # EndpointHandler has specs — check compile-time function keys match runtime
   test "EndpointHandler: compile-time function specs match runtime" do
     compile_time = EndpointHandler.__spectra_type_info__()

@@ -333,10 +333,11 @@ defmodule Spectral do
       |> Enum.filter(fn {kind, _, _} -> kind == :function end)
       |> Map.new(fn {:function, {name, arity, _ast}, doc} -> {{name, arity}, doc} end)
 
-    # Group specs by {name, arity}; spec_attrs are ordered last-to-first per clause
+    # Group specs by {name, arity}; spec_attrs are ordered last-to-first per clause,
+    # so prepend each new clause to reconstruct source order.
     grouped_specs =
       Enum.reduce(specs_with_lines, %{}, fn {_line, :function, {name, arity, inner_ast}}, acc ->
-        Map.update(acc, {name, arity}, [inner_ast], fn existing -> existing ++ [inner_ast] end)
+        Map.update(acc, {name, arity}, [inner_ast], fn existing -> [inner_ast | existing] end)
       end)
 
     type_info_with_functions =
