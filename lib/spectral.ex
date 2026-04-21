@@ -184,15 +184,23 @@ defmodule Spectral do
 
     spec_attrs = Module.get_attribute(env.module, :spec) || []
 
+    # Determine if this module implements the spectra_codec behaviour (compile-time check).
+    behaviours = Module.get_attribute(env.module, :behaviour) || []
+    implements_codec = :spectra_codec in behaviours or Spectral.Codec in behaviours
+
+    # Parse type ASTs into {line, :type, {name, arity, type_expr_ast}} tuples
     types_with_lines =
-      type_attrs
-      |> Enum.map(fn type_ast ->
+      Enum.map(type_attrs, fn type_ast ->
         case type_ast do
-          {kind, {:"::", meta, [{name, _, args_or_nil}, _type_expr]}, _env}
+          {kind, {:"::", meta, [{name, _, args_or_nil}, type_expr]}, _env}
           when kind in [:type, :typep] and is_atom(name) ->
             arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
             line = Keyword.get(meta, :line, 0)
-            {line, :type, {name, arity}}
+
+            vars =
+              if is_list(args_or_nil), do: Enum.map(args_or_nil, fn {v, _, _} -> v end), else: []
+
+            {line, :type, {name, arity, vars, type_expr}}
 
           other_ast ->
             type_kind =
@@ -210,21 +218,24 @@ defmodule Spectral do
         end
       end)
 
+    # Parse spec ASTs into {line, :function, {name, arity, spec_inner_ast}} tuples
+    # Multi-clause specs: stored as separate attribute entries ordered last-to-first,
+    # so we group by {name, arity} collecting specs in order.
     specs_with_lines =
-      spec_attrs
-      |> Enum.flat_map(fn spec_ast ->
+      Enum.flat_map(spec_attrs, fn spec_ast ->
         case spec_ast do
-          {:spec, {:"::", meta, [{name, _, args_or_nil}, _return_type]}, _env}
+          {:spec, {:"::", meta, [{name, _, args_or_nil}, _return_type]} = inner, _env}
           when is_atom(name) ->
             arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
             line = Keyword.get(meta, :line, 0)
-            [{line, :function, {name, arity}}]
+            [{line, :function, {name, arity, inner}}]
 
-          {:spec, {:when, _, [{:"::", meta, [{name, _, args_or_nil}, _return_type]}, _]}, _env}
+          {:spec, {:when, _, [{:"::", meta, [{name, _, args_or_nil}, _return_type]}, _]} = inner,
+           _env}
           when is_atom(name) ->
             arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
             line = Keyword.get(meta, :line, 0)
-            [{line, :function, {name, arity}}]
+            [{line, :function, {name, arity, inner}}]
 
           _ ->
             []
@@ -236,22 +247,19 @@ defmodule Spectral do
     # the next declaration — O(N log N) vs the previous O(N²) Enum.find approach.
     all_items =
       (Enum.map(spectral_attrs, fn {line, doc} -> {line, :spectral, doc} end) ++
-         types_with_lines ++
-         specs_with_lines)
+         Enum.map(types_with_lines, fn {line, kind, ref} -> {line, kind, ref} end) ++
+         Enum.map(specs_with_lines, fn {line, kind, ref} -> {line, kind, ref} end))
       |> Enum.sort_by(fn {line, _, _} -> line end)
 
     {pairs_reversed, leftover} =
       Enum.reduce(all_items, {[], nil}, fn
         {line, :spectral, doc}, {pairs, _pending} ->
-          # New spectral replaces any previous pending (last one before a declaration wins)
           {pairs, {line, doc}}
 
         {_line, _kind, _ref}, {pairs, nil} ->
-          # No pending spectral — this declaration is undocumented
           {pairs, nil}
 
         {_line, kind, ref}, {pairs, {_spectral_line, doc}} ->
-          # Consume the pending spectral
           {[{kind, ref, doc} | pairs], nil}
       end)
 
@@ -264,77 +272,124 @@ defmodule Spectral do
 
     paired_docs = Enum.reverse(pairs_reversed)
 
-    type_docs_to_add =
+    # Build the type_info at compile time
+    base_type_info = :spectra_type_info.new(env.module, implements_codec)
+
+    # Process types: convert AST → sp_type, apply spectral doc annotations, build type_info
+    type_doc_map =
       paired_docs
       |> Enum.filter(fn {kind, _, _} -> kind == :type end)
-      |> Enum.map(fn {:type, {name, arity}, doc} -> {name, arity, doc} end)
+      |> Map.new(fn {:type, {name, arity, _vars, _ast}, doc} -> {{name, arity}, doc} end)
 
-    function_docs_to_add =
+    type_info_with_types =
+      Enum.reduce(types_with_lines, base_type_info, fn {_line, :type,
+                                                        {name, arity, vars, type_expr}},
+                                                       acc_ti ->
+        sp_type = Spectral.AbstractCode.convert_type_ast(type_expr, env.module, env.aliases)
+
+        # Wrap with variables if parameterized type
+        sp_type_with_vars =
+          case vars do
+            [] -> sp_type
+            var_list -> Spectral.AbstractCode.wrap_type_with_vars(sp_type, var_list)
+          end
+
+        # Tag type with its name in meta (mirrors build_type_info_fold in abstract_code.erl)
+        tagged = :spectra_type.update_meta(sp_type_with_vars, %{name: {:type, name, arity}})
+
+        # Apply spectral doc if present
+        tagged_with_doc =
+          case Map.fetch(type_doc_map, {name, arity}) do
+            {:ok, doc} ->
+              {type_params, doc1} = Map.pop(doc, :type_parameters)
+              {only, doc_clean} = Map.pop(doc1, :only)
+
+              tagged
+              |> then(fn t ->
+                if only != nil,
+                  do: :spectra_abstract_code.apply_only(t, validate_only(only)),
+                  else: t
+              end)
+              |> :spectra_type.add_doc_to_type(doc_clean)
+              |> then(fn t ->
+                if type_params != nil do
+                  meta = :spectra_type.get_meta(t)
+                  :spectra_type.set_meta(t, Map.put(meta, :parameters, type_params))
+                else
+                  t
+                end
+              end)
+
+            :error ->
+              tagged
+          end
+
+        :spectra_type_info.add_type(acc_ti, name, arity, tagged_with_doc)
+      end)
+
+    # Process specs: group by {name, arity}, convert AST → sp_function_spec, apply doc
+    function_doc_map =
       paired_docs
       |> Enum.filter(fn {kind, _, _} -> kind == :function end)
-      |> Enum.map(fn {:function, {name, arity}, doc} -> {name, arity, doc} end)
+      |> Map.new(fn {:function, {name, arity, _ast}, doc} -> {{name, arity}, doc} end)
 
+    # Group specs by {name, arity}; spec_attrs are ordered last-to-first per clause
+    grouped_specs =
+      Enum.reduce(specs_with_lines, %{}, fn {_line, :function, {name, arity, inner_ast}}, acc ->
+        Map.update(acc, {name, arity}, [inner_ast], fn existing -> existing ++ [inner_ast] end)
+      end)
+
+    type_info_with_functions =
+      Enum.reduce(grouped_specs, type_info_with_types, fn {{name, arity}, spec_asts}, acc_ti ->
+        func_specs =
+          Enum.map(spec_asts, fn inner_ast ->
+            Spectral.AbstractCode.convert_spec_ast(inner_ast, env.module, env.aliases)
+          end)
+
+        # Apply function doc if present
+        final_func_specs =
+          case Map.fetch(function_doc_map, {name, arity}) do
+            {:ok, raw_doc} ->
+              normalized_doc = :spectra_type.normalize_function_doc(raw_doc)
+
+              Enum.map(func_specs, fn spec ->
+                Spectral.__set_function_spec_doc__(spec, normalized_doc)
+              end)
+
+            :error ->
+              func_specs
+          end
+
+        :spectra_type_info.add_function(acc_ti, name, arity, final_func_specs)
+      end)
+
+    # Escape the fully-built type_info as a compile-time constant
+    escaped_type_info = Macro.escape(type_info_with_functions)
+
+    # For function docs, we still need __attach_function_doc__ for any docs that weren't
+    # processed above (shouldn't happen since we process all in the reduce above,
+    # but kept for safety with the function_doc_map approach)
     quote do
       @doc false
       def __spectra_type_info__ do
-        beam_path =
-          case :code.which(__MODULE__) do
-            :cover_compiled ->
-              {_, _, path} = :code.get_object_code(__MODULE__)
-              path
-
-            path when is_list(path) ->
-              path
-
-            error ->
-              raise ArgumentError,
-                    "Cannot find beam file for module #{inspect(__MODULE__)}: #{inspect(error)}"
-          end
-
-        type_info = :spectra_abstract_code.types_in_module_path(beam_path)
-
-        type_info_with_type_docs =
-          Enum.reduce(
-            unquote(Macro.escape(type_docs_to_add)),
-            type_info,
-            fn {name, arity, doc}, acc_type_info ->
-              case :spectra_type_info.find_type(acc_type_info, name, arity) do
-                {:ok, existing_type} ->
-                  {type_params, doc1} = Map.pop(doc, :type_parameters)
-                  {only, doc_clean} = Map.pop(doc1, :only)
-
-                  updated_type =
-                    existing_type
-                    |> then(fn t ->
-                      if only != nil, do: :spectra_abstract_code.apply_only(t, only), else: t
-                    end)
-                    |> :spectra_type.add_doc_to_type(doc_clean)
-                    |> then(fn t ->
-                      if type_params != nil do
-                        meta = :spectra_type.get_meta(t)
-                        :spectra_type.set_meta(t, Map.put(meta, :parameters, type_params))
-                      else
-                        t
-                      end
-                    end)
-
-                  :spectra_type_info.add_type(acc_type_info, name, arity, updated_type)
-
-                :error ->
-                  acc_type_info
-              end
-            end
-          )
-
-        Enum.reduce(
-          unquote(Macro.escape(function_docs_to_add)),
-          type_info_with_type_docs,
-          fn {name, arity, doc}, acc_type_info ->
-            Spectral.__attach_function_doc__(acc_type_info, name, arity, doc)
-          end
-        )
+        unquote(escaped_type_info)
       end
     end
+  end
+
+  @doc false
+  defp validate_only(only) when is_list(only) do
+    case Enum.all?(only, &is_atom/1) do
+      true ->
+        only
+
+      false ->
+        raise ArgumentError, "spectral :only must be a list of atoms, got: #{inspect(only)}"
+    end
+  end
+
+  defp validate_only(only) do
+    raise ArgumentError, "spectral :only must be a list of atoms, got: #{inspect(only)}"
   end
 
   @doc false
@@ -345,8 +400,7 @@ defmodule Spectral do
       {:ok, func_specs} ->
         updated_specs =
           Enum.map(func_specs, fn spec ->
-            meta = sp_function_spec(spec, :meta)
-            sp_function_spec(spec, meta: Map.put(meta, :doc, normalized_doc))
+            __set_function_spec_doc__(spec, normalized_doc)
           end)
 
         :spectra_type_info.add_function(type_info, name, arity, updated_specs)
@@ -354,6 +408,12 @@ defmodule Spectral do
       :error ->
         type_info
     end
+  end
+
+  @doc false
+  def __set_function_spec_doc__(spec, normalized_doc) do
+    meta = sp_function_spec(spec, :meta)
+    sp_function_spec(spec, meta: Map.put(meta, :doc, normalized_doc))
   end
 
   @doc """

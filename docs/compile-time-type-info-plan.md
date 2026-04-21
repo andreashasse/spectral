@@ -11,7 +11,88 @@ Currently, `__spectra_type_info__/0` does expensive work at **runtime** every ti
 
 All of this can be done at **compile time** in `__before_compile__`, with the final `#type_info{}` embedded as a constant in the generated function. The result: `__spectra_type_info__/0` becomes a simple constant return with near-zero runtime cost.
 
-## Key Technical Question
+## Phase 0 Findings (Completed)
+
+Investigation ran via `test/type_format_investigation_test.exs` against `test/support/type_format_inspector.ex` (40 types, 3 specs, covering all type constructs).
+
+### Finding 1: Compile-time type bodies are Elixir quoted AST (NOT Erlang abstract format)
+
+All 40 types differed between compile-time and beam_lib. The compile-time `_type_expr` is **Elixir quoted AST**, not Erlang abstract format. The two formats are structurally different in every case.
+
+**Consequence: We cannot feed compile-time attributes directly to `spectra_abstract_code.field_info_to_type/1`. We must write our own Elixir AST → sp_type() converter.**
+
+**This means the decision to "Extend spectra's API" is revised** — we need to write an Elixir-side converter, not export an Erlang function.
+
+### Finding 2: Mapping of Elixir AST → Erlang abstract format
+
+The patterns are consistent and complete. Every Erlang abstract type form has a corresponding Elixir AST representation:
+
+| Type | Elixir compile-time AST | Erlang abstract (beam_lib) |
+|---|---|---|
+| `integer()` | `{:integer, [line: N, col: C], []}` | `{:type, {N,C}, :integer, []}` |
+| `binary()` | `{:binary, meta, []}` | `{:type, {N,C}, :binary, []}` |
+| `atom()`, `boolean()`, etc. | `{:atom_name, meta, []}` | `{:type, {N,C}, :atom_name, []}` |
+| `non_neg_integer()` | `{:non_neg_integer, meta, []}` | `{:type, {N,C}, :non_neg_integer, []}` |
+| `0..255` (range) | `{:.., meta, [0, 255]}` | `{:type, {N,C}, :range, [{:integer,0,0},{:integer,0,255}]}` |
+| `:hello` (atom literal) | `:hello` | `{:atom, 0, :hello}` |
+| `nil` | `nil` | `{:atom, 0, nil}` |
+| `true`/`false` | `true`/`false` | `{:atom, 0, true/false}` |
+| `42` (integer literal) | `42` | `{:integer, 0, 42}` |
+| `A \| B \| C` (union) | `{:\|, meta, [A, {\|, meta, [B, C]}]}` (right-nested) | `{:type, {N,C}, :union, [A, B, C]}` (flat list) |
+| `[integer()]` (list shorthand) | `[{:integer, meta, []}]` (a 1-element list) | `{:type, 0, :list, [{:type,...,:integer,[]}]}` |
+| `list()` | `{:list, meta, []}` | `{:type, {N,C}, :list, []}` |
+| `nonempty_list(atom())` | `{:nonempty_list, meta, [{:atom,meta,[]}]}` | `{:type, {N,C}, :nonempty_list, [{:type,...,:atom,[]}]}` |
+| `{atom(), integer()}` (tuple) | `{:{}, meta, [atom_ast, int_ast]}` | `{:type, {N,C}, :tuple, [atom_type, int_type]}` |
+| `tuple()` (any tuple) | `{:tuple, meta, []}` | `{:type, {N,C}, :tuple, :any}` |
+| `%{atom() => integer()}` (typed map) | `{:%{}, meta, [{atom_ast, int_ast}]}` | `{:type, {N,C}, :map, [{:type,...,map_field_exact,[atom_t,int_t]}]}` |
+| `%{required(:name) => T, optional(:age) => T}` | `{:%{}, meta, [{{:required,meta,[:name]}, T_ast}, {{:optional,meta,[:age]}, T_ast}]}` | map_field_exact / map_field_assoc |
+| `%Module{field: T}` (struct) | `{:%, meta, [aliases_ast, {:%{}, meta, [field: T_ast]}]}` | `{:type,...,:map,[__struct__ exact field, field1 exact,...]}` |
+| `String.t()` (remote type) | `{{:., meta, [{:__aliases__,meta,[:String]}, :t]}, meta, []}` | `{:remote_type, {N,C}, [{:atom,0,String},{:atom,0,:t},[]]}`  |
+| `keyword(integer())` (remote w/ args) | `{:keyword, meta, [{:integer,meta,[]}]}` | `{:remote_type, 0, [{:atom,0,:elixir},{:atom,0,:keyword},[int_type]]}` |
+| `t_integer()` (user type ref) | `{:t_integer, meta, []}` | `{:user_type, {N,C}, :t_integer, []}` |
+| `%{value: a}` (parameterized map) | `{:%{}, meta, [value: {:a, meta, nil}]}` | `{:type,...,:map,[map_field_exact [:value, {:var,...,:a}]]}` |
+| `fun()` | `{:fun, meta, []}` | `{:type, {N,C}, :fun, []}` |
+| `(integer() -> binary())` | `[{:->, meta, [[int_ast], bin_ast]}]` (a list with `->`) | `{:type,...,:fun,[{:type,...,:product,[int_t]}, bin_t]}` |
+| `pid()`, `port()`, `reference()` | `{:pid, meta, []}` etc. | `{:type, {N,C}, :pid, []}` etc. |
+| `iodata()`, `iolist()` | `{:iodata, meta, []}` etc. | `{:type, {N,C}, :iodata, []}` etc. |
+| `timeout()`, `mfa()`, `identifier()` | `{:timeout, meta, []}` etc. | `{:type, {N,C}, :timeout, []}` etc. |
+
+### Finding 3: Spec format
+
+Compile-time `@spec` attributes are also **Elixir quoted AST**:
+
+```elixir
+# Simple spec: @spec simple_fun(integer(), binary()) :: boolean()
+{:spec,
+ {:"::", [line: 124, ...],
+  [{:simple_fun, [...], [{:integer,[...],[]}, {:binary,[...],[]}]},
+   {:boolean, [...], []}]},
+ {Module, {124, 1}}}
+
+# Bounded spec: @spec bounded_fun(a, b) :: a when a: integer(), b: binary()
+{:spec,
+ {:when, [...],
+  [{:"::", [...], [{:bounded_fun, [...], [{:a,[...],nil}, {:b,[...],nil}]},
+    {:a, [...], nil}]},
+   [a: {:integer,[...],[]}, b: {:binary,[...],[]}]},
+ {Module, {124, 1}}}
+```
+
+Multi-clause specs are stored as **separate attribute entries** (one per clause), ordered last-to-first (reversed).
+
+### Finding 4: Revised implementation approach
+
+Since the compile-time bodies are Elixir AST (not Erlang abstract format), we need to write an Elixir-side `Spectral.AbstractCode` module that converts Elixir type AST → `sp_type()` records directly. This replaces the original plan to extend spectra's Erlang API.
+
+**Revised decisions:**
+
+| Decision | Original | Revised |
+|---|---|---|
+| Core type conversion | Extend spectra's Erlang API | Write `Spectral.AbstractCode` in Elixir |
+| Spectra dependency | Git branch + new exports | No changes to spectra needed |
+| Spec for `type_from_form` | Export from Erlang | Implement natively in Elixir |
+
+## Key Technical Question (Answered)
 
 The approach hinges on the format of `_type_expr` in the type attributes returned by `Module.get_attribute(env.module, :type)`:
 
@@ -19,15 +100,13 @@ The approach hinges on the format of `_type_expr` in the type attributes returne
 {kind, {:"::", meta, [{name, _, args_or_nil}, _type_expr]}, _env}
 ```
 
-Currently `_type_expr` is **ignored** — the macro only extracts name, arity, and line number. The actual type conversion is deferred to runtime.
-
-Based on how Elixir's compiler processes `@type` definitions (it translates quoted Elixir to Erlang abstract format before storing), the body should be in Erlang abstract format — the same format that `spectra_abstract_code.field_info_to_type/1` expects. **This must be verified in Phase 0.**
+**Answer: `_type_expr` is Elixir quoted AST.** We need a dedicated `Spectral.AbstractCode` module to convert it to `sp_type()` records.
 
 ## Decisions
 
 | Decision | Choice |
 |---|---|
-| Implementation approach | Extend spectra's API (export `field_info_to_type/1` + `type_from_form/1`) |
+| Implementation approach | Write `Spectral.AbstractCode` Elixir module (Elixir AST → sp_type()) |
 | Property-based testing | Yes — add StreamData |
 | Backward compatibility | Clean break — no runtime fallback |
 | Spectra dependency handling | Branch + git dep (publish hex release later) |
@@ -52,75 +131,94 @@ Based on how Elixir's compiler processes `@type` definitions (it translates quot
 
 The type bodies are in Erlang abstract format, meaning we can reconstruct the abstract forms and feed them to spectra's `type_from_form/1`.
 
-## Phase 1: Extend Spectra's API
+## Phase 1: Write `Spectral.AbstractCode` Elixir Module
 
-**Repo:** Local spectra repo (create a branch, e.g. `export-type-form`)
+**File:** `lib/spectral/abstract_code.ex`
 
-### Changes to `spectra_abstract_code.erl`
+Since Phase 0 confirmed the compile-time type bodies are **Elixir AST** (not Erlang abstract format), we implement the conversion natively in Elixir. No changes to spectra are needed.
 
-1. **Export `field_info_to_type/1`** — the core conversion function (~200 lines, handles all Erlang type constructs: simple types, maps, structs, unions, tuples, lists, ranges, literals, remote types, user type refs, function types, etc.)
+### Module responsibilities
 
-2. **Add and export `type_from_form/1`** — a higher-level function that takes a single Erlang abstract form and returns the typed result:
+`Spectral.AbstractCode` converts compile-time Elixir type/spec attributes into `sp_type()` records using the Erlang record constructors already available via `Record.extract(..., from_lib: "spectra/include/spectra_internal.hrl")`.
 
-   ```erlang
-   -spec type_from_form(erl_parse:abstract_form()) ->
-       false | {true, type_form_result()}.
-   ```
+### Key functions to implement
 
-   This is essentially the existing internal `type_in_form/1` function, renamed and exported. It handles:
-   - Type/opaque/nominal forms → `{{type, Name, Arity}, sp_type()}`
-   - Record forms → `{{record, Name}, sp_rec()}`
-   - Spec forms → `{{function, Name, Arity}, [sp_function_spec()]}`
+| Function | Purpose |
+|---|---|
+| `type_from_attribute/1` | Top-level: converts a `@type` attribute to `{name, arity, sp_type(), line}` |
+| `spec_from_attributes/1` | Top-level: groups `@spec` attribute entries by name+arity, returns `[{name, arity, [sp_function_spec()]}]` |
+| `convert_type_body/1` | Converts Elixir type AST body → `sp_type()` record |
+| `convert_map_fields/1` | Converts `{:%{}, meta, fields}` entries → `[literal_map_field \| typed_map_field]` |
 
-3. **Export update:** Add to the existing `-export` directive:
-
-   ```erlang
-   -export([types_in_module/1, types_in_module_path/1, apply_only/2,
-            field_info_to_type/1, type_from_form/1]).
-   ```
-
-### Mix.exs Update in Spectral
+### Elixir AST → sp_type() conversion rules (from Phase 0)
 
 ```elixir
-# Temporarily point to git branch during development
-{:spectra, github: "andreashasse/spectra", branch: "export-type-form"}
+# Simple types: {:integer, meta, []} → sp_simple_type(type: :integer)
+# Range: {:.., meta, [lo, hi]} → sp_range(lower_bound: lo, upper_bound: hi)
+# Literal atom: :foo → sp_literal(value: :foo, binary_value: "foo")
+# Literal nil/true/false: nil → sp_literal(value: nil, binary_value: "nil")
+# Literal integer: 42 → sp_literal(value: 42, binary_value: "42")
+# Union: {:|, meta, [A, {:|, meta, [B, C]}]} → sp_union(types: [A, B, C]) (flatten!)
+# List shorthand: [elem_ast] → sp_list(type: convert(elem_ast))
+# list(): {:list, meta, []} → sp_list(type: sp_simple_type(type: :term))
+# Tuple: {:{}, meta, fields} → sp_tuple(fields: [convert(f) || f <- fields])
+# tuple(): {:tuple, meta, []} → sp_tuple(fields: :any)
+# Map: {:%{}, meta, fields} → sp_map(...) (see map field conversion)
+# Struct: {:%, meta, [aliases, {:%{}, ...}]} → sp_map with __struct__ field
+# Remote type: {{:., meta, [{:__aliases__,_,aliases}, :t]}, meta, args} → sp_remote_type(...)
+# Remote type (lowercase): {:keyword, meta, args} → sp_remote_type(mfargs: {:elixir, :keyword, ...})
+# User type ref: {:my_type, meta, args} → sp_user_type_ref(type_name: :my_type, ...)
+# Type var: {:a, meta, nil} → sp_var(name: :a)
+# Param type: {:t_param, meta, [var_ast]} (type args) → sp_type_with_variables(...)
+# fun(): {:fun, meta, []} → sp_function(args: :any, return: sp_simple_type(type: :term))
+# (A -> B): [{:->, meta, [[arg_ast], return_ast]}] → sp_function(args: [...], return: ...)
 ```
+
+### Map field conversion rules
+
+```elixir
+# {key_ast, val_ast} with plain atom key → literal_map_field(kind: :exact, name: :key)
+# {{:required, meta, [:key]}, val_ast} → literal_map_field(kind: :exact, name: :key)
+# {{:optional, meta, [:key]}, val_ast} → literal_map_field(kind: :assoc, name: :key)
+# {key_type_ast, val_type_ast} (non-literal key) → typed_map_field(kind: :exact, ...)
+# __struct__ field detected → extract struct_name, remove from fields
+```
+
+### Spec conversion rules
+
+```elixir
+# Simple: {:"::", meta, [{fun_name, meta, arg_asts}, return_ast]}
+# Bounded: {:when, meta, [{:"::", meta, [{fun_name, meta, arg_asts}, return_ast]}, when_clauses]}
+# where when_clauses is a keyword list: [a: type_ast, b: type_ast]
+# → substitute vars in arg_asts and return_ast, then convert
+```
+
+### No changes to spectra needed
+
+The `spectra_type_info` and `spectra_type` Erlang modules are already fully exported and usable. The sp_type records are constructed via `Record.extract` as already done in `Spectral` and `Spectral.TypeInfo`.
 
 ## Phase 2: Modify Spectral's `__before_compile__`
 
 **File:** `lib/spectral.ex`
 
-### 2a. Reconstruct Abstract Forms from Attributes
+### 2a. Convert type attributes to sp_type() at compile time
 
-In `__before_compile__`, convert each type attribute back to the abstract form that `type_from_form/1` expects:
-
-```elixir
-# For each @type attribute:
-{kind, {:"::", meta, [{name, _, args_or_nil}, type_expr]}, _env} ->
-  line = Keyword.get(meta, :line, 0)
-  args = args_or_nil || []
-  # Reconstruct as: {:attribute, line, kind_atom, {name, type_expr, args}}
-  form = {:attribute, line, kind, {name, type_expr, args}}
-  case :spectra_abstract_code.type_from_form(form) do
-    {true, {key, sp_type}} -> {key, sp_type, line}
-    false -> nil
-  end
-```
-
-Similarly for `@spec` attributes — reconstruct the Erlang spec form:
+Instead of just extracting `{line, :type, {name, arity}}`, call `Spectral.AbstractCode.type_from_attribute/1`:
 
 ```elixir
-# For each @spec attribute:
-{:spec, spec_ast, _env} ->
-  # Reconstruct as: {:attribute, line, :spec, {{name, arity}, [function_types]}}
-  form = reconstruct_spec_form(spec_ast)
-  case :spectra_abstract_code.type_from_form(form) do
-    {true, {key, specs}} -> {key, specs}
-    false -> nil
-  end
+converted_types =
+  type_attrs
+  |> Enum.map(&Spectral.AbstractCode.type_from_attribute/1)
+  |> Enum.reject(&is_nil/1)
 ```
 
-### 2b. Detect Codec Behaviour
+### 2b. Convert spec attributes at compile time
+
+```elixir
+converted_specs = Spectral.AbstractCode.spec_from_attributes(spec_attrs)
+```
+
+### 2c. Detect codec behaviour
 
 ```elixir
 behaviours = Module.get_attribute(env.module, :behaviour) || []

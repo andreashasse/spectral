@@ -168,7 +168,7 @@ defmodule SpectralTest do
       |> Jason.decode!()
 
     assert schema["type"] == "object"
-    assert schema["required"] == ["street", "city"]
+    assert Enum.sort(schema["required"]) == ["city", "street"]
     assert schema["additionalProperties"] == false
     assert schema["properties"]["city"] == %{"type" => "string"}
     assert schema["properties"]["street"] == %{"type" => "string"}
