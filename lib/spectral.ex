@@ -207,33 +207,13 @@ defmodule Spectral do
     end
   end
 
-  defp parse_type_attrs(type_attrs, env) do
-    Enum.map(type_attrs, fn type_ast ->
-      case type_ast do
-        {kind, {:"::", meta, [{name, _, args_or_nil}, type_expr]}, _env}
-        when kind in [:type, :typep] and is_atom(name) ->
-          arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
-          line = Keyword.get(meta, :line, 0)
-
-          vars =
-            if is_list(args_or_nil), do: Enum.map(args_or_nil, fn {v, _, _} -> v end), else: []
-
-          {line, :type, {name, arity, vars, type_expr}}
-
-        other_ast ->
-          type_kind =
-            case other_ast do
-              {kind, _, _} when is_atom(kind) -> kind
-              _ -> :unknown
-            end
-
-          raise ArgumentError,
-                "Spectral.__before_compile__/1 encountered unsupported @type AST structure in #{inspect(env.module)}.\n" <>
-                  "Type kind: #{inspect(type_kind)}\n" <>
-                  "AST: #{inspect(other_ast, pretty: true)}\n\n" <>
-                  "This might be a bug in Spectral or an unsupported type definition syntax.\n" <>
-                  "Please report this at https://github.com/andreashasse/spectral/issues with the type definition that caused this error."
-      end
+  defp parse_type_attrs(type_attrs, _env) do
+    Enum.map(type_attrs, fn {kind, {:"::", meta, [{name, _, args_or_nil}, type_expr]}, _}
+                            when kind in [:type, :typep] and is_atom(name) ->
+      arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
+      line = Keyword.get(meta, :line, 0)
+      vars = if is_list(args_or_nil), do: Enum.map(args_or_nil, fn {v, _, _} -> v end), else: []
+      {line, :type, {name, arity, vars, type_expr}}
     end)
   end
 
@@ -252,9 +232,6 @@ defmodule Spectral do
           arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
           line = Keyword.get(meta, :line, 0)
           [{line, :function, {name, arity, inner}}]
-
-        _ ->
-          []
       end
     end)
   end
@@ -271,6 +248,7 @@ defmodule Spectral do
     {pairs_reversed, leftover} =
       Enum.reduce(all_items, {[], nil}, fn
         {line, :spectral, doc}, {pairs, _pending} -> {pairs, {line, doc}}
+        # No pending annotation — skip; add_types/add_functions will still process this item without doc
         {_line, _kind, _ref}, {pairs, nil} -> {pairs, nil}
         {_line, kind, ref}, {pairs, {_spectral_line, doc}} -> {[{kind, ref, doc} | pairs], nil}
       end)

@@ -533,12 +533,17 @@ Phase 4 (cleanup)
 
 | File | Change |
 |---|---|
-| **spectra** `src/spectra_abstract_code.erl` | Export `field_info_to_type/1`, add+export `type_from_form/1` |
-| `mix.exs` | Point spectra to git branch, add StreamData |
-| `lib/spectral.ex` | Rewrite `__before_compile__` to build type_info at compile time |
+| **spectra** _(unchanged)_ | All conversion is Elixir-side; no spectra changes needed |
+| `mix.exs` | Added StreamData test dependency |
+| `lib/spectral.ex` | Rewrote `__before_compile__` to build type_info at compile time |
+| `lib/spectral/abstract_code.ex` | **New** — compile-time Elixir AST → sp_type() converter |
 | `test/support/all_types_module.ex` | **New** — comprehensive type coverage fixture |
+| `test/support/bounded_spec_module.ex` | **New** — bounded spec regression fixture |
+| `test/support/custom_alias_module.ex` | **New** — custom `as:` alias regression fixture |
+| `test/support/multi_clause_spec_module.ex` | **New** — multi-clause spec order fixture |
 | `test/type_info_equivalence_test.exs` | **New** — compile-time vs runtime comparison tests |
 | `test/type_info_property_test.exs` | **New** — StreamData property tests |
+| `test/spectral_function_meta_test.exs` | **New** — function metadata and endpoint doc tests |
 
 ## Status: COMPLETE
 

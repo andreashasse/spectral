@@ -8,8 +8,7 @@ defmodule Spectral.AbstractCode do
   # which operates on Erlang abstract format from BEAM debug info. Here we operate on
   # the raw Elixir-quoted AST that is available at compile time.
   #
-  # The entry point is convert_module_types/2, which takes the accumulated @type/@typep
-  # attributes and returns a type_info() record (as a quoted, escaped term).
+  # Entry points: convert_type_ast/3, wrap_type_with_vars/2, convert_spec_ast/3.
 
   require Record
 
@@ -155,8 +154,6 @@ defmodule Spectral.AbstractCode do
   # Build a map from short alias atom to full module atom.
   # env.aliases entries: {aliased_as_full_module, target_full_module}
   # __aliases__ AST uses short atom segments like :Address, not :"Elixir.Address"
-  defp build_alias_map([]), do: %{}
-
   defp build_alias_map(aliases) do
     Map.new(aliases, fn {aliased_as, full_module} ->
       short_name =
@@ -219,16 +216,7 @@ defmodule Spectral.AbstractCode do
     sp_literal(value: nil, binary_value: "nil")
   end
 
-  # Literal boolean values
-  defp convert_type(true) do
-    sp_literal(value: true, binary_value: "true")
-  end
-
-  defp convert_type(false) do
-    sp_literal(value: false, binary_value: "false")
-  end
-
-  # Literal atom (e.g. :ok, :error, :hello)
+  # Literal atom (e.g. :ok, :error, :hello, true, false)
   defp convert_type(value) when is_atom(value) do
     sp_literal(value: value, binary_value: Atom.to_string(value))
   end
