@@ -27,3 +27,6 @@ spectral-*.tar
 
 # dexter is a LSP for elixir
 .dexter.*
+
+# Profiling output files
+profile_*.txt
