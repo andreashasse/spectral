@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-04-28
+
+### Changed
+- `use Spectral` now builds type information at compile time, eliminating BEAM abstract code reads on every call to `__spectra_type_info__/0`. No API changes — this is a transparent performance improvement for all modules that `use Spectral`.
+
 ## [0.11.0] - 2026-04-14
 
 ### Added
