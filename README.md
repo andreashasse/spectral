@@ -37,9 +37,10 @@ If any type is encountered that has neither `debug_info` nor a registered codec,
 Here's how to use Spectral for JSON serialization and deserialization:
 
 ```elixir
-# lib/person.ex
 defmodule Person do
+  use Spectral
   defmodule Address do
+    use Spectral
     defstruct [:street, :city]
 
     @type t :: %Address{
