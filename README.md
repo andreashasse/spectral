@@ -20,9 +20,17 @@ def deps do
 end
 ```
 
-Your modules must be compiled with `debug_info` for Spectral to extract type information. This is enabled by default in Mix projects.
+By default, Spectral reads type information from `debug_info` in compiled BEAM files. This is enabled by default in Mix projects and is the recommended setup. See [Running without `debug_info`](#running-without-debug_info) if you need to strip it.
 
-**Note:** Spectral reads type information from compiled BEAM files, so modules must be defined in files (not in IEx).
+### Running without `debug_info`
+
+Some production release tools strip `debug_info` from BEAM files to reduce binary size. If you cannot keep `debug_info`, you must compensate for every module whose types you encode or decode:
+
+1. **Your own modules** — add `use Spectral` to each module. This injects `__spectra_type_info__/0` at compile time, embedding the type information directly into the module so it survives stripping.
+
+2. **Dependency and OTP modules** — write a [custom codec](#custom-codecs) for every type from those modules that you encode or decode, and register it via `:spectra, :codecs` in your config.
+
+If any type is encountered that has neither `debug_info` nor a registered codec, Spectral will raise a configuration error at runtime.
 
 ## Usage
 
