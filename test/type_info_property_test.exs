@@ -81,6 +81,59 @@ defmodule TypeInfoPropertyTest do
     ])
   end
 
+  defp literal_atom_str do
+    StreamData.map(
+      StreamData.member_of([:ok, :error, :foo, :bar, :hello, :undefined]),
+      &inspect/1
+    )
+  end
+
+  defp range_gen do
+    StreamData.map(
+      StreamData.tuple({StreamData.integer(-50..50), StreamData.integer(-50..50)}),
+      fn {a, b} ->
+        {low, high} = if a <= b, do: {a, b}, else: {b, a}
+        "@type t :: #{low}..#{high}"
+      end
+    )
+  end
+
+  defp literal_integer_gen do
+    StreamData.map(StreamData.integer(-1000..1000), fn n -> "@type t :: #{n}" end)
+  end
+
+  defp literal_atom_gen do
+    StreamData.map(literal_atom_str(), fn s -> "@type t :: #{s}" end)
+  end
+
+  # required(:atom_key) => value_type
+  defp required_atom_key_map_gen do
+    StreamData.map(
+      StreamData.tuple({literal_atom_str(), simple_type_str()}),
+      fn {k, v} -> "@type t :: %{required(#{k}) => #{v}}" end
+    )
+  end
+
+  # required(key_type) => value_type
+  defp required_typed_key_map_gen do
+    StreamData.map(
+      StreamData.tuple({simple_type_str(), simple_type_str()}),
+      fn {k, v} -> "@type t :: %{required(#{k}) => #{v}}" end
+    )
+  end
+
+  # %{required(:key) => t, optional(:other) => t}
+  defp mixed_map_gen do
+    StreamData.map(
+      StreamData.tuple(
+        {literal_atom_str(), simple_type_str(), literal_atom_str(), simple_type_str()}
+      ),
+      fn {rk, rv, ok, ov} ->
+        "@type t :: %{required(#{rk}) => #{rv}, optional(#{ok}) => #{ov}}"
+      end
+    )
+  end
+
   defp type_def_gen do
     StreamData.one_of([
       # Simple type
@@ -99,7 +152,7 @@ defmodule TypeInfoPropertyTest do
         StreamData.tuple({simple_type_str(), simple_type_str()}),
         fn {a, b} -> "@type t :: {#{a}, #{b}}" end
       ),
-      # Optional map field
+      # optional(atom()) => value — typed key
       StreamData.map(
         StreamData.tuple({simple_type_str(), simple_type_str()}),
         fn {k, v} -> "@type t :: %{optional(atom()) => #{v}}\n@type key :: #{k}" end
@@ -108,7 +161,19 @@ defmodule TypeInfoPropertyTest do
       StreamData.map(
         StreamData.tuple({simple_type_str(), simple_type_str()}),
         fn {a, b} -> "@type t :: #{a}\n@type other :: #{b}" end
-      )
+      ),
+      # Integer range  n..m
+      range_gen(),
+      # Literal integer
+      literal_integer_gen(),
+      # Literal atom
+      literal_atom_gen(),
+      # required(:key) => type
+      required_atom_key_map_gen(),
+      # required(key_type) => value_type
+      required_typed_key_map_gen(),
+      # mixed required + optional map
+      mixed_map_gen()
     ])
   end
 
@@ -122,7 +187,6 @@ defmodule TypeInfoPropertyTest do
 
       try do
         compile_module(mod, type_def)
-
         compile_time = mod.__spectra_type_info__()
         runtime = runtime_type_info(mod)
 
