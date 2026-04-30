@@ -114,26 +114,24 @@ defmodule Spectral.Codec do
       })
   """
 
-  @typedoc "Return value for `encode/7` callback."
+  @typedoc "Return value for `encode/6` callback."
   @type encode_result :: {:ok, term()} | {:error, [Spectral.Error.t()]} | :continue
 
-  @typedoc "Return value for `decode/7` callback."
+  @typedoc "Return value for `decode/6` callback."
   @type decode_result :: {:ok, term()} | {:error, [Spectral.Error.t()]} | :continue
 
   @doc """
-  Recursively encodes `data` of `type_ref` (defined in `module`) inside a codec callback.
+  Recursively encodes `data` of `type_ref` inside a codec callback.
 
-  Use this for recursive encode calls from within a codec — it preserves the runtime
-  `config` (cache mode, codecs, format) across the traversal, unlike `Spectral.encode/5`
-  which starts a fresh traversal.
+  Pass the `caller_type_info` received in your `encode/6` callback as the first argument.
+  Preserves the runtime `config` (cache mode, codecs, format) across the traversal,
+  unlike `Spectral.encode/5` which starts a fresh traversal.
 
   Returns `{:ok, term()}` (a pre-encoded JSON term) or `{:error, [Spectral.Error.t()]}`.
   """
-  @spec encode(module(), Spectral.sp_type_or_ref(), term(), term()) ::
+  @spec encode(Spectral.type_info(), Spectral.sp_type_or_ref(), term(), term()) ::
           {:ok, term()} | {:error, [Spectral.Error.t()]}
-  def encode(module, type_ref, data, config) do
-    type_info = :spectra_module_types.get(module, config)
-
+  def encode(type_info, type_ref, data, config) do
     case :spectra_json.to_json(type_info, type_ref, data, config) do
       {:ok, _} = ok -> ok
       {:error, errors} -> {:error, Spectral.Error.from_erlang_list(errors)}
@@ -141,19 +139,17 @@ defmodule Spectral.Codec do
   end
 
   @doc """
-  Recursively decodes `input` to `type_ref` (defined in `module`) inside a codec callback.
+  Recursively decodes `input` to `type_ref` inside a codec callback.
 
-  Use this for recursive decode calls from within a codec — it preserves the runtime
-  `config` (cache mode, codecs, format) across the traversal, unlike `Spectral.decode/5`
-  which starts a fresh traversal.
+  Pass the `caller_type_info` received in your `decode/6` callback as the first argument.
+  Preserves the runtime `config` (cache mode, codecs, format) across the traversal,
+  unlike `Spectral.decode/5` which starts a fresh traversal.
 
   Returns `{:ok, term()}` or `{:error, [Spectral.Error.t()]}`.
   """
-  @spec decode(module(), Spectral.sp_type_or_ref(), term(), term()) ::
+  @spec decode(Spectral.type_info(), Spectral.sp_type_or_ref(), term(), term()) ::
           {:ok, term()} | {:error, [Spectral.Error.t()]}
-  def decode(module, type_ref, input, config) do
-    type_info = :spectra_module_types.get(module, config)
-
+  def decode(type_info, type_ref, input, config) do
     case :spectra_json.from_json(type_info, type_ref, input, config) do
       {:ok, _} = ok -> ok
       {:error, errors} -> {:error, Spectral.Error.from_erlang_list(errors)}
@@ -161,14 +157,13 @@ defmodule Spectral.Codec do
   end
 
   @doc """
-  Generates a schema map for `type_ref` (defined in `module`) inside a codec `schema/6` callback.
+  Generates a schema map for `type_ref` inside a codec `schema/5` callback.
 
-  Use this for recursive schema generation within a codec callback — it preserves the
-  runtime `config` across the traversal. Returns a pre-encoded schema map.
+  Pass the `caller_type_info` received in your `schema/5` callback as the first argument.
+  Preserves the runtime `config` across the traversal. Returns a pre-encoded schema map.
   """
-  @spec schema(module(), Spectral.sp_type_or_ref(), term()) :: map()
-  def schema(module, type_ref, config) do
-    type_info = :spectra_module_types.get(module, config)
+  @spec schema(Spectral.type_info(), Spectral.sp_type_or_ref(), term()) :: map()
+  def schema(type_info, type_ref, config) do
     :spectra_json_schema.to_schema(type_info, type_ref, config)
   end
 
@@ -188,61 +183,57 @@ defmodule Spectral.Codec do
   """
   @callback encode(
               format :: atom(),
-              module :: module(),
-              type_ref :: Spectral.sp_type_reference(),
+              caller_type_info :: Spectral.type_info(),
+              target_type_ref :: Spectral.sp_type_reference(),
+              target_type :: Spectral.sp_type_or_ref(),
               data :: term(),
-              sp_type :: term(),
-              params :: term(),
               config :: term()
             ) :: encode_result()
 
   @doc """
-  Decodes `input` from `format` into the Elixir value described by `type_ref` (defined in `module`).
+  Decodes `input` from `format` into the Elixir value described by `target_type_ref`.
 
   Called by spectra when decoding a value whose type is defined in a codec module.
   Return `{:error, errors}` when the input is invalid for a type your codec handles,
   or `:continue` for types this codec does not recognise.
 
-  `sp_type` is the instantiation node from the type traversal (see module doc).
-  `params` is the value of `type_parameters` from the `spectral` attribute on the
-  type definition, or `:undefined` if absent.
-  `config` is the runtime `sp_config` record; use `Spectral.Codec.encode/4`,
-  `Spectral.Codec.decode/4`, and `Spectral.Codec.schema/3` for recursive calls within
-  this callback.
+  `caller_type_info` is the type info of the module driving the traversal.
+  `target_type` is the instantiation node from the type traversal; use
+  `Spectral.Type.type_args/1` to extract type-variable bindings for generic types.
+  Use `:spectra_type.parameters/1` on `target_type` to read `type_parameters` (only
+  reliable when the codec is invoked directly from a `Spectral` entry point).
+  `config` is the runtime config; pass it to `Spectral.Codec.decode/4` for recursive calls.
   """
   @callback decode(
               format :: atom(),
-              module :: module(),
-              type_ref :: Spectral.sp_type_reference(),
+              caller_type_info :: Spectral.type_info(),
+              target_type_ref :: Spectral.sp_type_reference(),
+              target_type :: Spectral.sp_type_or_ref(),
               input :: term(),
-              sp_type :: term(),
-              params :: term(),
               config :: term()
             ) :: decode_result()
 
   @doc """
-  Returns a schema map for `type_ref` (defined in `module`) in `format`.
+  Returns a schema map for `target_type_ref` in `format`.
 
   This callback is optional. If not implemented, spectra will raise
   `{:schema_not_implemented, module, type_ref}` when schema generation is requested
   for a type owned by this codec.
 
-  `sp_type` is the instantiation node from the type traversal (see module doc).
-  `params` is the value of `type_parameters` from the `spectral` attribute on the
-  type definition, or `:undefined` if absent.
-  `config` is the runtime `sp_config` record; use `Spectral.Codec.schema/3` for recursive
-  schema generation within this callback.
+  `caller_type_info` is the type info of the module driving the traversal.
+  `target_type` is the type node; use `:spectra_type.parameters/1` to read
+  `type_parameters` (only reliable when invoked directly from a `Spectral` entry point).
+  `config` is the runtime config; pass it to `Spectral.Codec.schema/3` for recursive calls.
   """
   @callback schema(
               format :: atom(),
-              module :: module(),
-              type_ref :: Spectral.sp_type_reference(),
-              sp_type :: term(),
-              params :: term(),
+              caller_type_info :: Spectral.type_info(),
+              target_type_ref :: Spectral.sp_type_reference(),
+              target_type :: Spectral.sp_type_or_ref(),
               config :: term()
             ) :: map()
 
-  @optional_callbacks schema: 6
+  @optional_callbacks schema: 5
 
   @doc false
   def __convert_result__({:error, errors}) when is_list(errors) do
@@ -257,17 +248,17 @@ defmodule Spectral.Codec do
   @doc false
   defmacro __before_compile__(_env) do
     quote do
-      defoverridable encode: 7, decode: 7
+      defoverridable encode: 6, decode: 6
 
       @impl Spectral.Codec
-      def encode(format, module, type_ref, data, sp_type, params, config) do
-        super(format, module, type_ref, data, sp_type, params, config)
+      def encode(format, caller_type_info, target_type_ref, target_type, data, config) do
+        super(format, caller_type_info, target_type_ref, target_type, data, config)
         |> Spectral.Codec.__convert_result__()
       end
 
       @impl Spectral.Codec
-      def decode(format, module, type_ref, input, sp_type, params, config) do
-        super(format, module, type_ref, input, sp_type, params, config)
+      def decode(format, caller_type_info, target_type_ref, target_type, input, config) do
+        super(format, caller_type_info, target_type_ref, target_type, input, config)
         |> Spectral.Codec.__convert_result__()
       end
     end

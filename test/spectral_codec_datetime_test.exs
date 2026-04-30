@@ -17,11 +17,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, "2012-04-23T18:25:43.511Z"} =
                Spectral.Codec.DateTime.encode(
                  :json,
-                 DateTime,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  dt,
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -32,11 +31,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, ~c"2012-04-23T18:25:43.511Z"} =
                Spectral.Codec.DateTime.encode(
                  :string,
-                 DateTime,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  dt,
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -45,11 +43,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:error, [_]} =
                Spectral.Codec.DateTime.encode(
                  :json,
-                 DateTime,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  "not a datetime",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -60,11 +57,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, ^dt} =
                Spectral.Codec.DateTime.decode(
                  :json,
-                 DateTime,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  "2012-04-23T18:25:43.511Z",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -75,11 +71,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, ^dt} =
                Spectral.Codec.DateTime.decode(
                  :string,
-                 DateTime,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  ~c"2012-04-23T18:25:43.511Z",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -88,11 +83,10 @@ defmodule SpectralCodecDateTimeTest do
       {:error, [error]} =
         Spectral.Codec.DateTime.decode(
           :json,
-          DateTime,
+          :undefined,
           {:type, :t, 0},
+          :undefined,
           "not-a-date",
-          :undefined,
-          :undefined,
           :undefined
         )
 
@@ -104,11 +98,10 @@ defmodule SpectralCodecDateTimeTest do
       {:error, [error]} =
         Spectral.Codec.DateTime.decode(
           :json,
-          DateTime,
+          :undefined,
           {:type, :t, 0},
+          :undefined,
           12_345,
-          :undefined,
-          :undefined,
           :undefined
         )
 
@@ -124,11 +117,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, "2012-04-23T18:25:43.511Z"} =
                Spectral.Codec.DateTime.encode(
                  :binary_string,
-                 DateTime,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  dt,
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -139,11 +131,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, ^dt} =
                Spectral.Codec.DateTime.decode(
                  :binary_string,
-                 DateTime,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  "2012-04-23T18:25:43.511Z",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -152,9 +143,8 @@ defmodule SpectralCodecDateTimeTest do
       assert %{type: "string", format: "date-time"} =
                Spectral.Codec.DateTime.schema(
                  :json_schema,
-                 DateTime,
-                 {:type, :t, 0},
                  :undefined,
+                 {:type, :t, 0},
                  :undefined,
                  :undefined
                )
@@ -168,11 +158,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, "2023-04-01"} =
                Spectral.Codec.Date.encode(
                  :json,
-                 Date,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  d,
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -183,11 +172,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, ~c"2023-04-01"} =
                Spectral.Codec.Date.encode(
                  :string,
-                 Date,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  d,
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -196,11 +184,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:error, [_]} =
                Spectral.Codec.Date.encode(
                  :json,
-                 Date,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  "not a date",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -211,11 +198,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, ^d} =
                Spectral.Codec.Date.decode(
                  :json,
-                 Date,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  "2023-04-01",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -226,11 +212,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, ^d} =
                Spectral.Codec.Date.decode(
                  :string,
-                 Date,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  ~c"2023-04-01",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -239,11 +224,10 @@ defmodule SpectralCodecDateTimeTest do
       {:error, [error]} =
         Spectral.Codec.Date.decode(
           :json,
-          Date,
+          :undefined,
           {:type, :t, 0},
+          :undefined,
           "not-a-date",
-          :undefined,
-          :undefined,
           :undefined
         )
 
@@ -255,11 +239,10 @@ defmodule SpectralCodecDateTimeTest do
       {:error, [error]} =
         Spectral.Codec.Date.decode(
           :json,
-          Date,
+          :undefined,
           {:type, :t, 0},
+          :undefined,
           12_345,
-          :undefined,
-          :undefined,
           :undefined
         )
 
@@ -275,11 +258,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, "2023-04-01"} =
                Spectral.Codec.Date.encode(
                  :binary_string,
-                 Date,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  d,
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -290,11 +272,10 @@ defmodule SpectralCodecDateTimeTest do
       assert {:ok, ^d} =
                Spectral.Codec.Date.decode(
                  :binary_string,
-                 Date,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  "2023-04-01",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
     end
@@ -303,9 +284,8 @@ defmodule SpectralCodecDateTimeTest do
       assert %{type: "string", format: "date"} =
                Spectral.Codec.Date.schema(
                  :json_schema,
-                 Date,
-                 {:type, :t, 0},
                  :undefined,
+                 {:type, :t, 0},
                  :undefined,
                  :undefined
                )

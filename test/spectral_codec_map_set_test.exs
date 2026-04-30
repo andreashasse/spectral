@@ -18,11 +18,10 @@ defmodule SpectralCodecMapSetTest do
       assert {:ok, result} =
                Spectral.Codec.MapSet.encode(
                  :json,
-                 MapSet,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  ms,
-                 :undefined,
-                 :undefined,
                  :undefined
                )
 
@@ -35,11 +34,10 @@ defmodule SpectralCodecMapSetTest do
       assert {:ok, result} =
                Spectral.Codec.MapSet.encode(
                  :json,
-                 MapSet,
+                 :undefined,
                  {:type, :t, 1},
+                 :undefined,
                  ms,
-                 :undefined,
-                 :undefined,
                  :undefined
                )
 
@@ -50,11 +48,10 @@ defmodule SpectralCodecMapSetTest do
       assert {:error, [error]} =
                Spectral.Codec.MapSet.encode(
                  :json,
-                 MapSet,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  [1, 2, 3],
-                 :undefined,
-                 :undefined,
                  :undefined
                )
 
@@ -65,11 +62,10 @@ defmodule SpectralCodecMapSetTest do
       assert {:error, [error]} =
                Spectral.Codec.MapSet.encode(
                  :json,
-                 MapSet,
+                 :undefined,
                  {:type, :t, 1},
+                 :undefined,
                  "not a mapset",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
 
@@ -82,11 +78,10 @@ defmodule SpectralCodecMapSetTest do
       assert {:ok, ms} =
                Spectral.Codec.MapSet.decode(
                  :json,
-                 MapSet,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  [1, 2, 3],
-                 :undefined,
-                 :undefined,
                  :undefined
                )
 
@@ -97,11 +92,10 @@ defmodule SpectralCodecMapSetTest do
       assert {:ok, ms} =
                Spectral.Codec.MapSet.decode(
                  :json,
-                 MapSet,
+                 :undefined,
                  {:type, :t, 1},
+                 :undefined,
                  ["a", "b"],
-                 :undefined,
-                 :undefined,
                  :undefined
                )
 
@@ -112,11 +106,10 @@ defmodule SpectralCodecMapSetTest do
       assert {:error, [error]} =
                Spectral.Codec.MapSet.decode(
                  :json,
-                 MapSet,
+                 :undefined,
                  {:type, :t, 0},
+                 :undefined,
                  "not a list",
-                 :undefined,
-                 :undefined,
                  :undefined
                )
 
@@ -127,11 +120,10 @@ defmodule SpectralCodecMapSetTest do
       assert {:error, [error]} =
                Spectral.Codec.MapSet.decode(
                  :json,
-                 MapSet,
+                 :undefined,
                  {:type, :t, 1},
+                 :undefined,
                  42,
-                 :undefined,
-                 :undefined,
                  :undefined
                )
 
@@ -144,9 +136,8 @@ defmodule SpectralCodecMapSetTest do
       assert %{type: "array", uniqueItems: true} =
                Spectral.Codec.MapSet.schema(
                  :json_schema,
-                 MapSet,
-                 {:type, :t, 0},
                  :undefined,
+                 {:type, :t, 0},
                  :undefined,
                  :undefined
                )
@@ -156,9 +147,8 @@ defmodule SpectralCodecMapSetTest do
       assert %{type: "array", uniqueItems: true} =
                Spectral.Codec.MapSet.schema(
                  :json_schema,
-                 MapSet,
-                 {:type, :t, 1},
                  :undefined,
+                 {:type, :t, 1},
                  :undefined,
                  :undefined
                )

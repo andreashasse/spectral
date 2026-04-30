@@ -18,7 +18,8 @@ defmodule Spectral.MixProject do
   end
 
   # Specifies which paths to compile per environment
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "test/support", "bench"]
+  defp elixirc_paths(:dev), do: ["lib", "bench"]
   defp elixirc_paths(_), do: ["lib"]
 
   def application do
@@ -29,7 +30,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.11.1"},
+      {:spectra, "~> 0.12.1"},
       {:stream_data, "~> 1.1", only: :test},
       {:cover_diff, "~> 0.1.0", only: :test, runtime: false},
       # Code quality tools
@@ -73,7 +74,9 @@ defmodule Spectral.MixProject do
           OnlyPerson,
           DefaultValues,
           DefaultValues.Config,
-          EctoUser
+          EctoUser,
+          Perf.Address,
+          Perf.User
         ]
       end
     ]
