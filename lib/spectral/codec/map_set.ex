@@ -27,10 +27,20 @@ defmodule Spectral.Codec.MapSet do
     {:ok, MapSet.to_list(ms)}
   end
 
-  def encode(:json, caller_type_info, {:type, :t, 1}, target_type, %MapSet{} = ms, config) do
+  def encode(
+        :json = format,
+        caller_type_info,
+        {:type, :t, 1},
+        target_type,
+        %MapSet{} = ms,
+        config
+      ) do
     case Spectral.Type.type_args(target_type) do
-      [elem_type] -> encode_elements(MapSet.to_list(ms), caller_type_info, elem_type, config)
-      [] -> {:ok, MapSet.to_list(ms)}
+      [elem_type] ->
+        encode_elements(format, MapSet.to_list(ms), caller_type_info, elem_type, config)
+
+      [] ->
+        {:ok, MapSet.to_list(ms)}
     end
   end
 
@@ -52,10 +62,10 @@ defmodule Spectral.Codec.MapSet do
     {:ok, MapSet.new(input)}
   end
 
-  def decode(:json, caller_type_info, {:type, :t, 1}, target_type, input, config)
+  def decode(:json = format, caller_type_info, {:type, :t, 1}, target_type, input, config)
       when is_list(input) do
     case Spectral.Type.type_args(target_type) do
-      [elem_type] -> decode_elements(input, caller_type_info, elem_type, config)
+      [elem_type] -> decode_elements(format, input, caller_type_info, elem_type, config)
       [] -> {:ok, MapSet.new(input)}
     end
   end
@@ -77,13 +87,13 @@ defmodule Spectral.Codec.MapSet do
     %{type: "array", uniqueItems: true}
   end
 
-  def schema(:json_schema, caller_type_info, {:type, :t, 1}, target_type, config) do
+  def schema(:json_schema = format, caller_type_info, {:type, :t, 1}, target_type, config) do
     case Spectral.Type.type_args(target_type) do
       [elem_type] ->
         %{
           type: "array",
           uniqueItems: true,
-          items: Spectral.Codec.schema(caller_type_info, elem_type, config)
+          items: Spectral.Codec.schema(format, caller_type_info, elem_type, config)
         }
 
       [] ->
@@ -91,10 +101,10 @@ defmodule Spectral.Codec.MapSet do
     end
   end
 
-  defp encode_elements(elems, caller_type_info, elem_type, config) do
+  defp encode_elements(format, elems, caller_type_info, elem_type, config) do
     result =
       Enum.reduce_while(elems, [], fn elem, acc ->
-        case Spectral.Codec.encode(caller_type_info, elem_type, elem, config) do
+        case Spectral.Codec.encode(format, caller_type_info, elem_type, elem, config) do
           {:ok, encoded} -> {:cont, [encoded | acc]}
           {:error, _} = err -> {:halt, err}
         end
@@ -106,10 +116,10 @@ defmodule Spectral.Codec.MapSet do
     end
   end
 
-  defp decode_elements(elems, caller_type_info, elem_type, config) do
+  defp decode_elements(format, elems, caller_type_info, elem_type, config) do
     result =
       Enum.reduce_while(elems, [], fn elem, acc ->
-        case Spectral.Codec.decode(caller_type_info, elem_type, elem, config) do
+        case Spectral.Codec.decode(format, caller_type_info, elem_type, elem, config) do
           {:ok, decoded} -> {:cont, [decoded | acc]}
           {:error, _} = err -> {:halt, err}
         end

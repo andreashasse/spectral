@@ -187,7 +187,7 @@ defmodule Spectral do
     implements_codec = :spectra_codec in behaviours or Spectral.Codec in behaviours
 
     types_with_lines = parse_type_attrs(type_attrs, env)
-    specs_with_lines = parse_spec_attrs(spec_attrs)
+    specs_with_lines = parse_spec_attrs(spec_attrs, env)
 
     {type_doc_map, function_doc_map} =
       pair_spectral_docs(spectral_attrs, types_with_lines, specs_with_lines, env)
@@ -207,17 +207,24 @@ defmodule Spectral do
     end
   end
 
-  defp parse_type_attrs(type_attrs, _env) do
-    Enum.map(type_attrs, fn {kind, {:"::", meta, [{name, _, args_or_nil}, type_expr]}, _}
-                            when kind in [:type, :typep] and is_atom(name) ->
-      arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
-      line = Keyword.get(meta, :line, 0)
-      vars = if is_list(args_or_nil), do: Enum.map(args_or_nil, fn {v, _, _} -> v end), else: []
-      {line, :type, {name, arity, vars, type_expr}}
+  defp parse_type_attrs(type_attrs, env) do
+    Enum.map(type_attrs, fn
+      {kind, {:"::", meta, [{name, _, args_or_nil}, type_expr]}, _}
+      when kind in [:type, :typep] and is_atom(name) ->
+        arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
+        line = Keyword.get(meta, :line, 0)
+        vars = if is_list(args_or_nil), do: Enum.map(args_or_nil, fn {v, _, _} -> v end), else: []
+        {line, :type, {name, arity, vars, type_expr}}
+
+      other ->
+        raise ArgumentError,
+              "Spectral.__before_compile__/1 encountered an unsupported @type AST in #{inspect(env.module)}.\n" <>
+                "AST: #{inspect(other, pretty: true)}\n\n" <>
+                "This is likely a bug in Spectral. Please report it at https://github.com/andreashasse/spectral/issues"
     end)
   end
 
-  defp parse_spec_attrs(spec_attrs) do
+  defp parse_spec_attrs(spec_attrs, env) do
     Enum.flat_map(spec_attrs, fn spec_ast ->
       case spec_ast do
         {:spec, {:"::", meta, [{name, _, args_or_nil}, _return_type]} = inner, _env}
@@ -232,6 +239,12 @@ defmodule Spectral do
           arity = if is_list(args_or_nil), do: length(args_or_nil), else: 0
           line = Keyword.get(meta, :line, 0)
           [{line, :function, {name, arity, inner}}]
+
+        other ->
+          raise ArgumentError,
+                "Spectral.__before_compile__/1 encountered an unsupported @spec AST in #{inspect(env.module)}.\n" <>
+                  "AST: #{inspect(other, pretty: true)}\n\n" <>
+                  "This is likely a bug in Spectral. Please report it at https://github.com/andreashasse/spectral/issues"
       end
     end)
   end
@@ -348,7 +361,6 @@ defmodule Spectral do
     end)
   end
 
-  @doc false
   defp validate_only(only) when is_list(only) do
     case Enum.all?(only, &is_atom/1) do
       true ->

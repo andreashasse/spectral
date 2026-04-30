@@ -130,7 +130,7 @@ defmodule Spectral.AbstractCode do
   # ---------------------------------------------------------------------------
 
   @doc false
-  @spec convert_type_ast(Macro.t(), module(), keyword()) :: :spectra.sp_type()
+  @spec convert_type_ast(Macro.t(), module() | nil, keyword()) :: :spectra.sp_type()
   def convert_type_ast(ast, current_module \\ nil, aliases \\ []) do
     alias_map = build_alias_map(aliases)
     resolved = resolve_ast_refs(ast, current_module, alias_map)
@@ -144,7 +144,7 @@ defmodule Spectral.AbstractCode do
   end
 
   @doc false
-  @spec convert_spec_ast(Macro.t(), module(), keyword()) :: :spectra.sp_function_spec()
+  @spec convert_spec_ast(Macro.t(), module() | nil, keyword()) :: :spectra.sp_function_spec()
   def convert_spec_ast(spec_ast, current_module \\ nil, aliases \\ []) do
     alias_map = build_alias_map(aliases)
     resolved = resolve_ast_refs(spec_ast, current_module, alias_map)
