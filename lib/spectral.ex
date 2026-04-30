@@ -631,12 +631,6 @@ defmodule Spectral do
     {:error, Spectral.Error.from_erlang_list(erlang_errors)}
   end
 
-  # Handles Erlang errors from the spectra library and converts configuration
-  # errors to idiomatic Elixir ArgumentErrors
-  defp handle_erlang_error(%UndefinedFunctionError{} = error, _operation, _module, _type_ref) do
-    raise error
-  end
-
   defp handle_erlang_error(%ErlangError{original: original} = error, operation, module, type_ref) do
     case original do
       {:module_types_not_found, ^module, _reason} ->
