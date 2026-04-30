@@ -1,4 +1,4 @@
-.PHONY: ci compile check_format format credo test type_check shell cover_diff release
+.PHONY: ci compile check_format format credo test type_check shell cover_diff perf release
 
 ci: compile test credo type_check check_format
 
@@ -26,6 +26,9 @@ shell:
 cover_diff:
 	mix test --cover --export-coverage default
 	mix cover_diff --base-branch main
+
+perf:
+	mix run bench/perf_benchmark.exs
 
 release:
 	@echo "Last 5 tags:"
