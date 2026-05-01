@@ -179,26 +179,28 @@ defmodule Spectral.Codec do
   @doc """
   Generates a schema map for `type_ref` inside a codec `schema/5` callback.
 
-  Pass the `format` and `caller_type_info` received in your `schema/5` callback.
+  Pass the `caller_type_info` received in your `schema/5` callback.
   Preserves the runtime `config` across the traversal. Returns a pre-encoded schema map.
   """
-  @spec schema(atom(), Spectral.type_info(), Spectral.sp_type_or_ref(), term()) :: map()
+  @spec schema(atom(), Spectral.type_info(), Spectral.sp_type_or_ref(), term()) :: dynamic()
   def schema(_format, type_info, type_ref, config) do
     :spectra_json_schema.to_schema(type_info, type_ref, config)
   end
 
   @doc """
-  Encodes `data` of the given `type_ref` (defined in `module`) to `format`.
+  Encodes `data` of the given `target_type_ref` to `format`.
 
   Called by spectra when encoding a value whose type is defined in a codec module.
   Return `{:error, errors}` when the data is invalid for a type your codec handles,
   or `:continue` for types this codec does not recognise.
 
-  `sp_type` is the instantiation node from the type traversal (see module doc).
-  `params` is the value of `type_parameters` from the `spectral` attribute on the
-  type definition, or `:undefined` if absent.
-  `config` is the runtime config; pass `format` and `config` to `Spectral.Codec.encode/5`,
-  `Spectral.Codec.decode/5`, and `Spectral.Codec.schema/4` for recursive calls within
+  `caller_type_info` is the type info of the module driving the traversal.
+  `target_type` is the instantiation node from the type traversal; use
+  `Spectral.Type.type_args/1` to extract type-variable bindings for generic types.
+  Use `:spectra_type.parameters/1` on `target_type` to read `type_parameters` (only
+  reliable when the codec is invoked directly from a `Spectral` entry point).
+  `config` is the runtime config; pass `format` and `config` to `Spectral.Codec.encode/6`,
+  `Spectral.Codec.decode/6`, and `Spectral.Codec.schema/5` for recursive calls within
   this callback.
   """
   @callback encode(

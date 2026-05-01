@@ -109,7 +109,6 @@ The approach hinges on the format of `_type_expr` in the type attributes returne
 | Implementation approach | Write `Spectral.AbstractCode` Elixir module (Elixir AST → sp_type()) |
 | Property-based testing | Yes — add StreamData |
 | Backward compatibility | Clean break — no runtime fallback |
-| Spectra dependency handling | Branch + git dep (publish hex release later) |
 
 ## Phase 0: Investigation — Determine Type/Spec Attribute Formats
 

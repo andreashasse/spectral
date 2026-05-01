@@ -36,7 +36,7 @@ Max:        30.98 ms
 Std dev:    0.37 ms
 Throughput: 2486.3 round-trips/sec
 
-# Version 0.12.1
+# Version 0.12.0
 
 Includes `Spectral.Codec.String`. `Perf.Address` moved to a compiled `.ex` file without `use Spectral` so spectra resolves it via BEAM abstract code — this makes the cache mode differences visible (previously Address had its own cache entry that was always warm).
 

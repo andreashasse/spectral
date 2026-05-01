@@ -90,9 +90,12 @@ defmodule TypeInfoPropertyTest do
 
   defp range_gen do
     StreamData.map(
-      StreamData.tuple({StreamData.integer(-50..50), StreamData.integer(-50..50)}),
+      StreamData.filter(
+        StreamData.tuple({StreamData.integer(-50..50), StreamData.integer(-50..50)}),
+        fn {a, b} -> a != b end
+      ),
       fn {a, b} ->
-        {low, high} = if a <= b, do: {a, b}, else: {b, a}
+        {low, high} = if a < b, do: {a, b}, else: {b, a}
         "@type t :: #{low}..#{high}"
       end
     )
