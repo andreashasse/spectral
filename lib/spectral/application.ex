@@ -1,4 +1,5 @@
 defmodule Spectral.Application do
+  @moduledoc false
   use Application
 
   @impl Application
@@ -10,7 +11,7 @@ defmodule Spectral.Application do
   @doc """
   Registers the default codecs for built-in types. This is called automatically when the application starts
   """
-  def register_default_codecs() do
+  def register_default_codecs do
     default_codecs = [
       {{MapSet, {:type, :t, 0}}, Spectral.Codec.MapSet},
       {{MapSet, {:type, :t, 1}}, Spectral.Codec.MapSet},

@@ -25,7 +25,7 @@ mix test test/spectral_test.exs:42  # Run test at specific line
 mix deps.update spectra          # Update the spectra dependency
 ```
 
-Always run after any change:
+IMPORTANT: Always run before committing or reporting a task complete:
 ```bash
 make format && make ci
 ```
