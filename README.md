@@ -356,26 +356,26 @@ Application.put_env(:spectra, :codecs, %{
 
 ## Built-in Codecs
 
-Spectral ships with codecs for Elixir's standard date/time types and MapSet. They are not active by default — register them in `config/config.exs`:
-
-```elixir
-import Config
-
-config :spectra, :codecs, %{
-  {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime,
-  {Date, {:type, :t, 0}} => Spectral.Codec.Date,
-  {MapSet, {:type, :t, 0}} => Spectral.Codec.MapSet,
-  {MapSet, {:type, :t, 1}} => Spectral.Codec.MapSet
-}
-```
+Spectral ships with codecs for Elixir's standard types. They are registered automatically at application startup — no configuration needed.
 
 | Codec | Elixir type | JSON representation |
 |---|---|---|
 | `Spectral.Codec.DateTime` | `DateTime.t()` | ISO 8601 / RFC 3339 string, e.g. `"2012-04-23T18:25:43.511Z"` |
 | `Spectral.Codec.Date` | `Date.t()` | ISO 8601 date string, e.g. `"2023-04-01"` |
 | `Spectral.Codec.MapSet` | `MapSet.t()` / `MapSet.t(elem)` | JSON array with `uniqueItems: true` in its schema |
+| `Spectral.Codec.String` | `String.t()` | UTF-8 string, optionally validated by `type_parameters` constraints |
 
 The date/time codecs handle `:json` and `:binary_string` formats. A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context.
+
+User-configured codecs always take precedence over the built-ins. To override a built-in or register additional codecs, set `:spectra, :codecs` in `config/config.exs` before the application starts:
+
+```elixir
+import Config
+
+config :spectra, :codecs, %{
+  {DateTime, {:type, :t, 0}} => MyApp.Codec.DateTime  # replaces the built-in
+}
+```
 
 `Range` and `Stream` do not have built-in codecs. Implement a custom `Spectral.Codec` if needed — PRs welcome.
 
@@ -834,13 +834,12 @@ config :spectra,
   # version, so it invalidates automatically on code reloads.
   use_module_types_cache: true,
 
-  # Register codecs for types you cannot annotate directly (stdlib, third-party).
+  # Register codecs for third-party types, or override built-in codecs.
+  # Built-in codecs (Date, DateTime, MapSet, String) are registered automatically
+  # at startup — only set this if you need to add or replace them.
   # See the Built-in Codecs and Custom Codecs sections for details.
   codecs: %{
-    {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime,
-    {Date, {:type, :t, 0}} => Spectral.Codec.Date,
-    {MapSet, {:type, :t, 0}} => Spectral.Codec.MapSet,
-    {MapSet, {:type, :t, 1}} => Spectral.Codec.MapSet
+    {SomeLibrary, {:type, :some_type, 0}} => MyApp.Codec.SomeType
   }
 ```
 
