@@ -11,13 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `Spectral.Codec.String` — built-in codec for `String.t()` that validates UTF-8 strings and optionally enforces `min_length`, `max_length`, `pattern`, and `format` constraints via `type_parameters`
-- `Spectral.Application` — registers built-in codecs (Date, DateTime, MapSet, String) automatically at application startup; user-configured codecs always take precedence
+- Built-in codecs (Date, DateTime, MapSet, String) are automatically registered at application startup; user-configured codecs always take precedence
 
 ### Changed
 - `use Spectral` now builds type information at compile time, eliminating BEAM abstract code reads on every call to `__spectra_type_info__/0`. No API changes — this is a transparent performance improvement for all modules that `use Spectral`.
 - **BREAKING**: Codec callbacks reduced from 7 to 6 arguments. The separate `params` argument has been removed — read `type_parameters` inside your callback via `:spectra_type.parameters(target_type)` instead. The `module` argument is renamed `caller_type_info` and `sp_type` is renamed `target_type`. Update all `encode/7`, `decode/7`, and `schema/6` clauses to the new 6-arg signatures.
-- Upgraded spectra dependency to `~> 0.12.1`
-- Improved error messages for unsupported AST patterns and type signatures in `use Spectral` modules
 
 ## [0.11.0] - 2026-04-14
 
