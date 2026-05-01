@@ -76,6 +76,7 @@ defmodule Spectral.Codec.String do
         |> maybe_put(:minLength, params[:min_length])
         |> maybe_put(:maxLength, params[:max_length])
         |> maybe_put(:pattern, params[:pattern])
+        |> maybe_put(:format, params[:format])
     end
   end
 
