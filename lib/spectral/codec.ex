@@ -199,8 +199,8 @@ defmodule Spectral.Codec do
   `Spectral.Type.type_args/1` to extract type-variable bindings for generic types.
   Use `:spectra_type.parameters/1` on `target_type` to read `type_parameters` (only
   reliable when the codec is invoked directly from a `Spectral` entry point).
-  `config` is the runtime config; pass `format` and `config` to `Spectral.Codec.encode/6`,
-  `Spectral.Codec.decode/6`, and `Spectral.Codec.schema/5` for recursive calls within
+  `config` is the runtime config; pass `format` and `config` to `Spectral.Codec.encode/5`,
+  `Spectral.Codec.decode/5`, and `Spectral.Codec.schema/4` for recursive calls within
   this callback.
   """
   @callback encode(
