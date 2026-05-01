@@ -183,7 +183,7 @@ defmodule Spectral.Codec do
   Preserves the runtime `config` across the traversal. Returns a pre-encoded schema map.
   """
   @spec schema(atom(), Spectral.type_info(), Spectral.sp_type_or_ref(), term()) :: dynamic()
-  def schema(_format, type_info, type_ref, config) do
+  def schema(:json_schema, type_info, type_ref, config) do
     :spectra_json_schema.to_schema(type_info, type_ref, config)
   end
 
