@@ -4,7 +4,7 @@ defmodule Spectral.MixProject do
   def project do
     [
       app: :spectral,
-      version: "0.11.0",
+      version: "0.12.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       description: description(),
@@ -18,18 +18,22 @@ defmodule Spectral.MixProject do
   end
 
   # Specifies which paths to compile per environment
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "test/support", "bench"]
+  defp elixirc_paths(:dev), do: ["lib", "bench"]
   defp elixirc_paths(_), do: ["lib"]
 
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {Spectral.Application, []}
     ]
   end
 
   defp deps do
     [
-      {:spectra, "~> 0.11.1"},
+      {:spectra, "~> 0.12.1"},
+      {:stream_data, "~> 1.1", only: :test},
+      {:cover_diff, "~> 0.1.0", only: :test, runtime: false},
       # Code quality tools
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev], runtime: false},
@@ -71,7 +75,9 @@ defmodule Spectral.MixProject do
           OnlyPerson,
           DefaultValues,
           DefaultValues.Config,
-          EctoUser
+          EctoUser,
+          Perf.Address,
+          Perf.User
         ]
       end
     ]

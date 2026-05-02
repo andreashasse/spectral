@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Spectral is an Elixir wrapper library for the Erlang `spectra` library. It provides idiomatic Elixir interfaces for type-driven JSON encoding/decoding, JSON Schema generation, and OpenAPI 3.1 specification generation.
 
+## Reading spectra source code
+
+`spectra` is a dependency of this project. When you need to read its source code, read from `deps/spectra/` — do not navigate to directories outside this project or fetch from GitHub.
+
+```
+deps/spectra/src/        # Erlang source files
+deps/spectra/include/    # Header files (.hrl)
+deps/spectra/test/       # spectra's own tests
+```
+
 ## Development Commands
 
 ```bash
@@ -15,7 +25,7 @@ mix test test/spectral_test.exs:42  # Run test at specific line
 mix deps.update spectra          # Update the spectra dependency
 ```
 
-Always run after any change:
+IMPORTANT: Always run before committing or reporting a task complete:
 ```bash
 make format && make ci
 ```
@@ -68,3 +78,24 @@ Builder pattern for OpenAPI specs. Use `endpoint/2-5` then pipe through `add_res
 
 - `Spectral.TypeInfo.new(:nomodule, false)` produces a blank type_info for use in tests.
 - Test support modules live in `test/support/` and are compiled in `:test` env via `elixirc_paths`.
+
+## Performance Benchmarks
+
+Run the benchmark with:
+
+```bash
+mix run bench/perf_benchmark.exs
+```
+
+After running, append the results to `perf.md` using the current version (from `mix.exs`) as the section header.
+
+## Coverage
+
+Use `cover_diff` to check for dead or untested code introduced by a change:
+
+```bash
+mix test --cover --export-coverage default
+mix cover_diff --base-branch main
+```
+
+When adding new code, run `cover_diff` to confirm all new lines are exercised by tests. Uncovered lines in a diff are a signal to either add tests or remove dead code.

@@ -25,3 +25,8 @@ spectral-*.tar
 # Ignore compiled beam files
 *.beam
 
+# dexter is a LSP for elixir
+.dexter.*
+
+# Profiling output files
+profile_*.txt
