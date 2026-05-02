@@ -334,7 +334,7 @@ end
 
 Each callback must return `{:ok, result}`, `{:error, errors}`, or `:continue`. Return `{:error, ...}` when the data is invalid for a type your codec *owns*, and `:continue` for types your codec does not handle.
 
-For container types that need to recursively encode or decode their elements, use `Spectral.Codec.encode/4`, `Spectral.Codec.decode/4`, and `Spectral.Codec.schema/3` — these preserve the runtime `config` across the traversal, unlike calling `Spectral.encode/5` directly which would start a fresh traversal.
+For container types that need to recursively encode or decode their elements, use `Spectral.Codec.encode/5`, `Spectral.Codec.decode/5`, and `Spectral.Codec.schema/4` — these preserve the runtime `config` across the traversal, unlike calling `Spectral.encode/5` directly which would start a fresh traversal.
 
 ### Codec errors
 
