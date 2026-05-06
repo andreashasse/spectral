@@ -31,7 +31,8 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.12.1"},
+      {:spectra,
+       github: "andreashasse/spectra", branch: "claude/mystifying-dirac-930c38", override: true},
       {:stream_data, "~> 1.1", only: :test},
       {:cover_diff, "~> 0.1.0", only: :test, runtime: false},
       # Code quality tools

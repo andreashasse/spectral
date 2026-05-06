@@ -91,6 +91,9 @@ defmodule Spectral do
   - `only` - List of field name atoms to include when encoding, decoding, and generating
     schemas. Fields not in the list are silently dropped. For Elixir structs, excluded
     fields are filled from the struct's defaults on decode.
+  - `field_aliases` - Map of field name atoms (or integers for integer map keys) to JSON
+    key binaries, e.g. `%{first_name: "firstName"}`. Applies to struct fields and map
+    literal keys. Applied after `only` filtering.
 
   ## Fields — before a `@spec`
 
@@ -310,12 +313,22 @@ defmodule Spectral do
     case Map.fetch(type_doc_map, {name, arity}) do
       {:ok, doc} ->
         {type_params, doc1} = Map.pop(doc, :type_parameters)
-        {only, doc_clean} = Map.pop(doc1, :only)
+        {only, doc2} = Map.pop(doc1, :only)
+        {field_aliases_raw, doc_clean} = Map.pop(doc2, :field_aliases)
 
         tagged
         |> then(fn t ->
           if only != nil,
             do: :spectra_abstract_code.apply_only(t, validate_only(only)),
+            else: t
+        end)
+        |> then(fn t ->
+          if field_aliases_raw != nil,
+            do:
+              :spectra_abstract_code.apply_field_aliases(
+                t,
+                validate_field_aliases(field_aliases_raw)
+              ),
             else: t
         end)
         |> :spectra_type.add_doc_to_type(doc_clean)
@@ -373,6 +386,23 @@ defmodule Spectral do
 
   defp validate_only(only) do
     raise ArgumentError, "spectral :only must be a list of atoms, got: #{inspect(only)}"
+  end
+
+  defp validate_field_aliases(aliases) when is_map(aliases) do
+    Enum.each(aliases, fn
+      {k, v} when (is_atom(k) or is_integer(k)) and is_binary(v) ->
+        :ok
+
+      {k, v} ->
+        raise ArgumentError,
+              "spectral :field_aliases keys must be atoms or integers and values must be binaries, got: #{inspect({k, v})}"
+    end)
+
+    aliases
+  end
+
+  defp validate_field_aliases(other) do
+    raise ArgumentError, "spectral :field_aliases must be a map, got: #{inspect(other)}"
   end
 
   @doc false
