@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-05-07
+
+### Added
+- `field_aliases` option in the `spectral/1` macro: map Elixir field name atoms to custom JSON key binaries (e.g. `field_aliases: %{first_name: "firstName"}`). Works for struct types and map literal fields. Applies after `only` filtering and is reflected in generated JSON Schemas.
+- `field_aliases` and `only` now propagate through type aliases — both local user-type references and remote module types. Transforms declared on a type alias are applied when the reference is resolved during encode/decode/schema generation.
+
+### Changed
+- Upgraded spectra dependency to `~> 0.13.1`
+
 ## [0.12.0] - 2026-04-28
 
 ### Added
