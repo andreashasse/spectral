@@ -10,8 +10,6 @@ jobs:
   ci:
     name: CI
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.continue-on-error == true }}
-
     strategy:
       matrix:
         include:
@@ -21,7 +19,6 @@ jobs:
             otp: "28.3"
           - elixir: "1.20.0-rc.4"
             otp: "28.3"
-            continue-on-error: true
 
     steps:
       - name: Checkout code
