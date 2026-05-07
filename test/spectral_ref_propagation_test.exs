@@ -8,8 +8,7 @@ defmodule SpectralRefPropagationTest do
       data = %TypeRefModule.Inner{first_name: "Alice", last_name: "Smith", secret: "x"}
       {:ok, json_io} = Spectral.encode(data, TypeRefModule, :aliased_t)
       decoded = json_io |> IO.iodata_to_binary() |> Jason.decode!()
-      assert decoded["firstName"] == "Alice"
-      assert decoded["lastName"] == "Smith"
+      assert %{"firstName" => "Alice", "lastName" => "Smith"} = decoded
       refute Map.has_key?(decoded, "first_name")
       refute Map.has_key?(decoded, "last_name")
     end
@@ -17,8 +16,7 @@ defmodule SpectralRefPropagationTest do
     test "decode accepts aliased keys when field_aliases is declared on a remote type ref" do
       json = ~s({"firstName":"Bob","lastName":"Jones","secret":"y"})
       {:ok, result} = Spectral.decode(json, TypeRefModule, :aliased_t)
-      assert result.first_name == "Bob"
-      assert result.last_name == "Jones"
+      assert %{first_name: "Bob", last_name: "Jones"} = result
     end
   end
 

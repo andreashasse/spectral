@@ -7,9 +7,7 @@ defmodule SpectralFieldAliasesTest do
       {:ok, json_io} = Spectral.encode(data, FieldAliasesModule, :t)
       json = IO.iodata_to_binary(json_io)
       decoded = Jason.decode!(json)
-      assert decoded["firstName"] == "Alice"
-      assert decoded["lastName"] == "Smith"
-      assert decoded["birth_year"] == 1990
+      assert %{"firstName" => "Alice", "lastName" => "Smith", "birth_year" => 1990} = decoded
       refute Map.has_key?(decoded, "first_name")
       refute Map.has_key?(decoded, "last_name")
     end
@@ -17,9 +15,7 @@ defmodule SpectralFieldAliasesTest do
     test "decode accepts aliased key names" do
       json = ~s({"firstName":"Bob","lastName":"Jones","birth_year":1985})
       {:ok, result} = Spectral.decode(json, FieldAliasesModule, :t)
-      assert result.first_name == "Bob"
-      assert result.last_name == "Jones"
-      assert result.birth_year == 1985
+      assert %{first_name: "Bob", last_name: "Jones", birth_year: 1985} = result
     end
 
     test "schema reflects aliased field names" do
