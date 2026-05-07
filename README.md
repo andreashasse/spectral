@@ -15,7 +15,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.12.0"}
+    {:spectral, "~> 0.13.0"}
   ]
 end
 ```
@@ -482,6 +482,7 @@ end
 - `examples_function` — `{module, function_name, args}` tuple; the function is called at schema generation time to produce examples. Use this instead of `examples` when constructing values inline is awkward. The function must be exported.
 - `type_parameters` — passed as `params` to codec callbacks (see [Custom Codecs](#custom-codecs))
 - `only` — list of field name atoms to include; all other fields are excluded from encode, decode, and schema generation (see [Field Filtering with `only`](#field-filtering-with-only))
+- `field_aliases` — map of field name atoms to JSON key binaries, e.g. `%{first_name: "firstName"}`; applied after `only` filtering (see [Field Aliases](#field-aliases))
 
 ```elixir
 defmodule Person do
@@ -567,11 +568,14 @@ Spectral.decode(~s({"id":1,"name":"Alice","email":"alice@example.com"}), User, :
 Excluded fields present in the incoming JSON are silently ignored. Fields excluded by `only`
 are filled from the struct's default values on decode (see [Struct defaults](#struct-defaults)).
 
-`only` also works on union types such as `MyStruct | nil`:
+`only` also works on union types such as `MyStruct | nil`, and propagates through type aliases (local or remote):
 
 ```elixir
 spectral only: [:id, :name]
 @type t_or_nil :: %User{...} | nil
+
+spectral only: [:id, :name]
+@type public_t :: OtherModule.t()  # only is applied when the reference is resolved
 ```
 
 #### Ecto schemas and `only`
@@ -665,6 +669,48 @@ Spectral.encode(%MyApp.User{name: "Alice", email: "alice@example.com"}, MyApp.Us
 
 `DateTime.t() | nil` requires the `Spectral.Codec.DateTime` codec to be registered — see
 [Built-in Codecs](#built-in-codecs).
+
+### Field Aliases
+
+The `field_aliases` key maps Erlang/Elixir field name atoms to custom JSON key binaries. This lets you expose camelCase (or any other naming convention) in your API while keeping snake_case internally.
+
+```elixir
+defmodule User do
+  use Spectral
+  defstruct [:first_name, :last_name, :birth_year]
+
+  spectral field_aliases: %{first_name: "firstName", last_name: "lastName"}
+  @type t :: %User{
+          first_name: String.t() | nil,
+          last_name: String.t() | nil,
+          birth_year: non_neg_integer() | nil
+        }
+end
+```
+
+```elixir
+Spectral.encode(%User{first_name: "Alice", last_name: "Smith", birth_year: 1990}, User, :t)
+# {:ok, ~s({"firstName":"Alice","lastName":"Smith","birth_year":1990})}
+
+Spectral.decode(~s({"firstName":"Bob","lastName":"Jones","birth_year":1985}), User, :t)
+# {:ok, %User{first_name: "Bob", last_name: "Jones", birth_year: 1985}}
+```
+
+Field aliases apply to both struct types and plain map literal fields. Aliases are also reflected in generated JSON Schemas — the schema property name uses the aliased key.
+
+When combined with `only`, filtering happens first and aliases are applied to the remaining fields:
+
+```elixir
+spectral only: [:first_name, :last_name], field_aliases: %{first_name: "firstName"}
+@type public_t :: %User{...}
+```
+
+`field_aliases` also propagates through type aliases — local references and remote module types:
+
+```elixir
+spectral field_aliases: %{first_name: "firstName"}
+@type camel_t :: OtherModule.t()  # alias applied when the reference is resolved
+```
 
 ### Documenting Functions (Endpoint Metadata)
 
