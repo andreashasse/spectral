@@ -25,8 +25,7 @@ defmodule SpectralRefPropagationTest do
       data = %TypeRefModule.Inner{first_name: "Alice", last_name: "Smith", secret: "classified"}
       {:ok, json_io} = Spectral.encode(data, TypeRefModule, :restricted_t)
       decoded = json_io |> IO.iodata_to_binary() |> Jason.decode!()
-      assert Map.has_key?(decoded, "first_name")
-      assert Map.has_key?(decoded, "last_name")
+      assert %{"first_name" => _, "last_name" => _} = decoded
       refute Map.has_key?(decoded, "secret")
     end
   end
