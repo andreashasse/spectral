@@ -25,9 +25,7 @@ defmodule SpectralFieldAliasesTest do
         |> Jason.decode!()
 
       props = schema["properties"]
-      assert Map.has_key?(props, "firstName")
-      assert Map.has_key?(props, "lastName")
-      assert Map.has_key?(props, "birth_year")
+      assert %{"firstName" => _, "lastName" => _, "birth_year" => _} = props
       refute Map.has_key?(props, "first_name")
       refute Map.has_key?(props, "last_name")
     end
@@ -39,8 +37,7 @@ defmodule SpectralFieldAliasesTest do
       {:ok, json_io} = Spectral.encode(data, FieldAliasesModule, :partial)
       json = IO.iodata_to_binary(json_io)
       decoded = Jason.decode!(json)
-      assert decoded["firstName"] == "Alice"
-      assert Map.has_key?(decoded, "last_name")
+      assert %{"firstName" => "Alice", "last_name" => _} = decoded
       refute Map.has_key?(decoded, "birth_year")
       refute Map.has_key?(decoded, "first_name")
     end
