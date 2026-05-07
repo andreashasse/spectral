@@ -693,7 +693,7 @@ Spectral.encode(%User{first_name: "Alice", last_name: "Smith", birth_year: 1990}
 # {:ok, ~s({"firstName":"Alice","lastName":"Smith","birth_year":1990})}
 
 Spectral.decode(~s({"firstName":"Bob","lastName":"Jones","birth_year":1985}), User, :t)
-# {:ok, %User{first_name: "Bob", last_name: "Smith", birth_year: 1985}}
+# {:ok, %User{first_name: "Bob", last_name: "Jones", birth_year: 1985}}
 ```
 
 Field aliases apply to both struct types and plain map literal fields. Aliases are also reflected in generated JSON Schemas — the schema property name uses the aliased key.
