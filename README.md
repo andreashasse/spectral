@@ -568,11 +568,14 @@ Spectral.decode(~s({"id":1,"name":"Alice","email":"alice@example.com"}), User, :
 Excluded fields present in the incoming JSON are silently ignored. Fields excluded by `only`
 are filled from the struct's default values on decode (see [Struct defaults](#struct-defaults)).
 
-`only` also works on union types such as `MyStruct | nil`:
+`only` also works on union types such as `MyStruct | nil`, and propagates through type aliases (local or remote):
 
 ```elixir
 spectral only: [:id, :name]
 @type t_or_nil :: %User{...} | nil
+
+spectral only: [:id, :name]
+@type public_t :: OtherModule.t()  # only is applied when the reference is resolved
 ```
 
 #### Ecto schemas and `only`
@@ -700,6 +703,13 @@ When combined with `only`, filtering happens first and aliases are applied to th
 ```elixir
 spectral only: [:first_name, :last_name], field_aliases: %{first_name: "firstName"}
 @type public_t :: %User{...}
+```
+
+`field_aliases` also propagates through type aliases — local references and remote module types:
+
+```elixir
+spectral field_aliases: %{first_name: "firstName"}
+@type camel_t :: OtherModule.t()  # alias applied when the reference is resolved
 ```
 
 ### Documenting Functions (Endpoint Metadata)
