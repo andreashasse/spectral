@@ -36,14 +36,7 @@ defmodule Spectral.Codec.String do
   end
 
   def encode(_format, _caller_type_info, {:type, :t, 0}, _target_type, data, _config) do
-    {:error,
-     [
-       %Spectral.Error{
-         type: :type_mismatch,
-         location: [],
-         context: %{type: {:type, :t, 0}, value: data}
-       }
-     ]}
+    Spectral.Error.type_mismatch({:type, :t, 0}, data)
   end
 
   @impl Spectral.Codec
@@ -53,14 +46,7 @@ defmodule Spectral.Codec.String do
   end
 
   def decode(_format, _caller_type_info, {:type, :t, 0}, _target_type, input, _config) do
-    {:error,
-     [
-       %Spectral.Error{
-         type: :type_mismatch,
-         location: [],
-         context: %{type: {:type, :t, 0}, value: input}
-       }
-     ]}
+    Spectral.Error.type_mismatch({:type, :t, 0}, input)
   end
 
   @impl Spectral.Codec

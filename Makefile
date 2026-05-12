@@ -1,6 +1,6 @@
-.PHONY: ci compile check_format format credo test type_check shell cover_diff perf release
+.PHONY: ci compile check_format format credo duplication test type_check shell cover_diff perf release
 
-ci: compile test credo type_check check_format
+ci: compile test credo duplication type_check check_format
 
 compile:
 	mix compile --force --warnings-as-errors
@@ -13,6 +13,9 @@ format:
 
 credo:
 	mix credo --strict
+
+duplication:
+	mix ex_dna
 
 type_check:
 	mix dialyzer
