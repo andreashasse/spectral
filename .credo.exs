@@ -6,7 +6,7 @@
         included: ["lib/", "test/", "config/", "priv/"],
         excluded: [~r"/_build/", ~r"/deps/", ~r"/node_modules/"]
       },
-      plugins: [],
+      plugins: [{ExDNA.Credo, []}],
       requires: [],
       strict: true,
       parse_timeout: 5000,
@@ -132,7 +132,7 @@
           {Credo.Check.Refactor.UtcNowTruncate, []},
           {Credo.Check.Consistency.MultiAliasImportRequireUse, []},
           {Credo.Check.Consistency.UnusedVariableNames, []},
-          {Credo.Check.Design.DuplicatedCode, []},
+          {Credo.Check.Design.DuplicatedCode, false},
           {Credo.Check.Design.SkipTestWithoutComment, []},
           {Credo.Check.Readability.AliasAs, []},
           {Credo.Check.Readability.BlockPipe, []},
