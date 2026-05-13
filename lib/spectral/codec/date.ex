@@ -18,6 +18,8 @@ defmodule Spectral.Codec.Date do
 
   use Spectral.Codec
 
+  @type_ref {:type, :t, 0}
+
   @impl Spectral.Codec
   def encode(format, _caller_type_info, {:type, :t, 0}, _target_type, %Date{} = d, _config)
       when format in [:json, :binary_string] do
@@ -29,62 +31,28 @@ defmodule Spectral.Codec.Date do
   end
 
   def encode(_format, _caller_type_info, {:type, :t, 0}, _target_type, data, _config) do
-    {:error,
-     [
-       %Spectral.Error{
-         type: :type_mismatch,
-         location: [],
-         context: %{type: {:type, :t, 0}, value: data}
-       }
-     ]}
+    Spectral.Error.type_mismatch(@type_ref, data)
   end
 
   @impl Spectral.Codec
   def decode(format, _caller_type_info, {:type, :t, 0}, _target_type, input, _config)
       when format in [:json, :binary_string] and is_binary(input) do
     case Date.from_iso8601(input) do
-      {:ok, d} ->
-        {:ok, d}
-
-      {:error, _} ->
-        {:error,
-         [
-           %Spectral.Error{
-             type: :type_mismatch,
-             location: [],
-             context: %{type: {:type, :t, 0}, value: input, reason: :invalid_format}
-           }
-         ]}
+      {:ok, d} -> {:ok, d}
+      {:error, _} -> Spectral.Error.type_mismatch(@type_ref, input, :invalid_format)
     end
   end
 
   def decode(:string, _caller_type_info, {:type, :t, 0}, _target_type, input, _config)
       when is_list(input) do
     case Date.from_iso8601(List.to_string(input)) do
-      {:ok, d} ->
-        {:ok, d}
-
-      {:error, _} ->
-        {:error,
-         [
-           %Spectral.Error{
-             type: :type_mismatch,
-             location: [],
-             context: %{type: {:type, :t, 0}, value: input, reason: :invalid_format}
-           }
-         ]}
+      {:ok, d} -> {:ok, d}
+      {:error, _} -> Spectral.Error.type_mismatch(@type_ref, input, :invalid_format)
     end
   end
 
   def decode(_format, _caller_type_info, {:type, :t, 0}, _target_type, data, _config) do
-    {:error,
-     [
-       %Spectral.Error{
-         type: :type_mismatch,
-         location: [],
-         context: %{type: {:type, :t, 0}, value: data}
-       }
-     ]}
+    Spectral.Error.type_mismatch(@type_ref, data)
   end
 
   @impl Spectral.Codec

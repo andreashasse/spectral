@@ -54,6 +54,24 @@ defmodule Spectral.Error do
   end
 
   @doc false
+  def type_mismatch(type, value) do
+    {:error,
+     [%__MODULE__{type: :type_mismatch, location: [], context: %{type: type, value: value}}]}
+  end
+
+  @doc false
+  def type_mismatch(type, value, reason) do
+    {:error,
+     [
+       %__MODULE__{
+         type: :type_mismatch,
+         location: [],
+         context: %{type: type, value: value, reason: reason}
+       }
+     ]}
+  end
+
+  @doc false
   def from_erlang(sp_error(location: location, type: type, ctx: ctx)) do
     %__MODULE__{
       location: location,
