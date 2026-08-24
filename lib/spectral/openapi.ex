@@ -258,8 +258,11 @@ defmodule Spectral.OpenAPI do
       endpoint = Spectral.OpenAPI.endpoint(:get, "/users/{id}")
         |> Spectral.OpenAPI.add_response(response)
   """
-  @spec add_response(:spectra_openapi.endpoint_spec(), :spectra_openapi.response_spec()) ::
-          :spectra_openapi.endpoint_spec()
+  @spec add_response(
+          :spectra_openapi.endpoint_spec() | :spectra_openapi.webhook_spec(),
+          :spectra_openapi.response_spec()
+        ) ::
+          :spectra_openapi.endpoint_spec() | :spectra_openapi.webhook_spec()
   def add_response(endpoint, response) do
     :spectra_openapi.add_response(endpoint, response)
   end
@@ -289,21 +292,21 @@ defmodule Spectral.OpenAPI do
         |> Spectral.OpenAPI.with_request_body(Person, :t, "application/xml")
   """
   @spec with_request_body(
-          :spectra_openapi.endpoint_spec(),
+          :spectra_openapi.endpoint_spec() | :spectra_openapi.webhook_spec(),
           module(),
           atom() | :spectra.sp_type_or_ref()
-        ) :: :spectra_openapi.endpoint_spec()
+        ) :: :spectra_openapi.endpoint_spec() | :spectra_openapi.webhook_spec()
   def with_request_body(endpoint, module, schema) do
     :spectra_openapi.with_request_body(endpoint, module, schema)
   end
 
   @doc false
   @spec with_request_body(
-          :spectra_openapi.endpoint_spec(),
+          :spectra_openapi.endpoint_spec() | :spectra_openapi.webhook_spec(),
           module(),
           atom() | :spectra.sp_type_or_ref(),
           binary()
-        ) :: :spectra_openapi.endpoint_spec()
+        ) :: :spectra_openapi.endpoint_spec() | :spectra_openapi.webhook_spec()
   def with_request_body(endpoint, module, schema, content_type) when is_binary(content_type) do
     :spectra_openapi.with_request_body(endpoint, module, schema, content_type)
   end
@@ -342,10 +345,10 @@ defmodule Spectral.OpenAPI do
         })
   """
   @spec with_parameter(
-          :spectra_openapi.endpoint_spec(),
+          :spectra_openapi.endpoint_spec() | :spectra_openapi.webhook_spec(),
           module(),
           :spectra_openapi.parameter_input_spec()
-        ) :: :spectra_openapi.endpoint_spec()
+        ) :: :spectra_openapi.endpoint_spec() | :spectra_openapi.webhook_spec()
   def with_parameter(endpoint, module, parameter_spec) do
     :spectra_openapi.with_parameter(endpoint, module, parameter_spec)
   end
