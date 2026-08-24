@@ -53,6 +53,46 @@ defmodule Spectral.OpenAPI do
   end
 
   @doc """
+  Creates a new OpenAPI 3.1 webhook definition.
+
+  Webhooks describe requests your API *sends out*, rather than requests it
+  receives. They are emitted under the spec's top-level `webhooks` key by
+  `to_openapi/4`.
+
+  A webhook is keyed by an **event name** instead of a URL path, because the
+  consumer owns the URL your API calls. The direction is inverted relative to an
+  endpoint: the request body is the payload your API *sends*, and the responses
+  describe what the consumer is expected to *return*.
+
+  Responses, request bodies and parameters are added with the same
+  `add_response/2`, `with_request_body/3,4` and `with_parameter/3` functions used
+  for endpoints. Only `:header` and `:cookie` parameters are allowed —
+  `:path` and `:query` raise, since there is no URL under your API's control to
+  put them in.
+
+  ## Parameters
+
+  - `name` - Event name as a binary (e.g., `"userCreated"`)
+  - `method` - HTTP method your API uses when calling the consumer (usually `:post`)
+  - `doc` - Optional documentation map, taking the same keys as `endpoint/3`
+
+  ## Returns
+
+  - `webhook` - OpenAPI webhook structure
+
+  ## Example
+
+      iex> webhook = Spectral.OpenAPI.webhook("userCreated", :post, %{summary: "User created"})
+      iex> webhook.name
+      "userCreated"
+  """
+  @spec webhook(binary(), :spectra_openapi.http_method(), :spectra_openapi.endpoint_doc()) ::
+          :spectra_openapi.webhook_spec()
+  def webhook(name, method, doc \\ %{}) do
+    :spectra_openapi.webhook(name, method, doc)
+  end
+
+  @doc """
   Creates a new OpenAPI endpoint definition using metadata from a `spectral/1` macro
   placed before a function definition.
 
@@ -379,6 +419,44 @@ defmodule Spectral.OpenAPI do
         ) :: {:ok, iodata() | dynamic()} | {:error, [Spectral.Error.t()]}
   def endpoints_to_openapi(metadata, endpoints, opts) when is_list(opts) do
     :spectra_openapi.endpoints_to_openapi(metadata, endpoints, opts)
+    |> convert_result()
+  end
+
+  @doc """
+  Converts endpoints and webhooks to a complete OpenAPI specification.
+
+  Like `endpoints_to_openapi/3`, but also takes webhooks built with
+  `webhook/2,3`. They are emitted under the spec's top-level `webhooks` key,
+  and their schemas share `components/schemas` with the endpoints, so a type
+  used by both is emitted once.
+
+  Note that a global `:security` requirement in the metadata is emitted at the
+  top level and therefore applies to webhook operations too, even though its
+  meaning is inverted there — it would describe your API authenticating *to* the
+  consumer. Per-operation security is not supported yet.
+
+  ## Parameters
+
+  - `metadata` - OpenAPI metadata map (same as `endpoints_to_openapi/2`)
+  - `endpoints` - List of endpoint definitions
+  - `webhooks` - List of webhook definitions built with `webhook/2,3`
+  - `opts` - Options list. Supported options:
+    - `:pre_encoded` - Return a map instead of iodata, skipping JSON encoding.
+
+  ## Returns
+
+  - `{:ok, iodata()}` - Complete OpenAPI 3.1 spec as JSON iodata (default)
+  - `{:ok, map()}` - Spec as a decoded map when `:pre_encoded` option is set
+  - `{:error, [%Spectral.Error{}]}` - List of errors if generation fails
+  """
+  @spec to_openapi(
+          :spectra_openapi.openapi_metadata(),
+          [:spectra_openapi.endpoint_spec()],
+          [:spectra_openapi.webhook_spec()],
+          [Spectral.schema_option()]
+        ) :: {:ok, iodata() | dynamic()} | {:error, [Spectral.Error.t()]}
+  def to_openapi(metadata, endpoints, webhooks, opts) when is_list(opts) do
+    :spectra_openapi.to_openapi(metadata, endpoints, webhooks, opts)
     |> convert_result()
   end
 
