@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Per-operation OpenAPI `security`. The doc map given to `Spectral.OpenAPI.endpoint/3` and `Spectral.OpenAPI.webhook/3` now accepts a `:security` key holding a list of Security Requirement Objects, emitted on that operation alone and overriding the global `:security` default; `[]` opts the operation out entirely. This is what lets an API authenticate inbound calls one way and sign its outgoing webhooks another.
 - OpenAPI 3.1 webhooks. `Spectral.OpenAPI.webhook/2,3` builds a webhook definition, and `Spectral.OpenAPI.to_openapi/4` generates a spec from both endpoints and webhooks, emitting the latter under the document's top-level [`webhooks`](https://spec.openapis.org/oas/v3.1.0#oasWebhooks) key. A webhook is keyed by an event name rather than a URL path, because the consumer owns the URL; the direction is inverted relative to an endpoint, so the request body is the payload the API sends and the responses describe what the consumer returns. `add_response/2`, `with_request_body/3,4` and `with_parameter/3` accept webhooks as well as endpoints, and webhook schemas share `components/schemas` with endpoints. `:path` and `:query` parameters raise on a webhook, since they can never be satisfied. `endpoints_to_openapi/2,3` are unchanged and emit no `webhooks` key.
 
 ## [0.13.0] - 2026-05-07

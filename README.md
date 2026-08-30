@@ -888,7 +888,28 @@ Notes:
 - Responses are optional, matching OpenAPI 3.1.
 - One event name can carry several methods; a webhook value is a Path Item Object, exactly like a `paths` entry.
 - Webhook schemas share `components/schemas` with endpoints, so a type used by both is emitted once.
-- A global `:security` requirement in the metadata is emitted at the top level and therefore applies to webhook operations too, even though its meaning is inverted there — it would describe your API authenticating *to* the consumer. Per-operation security is not supported yet.
+- A global `:security` requirement in the metadata is emitted at the top level and therefore applies to webhook operations too, per OpenAPI — even though its meaning is inverted there, since it would describe your API authenticating *to* the consumer. Override it with a `:security` key in the webhook's doc map, or `[]` to opt out entirely:
+
+```elixir
+# The API authenticates callers with a bearer token; its webhooks are signed
+# with an HMAC header instead.
+metadata = %{
+  title: "My API",
+  version: "1.0.0",
+  security_schemes: %{
+    "bearer_auth" => %{type: "http", scheme: "bearer"},
+    "webhook_signature" => %{type: "apiKey", in: "header", name: "x-signature"}
+  },
+  security: [%{"bearer_auth" => []}]
+}
+
+webhook =
+  Spectral.OpenAPI.webhook("userCreated", :post, %{
+    security: [%{"webhook_signature" => []}]
+  })
+```
+
+`:security` is a per-operation field, so `Spectral.OpenAPI.endpoint/3` takes it too.
 
 ## Configuration
 

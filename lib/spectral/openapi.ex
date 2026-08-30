@@ -35,6 +35,9 @@ defmodule Spectral.OpenAPI do
     - `:tags` - List of tags for grouping endpoints
     - `:deprecated` - Whether the endpoint is deprecated (boolean)
     - `:externalDocs` - Map with `:url` (required) and `:description` (optional)
+    - `:security` - List of Security Requirement Objects for this operation alone,
+      overriding the global `:security` default. `[]` opts the operation out of the
+      global requirement entirely.
 
   ## Returns
 
@@ -74,7 +77,9 @@ defmodule Spectral.OpenAPI do
 
   - `name` - Event name as a binary (e.g., `"userCreated"`)
   - `method` - HTTP method your API uses when calling the consumer (usually `:post`)
-  - `doc` - Optional documentation map, taking the same keys as `endpoint/3`
+  - `doc` - Optional documentation map, taking the same keys as `endpoint/3`,
+    including `:security` — which is how a webhook declares its own authentication
+    instead of inheriting the API's global requirement (`[]` opts out entirely)
 
   ## Returns
 
