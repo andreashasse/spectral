@@ -350,6 +350,54 @@ defmodule Spectral.OpenAPITest do
     end
   end
 
+  describe "per-operation security" do
+    @security_metadata %{
+      title: "API",
+      version: "1.0.0",
+      security_schemes: %{
+        "bearer_auth" => %{type: "http", scheme: "bearer"},
+        "webhook_signature" => %{type: "apiKey", in: "header", name: "x-signature"}
+      },
+      security: [%{"bearer_auth" => []}]
+    }
+
+    test "a webhook can override the global requirement with its own" do
+      webhook =
+        Spectral.OpenAPI.webhook("userCreated", :post, %{
+          security: [%{"webhook_signature" => []}]
+        })
+
+      {:ok, json} = Spectral.OpenAPI.to_openapi(@security_metadata, [], [webhook], [])
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+
+      assert spec["security"] == [%{"bearer_auth" => []}]
+
+      assert spec["webhooks"]["userCreated"]["post"]["security"] == [
+               %{"webhook_signature" => []}
+             ]
+    end
+
+    test "an empty list opts a webhook out of the global requirement" do
+      webhook = Spectral.OpenAPI.webhook("userCreated", :post, %{security: []})
+
+      {:ok, json} = Spectral.OpenAPI.to_openapi(@security_metadata, [], [webhook], [])
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+
+      assert spec["webhooks"]["userCreated"]["post"]["security"] == []
+    end
+
+    test "endpoints take it too - it is a per-operation field, not webhook-specific" do
+      endpoint =
+        Spectral.OpenAPI.endpoint(:get, "/public", %{security: []})
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "OK"))
+
+      {:ok, json} = Spectral.OpenAPI.to_openapi(@security_metadata, [endpoint], [], [])
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+
+      assert spec["paths"]["/public"]["get"]["security"] == []
+    end
+  end
+
   describe "endpoints_to_openapi/2" do
     test "generates basic OpenAPI spec" do
       metadata = %{title: "Test API", version: "1.0.0"}
