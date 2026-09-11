@@ -3,8 +3,9 @@ defmodule JsonbShapes do
   Self-describing payloads for a JSONB column: the discriminator lives inside
   the JSON document, so the column has a single static type.
 
-  Each variant pins its `kind` field to a literal atom. That literal is what
-  makes the union unambiguous when spectra tries the alternatives in order.
+  Each variant pins its `kind` field to a literal atom, and carries that atom as the
+  struct default so callers never write the tag by hand. The literal is what makes the
+  union unambiguous when spectra tries the alternatives in order.
   """
   use Spectral
 
@@ -12,7 +13,7 @@ defmodule JsonbShapes do
     @moduledoc false
     use Spectral
 
-    defstruct [:kind, :radius]
+    defstruct kind: :circle, radius: nil
 
     @type t :: %Circle{kind: :circle, radius: float()}
   end
@@ -21,7 +22,7 @@ defmodule JsonbShapes do
     @moduledoc false
     use Spectral
 
-    defstruct [:kind, :side]
+    defstruct kind: :square, side: nil
 
     @type t :: %Square{kind: :square, side: float()}
   end

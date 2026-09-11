@@ -87,7 +87,8 @@ defmodule Spectral.MixProject do
           JsonbNotification,
           JsonbNotification.Email,
           JsonbNotification.Sms,
-          JsonbShapeCodec,
+          CodecRefModule,
+          CodecRefModule.Inner,
           Perf.Address,
           Perf.User
         ]

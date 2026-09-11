@@ -1,33 +1,39 @@
 defmodule SpectralJsonbTest do
   @moduledoc """
-  Proves the three ways of putting a Spectral-typed value in a JSONB column.
+  Proves the two ways of putting a Spectral-typed value in a JSONB column.
 
   A JSONB column never hands Elixir a JSON string. `Ecto.Type.load/3` receives
   the map the database driver already decoded, and `Ecto.Type.dump/3` is
   expected to return a map the driver will encode. So every test here works in
-  terms of maps, using `:pre_decoded` and `:pre_encoded`, and pushes the result
-  through a real JSON round trip to show it is something a driver can store.
+  terms of maps, using `:pre_decoded` and `:pre_encoded`.
+
+  Nothing here exercises Ecto or a database. The round trip below only shows
+  that an encoded value survives JSON serialization, which is the property a
+  driver needs. Testing the Ecto type itself needs Ecto and a real Postgres
+  instance, which is why that lives outside this repository.
   """
   use ExUnit.Case, async: true
 
   alias JsonbShapes.Circle
   alias JsonbShapes.Square
 
-  # Stands in for the database driver: whatever `dump/3` returns gets encoded on
-  # the way in and decoded on the way out.
-  defp through_database(term) do
+  # Shows the dumped value is JSON-serializable. Not a database, not Ecto.
+  defp json_round_trip(term) do
     term |> :json.encode() |> IO.iodata_to_binary() |> :json.decode()
   end
 
   describe "self-describing union: discriminator inside the document" do
-    test "dumps each variant to a map a driver can store" do
+    test "dumps each variant to a JSON-serializable map" do
       assert {:ok, dumped} =
-               Spectral.encode(%Circle{kind: :circle, radius: 1.5}, JsonbShapes, :shape, :json, [
-                 :pre_encoded
-               ])
+               Spectral.encode(%Circle{radius: 1.5}, JsonbShapes, :shape, :json, [:pre_encoded])
 
       assert dumped == %{"kind" => "circle", "radius" => 1.5}
-      assert dumped == through_database(dumped)
+      assert dumped == json_round_trip(dumped)
+    end
+
+    test "the tag comes from the struct default, so callers never write it" do
+      assert %Circle{kind: :circle} = %Circle{radius: 1.5}
+      assert %Square{kind: :square} = %Square{side: 2.0}
     end
 
     test "loads each variant back from the stored map" do
@@ -48,12 +54,12 @@ defmodule SpectralJsonbTest do
                ])
     end
 
-    test "round trips both variants through the database" do
-      for value <- [%Circle{kind: :circle, radius: 1.5}, %Square{kind: :square, side: 2.0}] do
+    test "round trips both variants" do
+      for value <- [%Circle{radius: 1.5}, %Square{side: 2.0}] do
         {:ok, dumped} = Spectral.encode(value, JsonbShapes, :shape, :json, [:pre_encoded])
 
         assert {:ok, ^value} =
-                 Spectral.decode(through_database(dumped), JsonbShapes, :shape, :json, [
+                 Spectral.decode(json_round_trip(dumped), JsonbShapes, :shape, :json, [
                    :pre_decoded
                  ])
       end
@@ -95,11 +101,11 @@ defmodule SpectralJsonbTest do
   describe "type chosen by a sibling column" do
     # The row carries the discriminator in its own column, so the payload has no
     # tag of its own and the type reference is supplied at call time.
-    defp load_payload(%{kind: kind, payload: payload}) do
+    defp decode_payload(%{kind: kind, payload: payload}) do
       Spectral.decode(payload, JsonbNotification, kind, :json, [:pre_decoded])
     end
 
-    defp dump_payload(%{kind: kind, payload: payload}) do
+    defp encode_payload(%{kind: kind, payload: payload}) do
       Spectral.encode(payload, JsonbNotification, kind, :json, [:pre_encoded])
     end
 
@@ -107,100 +113,29 @@ defmodule SpectralJsonbTest do
       row = %{kind: :email, payload: %{"to" => "a@example.com", "subject" => "Hi"}}
 
       assert {:ok, %JsonbNotification.Email{to: "a@example.com", subject: "Hi"}} =
-               load_payload(row)
+               decode_payload(row)
     end
 
     test "the same column loads a different type for a different discriminator" do
       row = %{kind: :sms, payload: %{"number" => "+4670", "body" => "Hi"}}
 
-      assert {:ok, %JsonbNotification.Sms{number: "+4670", body: "Hi"}} = load_payload(row)
+      assert {:ok, %JsonbNotification.Sms{number: "+4670", body: "Hi"}} = decode_payload(row)
     end
 
-    test "round trips through the database" do
+    test "round trips" do
       payload = %JsonbNotification.Email{to: "a@example.com", subject: "Hi"}
 
-      assert {:ok, dumped} = dump_payload(%{kind: :email, payload: payload})
+      assert {:ok, dumped} = encode_payload(%{kind: :email, payload: payload})
       assert dumped == %{"to" => "a@example.com", "subject" => "Hi"}
 
       assert {:ok, ^payload} =
-               load_payload(%{kind: :email, payload: through_database(dumped)})
+               decode_payload(%{kind: :email, payload: json_round_trip(dumped)})
     end
 
     test "a payload stored under the wrong discriminator fails to load" do
       row = %{kind: :sms, payload: %{"to" => "a@example.com", "subject" => "Hi"}}
 
-      assert {:error, [_ | _]} = load_payload(row)
-    end
-  end
-
-  describe "discriminating codec: one lookup instead of trying each variant" do
-    test "loads the variant named by the tag" do
-      assert {:ok, %Circle{kind: :circle, radius: 1.5}} =
-               Spectral.decode(
-                 %{"kind" => "circle", "radius" => 1.5},
-                 JsonbShapeCodec,
-                 :shape,
-                 :json,
-                 [:pre_decoded]
-               )
-
-      assert {:ok, %Square{kind: :square, side: 2.0}} =
-               Spectral.decode(
-                 %{"kind" => "square", "side" => 2.0},
-                 JsonbShapeCodec,
-                 :shape,
-                 :json,
-                 [:pre_decoded]
-               )
-    end
-
-    test "round trips through the database" do
-      value = %Square{kind: :square, side: 2.0}
-
-      assert {:ok, dumped} =
-               Spectral.encode(value, JsonbShapeCodec, :shape, :json, [:pre_encoded])
-
-      assert dumped == %{"kind" => "square", "side" => 2.0}
-
-      assert {:ok, ^value} =
-               Spectral.decode(through_database(dumped), JsonbShapeCodec, :shape, :json, [
-                 :pre_decoded
-               ])
-    end
-
-    test "reports an unknown tag against the discriminated type, not each variant" do
-      assert {:error, [%Spectral.Error{type: :type_mismatch}]} =
-               Spectral.decode(
-                 %{"kind" => "triangle", "base" => 1.0},
-                 JsonbShapeCodec,
-                 :shape,
-                 :json,
-                 [:pre_decoded]
-               )
-    end
-
-    test "rejects a value that is not one of the variants" do
-      assert {:error, [%Spectral.Error{type: :type_mismatch}]} =
-               Spectral.encode(%{not: "a shape"}, JsonbShapeCodec, :shape, :json, [:pre_encoded])
-    end
-
-    test "other types in the codec module fall through to structural handling" do
-      assert {:ok, "hello"} =
-               Spectral.decode("hello", JsonbShapeCodec, :note, :json, [:pre_decoded])
-
-      assert {:ok, "hello"} =
-               Spectral.encode("hello", JsonbShapeCodec, :note, :json, [:pre_encoded])
-
-      # `schema/5` needs its own fallthrough clause, or this raises.
-      assert %{type: "string"} =
-               Spectral.schema(JsonbShapeCodec, :note, :json_schema, [:pre_encoded])
-    end
-
-    test "still generates a schema through the optional callback" do
-      schema = Spectral.schema(JsonbShapeCodec, :shape, :json_schema, [:pre_encoded])
-
-      assert %{oneOf: variants} = schema
-      assert length(variants) == 2
+      assert {:error, [_ | _]} = decode_payload(row)
     end
   end
 end
