@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-11
+
+### Changed
+- Upgraded spectra dependency to `~> 0.14.0`. Doc annotations (`title`, `description`, `deprecated`, `examples`, `examples_function`) set with the `spectral/1` macro now propagate into every schema the type is inlined into — struct and map field values, list and non-empty list elements, union branches, optional map values, and remote types from other modules. Previously only the type that schema generation was entered with kept its annotations, so `deprecated: true` on a type used as a struct field produced nothing in the output. Generated JSON Schema and OpenAPI output changes accordingly for annotated sub-schemas.
+- Where a type alias and the type it resolves to set the same key, the annotation nearest the use site wins; keys only one of them sets are kept from both.
+- `examples` are now validated at every position the type is inlined into, and `examples_function` is invoked once per position rather than once per schema.
+
+### Fixed
+- An `examples` value that does not encode as its own type now raises `ArgumentError` with the offending example and type name instead of a raw `ErlangError`. This error is reachable from many more places now that examples are validated at every inlined position.
+
 ## [0.13.0] - 2026-05-07
 
 ### Added

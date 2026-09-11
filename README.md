@@ -15,7 +15,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.13.0"}
+    {:spectral, "~> 0.14.0"}
   ]
 end
 ```
@@ -507,6 +507,38 @@ The generated schema will include the title and description:
 schema = Spectral.schema(Person, :t) |> IO.iodata_to_binary() |> Jason.decode!()
 # %{"title" => "Person", "description" => "A person with name and age", "type" => "object", ...}
 ```
+
+**Annotations follow the type wherever it is used.** A type annotated with `title`,
+`description`, `deprecated`, `examples` or `examples_function` carries that metadata into
+every schema it is inlined into — struct and map field values, list and non-empty list
+elements, union branches, optional map values, and types referenced from another module:
+
+```elixir
+defmodule Payment do
+  use Spectral
+
+  spectral title: "Payer", deprecated: true
+  @type payer :: String.t()
+
+  @type request :: %{payer: payer(), amount: non_neg_integer()}
+end
+
+Spectral.schema(Payment, :request) |> IO.iodata_to_binary() |> Jason.decode!()
+# properties.payer is %{"type" => "string", "title" => "Payer", "deprecated" => true}
+```
+
+When a type alias and the type it resolves to set the same key, the annotation nearest the
+use site wins; keys only one of them sets are kept from both.
+
+Three positions do not carry the annotation: a union whose members all resolve to literals
+(it collapses into a single `enum` schema), a type whose schema comes from a custom codec,
+and a parameterized type. An annotation on the union type itself, or on a plain type that
+aliases a codec-handled type, is still kept.
+
+Because an annotation reaches every position its type appears in, `examples` are validated
+at each of them and an `examples_function` is called once per position — keep such functions
+cheap and free of side effects. An example that does not encode as its own type raises
+`ArgumentError` from schema generation.
 
 **Multiple types in one module** — only types with a `spectral` call will have title/description in their schemas:
 
