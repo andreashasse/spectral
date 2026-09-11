@@ -78,6 +78,16 @@ defmodule Spectral.MixProject do
           DefaultValues,
           DefaultValues.Config,
           EctoUser,
+          JsonbShapes,
+          JsonbShapes.Circle,
+          JsonbShapes.Square,
+          JsonbUntaggedShapes,
+          JsonbUntaggedShapes.Name,
+          JsonbUntaggedShapes.NameAndSize,
+          JsonbNotification,
+          JsonbNotification.Email,
+          JsonbNotification.Sms,
+          JsonbShapeCodec,
           Perf.Address,
           Perf.User
         ]

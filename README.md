@@ -379,6 +379,206 @@ config :spectra, :codecs, %{
 
 `Range` and `Stream` do not have built-in codecs. Implement a custom `Spectral.Codec` if needed — PRs welcome.
 
+## Database JSON Columns (`jsonb`)
+
+Spectral handles `jsonb` columns. The column type in Ecto is `:map`, and the database
+driver does its own JSON serialization, so it hands Ecto an already-decoded map rather than
+a JSON string. Use `:pre_encoded` and `:pre_decoded` to meet it there:
+
+```elixir
+# What Ecto.Type.dump/3 should return — a map the driver will encode
+{:ok, map} = Spectral.encode(value, MyApp.Settings, :t, :json, [:pre_encoded])
+
+# What Ecto.Type.load/3 receives — the map the driver already decoded
+{:ok, value} = Spectral.decode(map, MyApp.Settings, :t, :json, [:pre_decoded])
+```
+
+That is the whole integration. Spectral has no Ecto dependency and needs none.
+
+### Wrapping it in an Ecto type
+
+When the column always holds the same type, an `Ecto.ParameterizedType` makes the
+conversion automatic:
+
+```elixir
+defmodule MyApp.JSONB do
+  use Ecto.ParameterizedType
+
+  @impl true
+  def init(opts), do: {Keyword.fetch!(opts, :module), Keyword.get(opts, :type, :t)}
+
+  @impl true
+  def type(_params), do: :map
+
+  @impl true
+  def cast(nil, _params), do: {:ok, nil}
+  def cast(%mod{} = value, {mod, _type}), do: {:ok, value}
+
+  def cast(data, {mod, type}) do
+    case Spectral.decode(data, mod, type, :json, [:pre_decoded]) do
+      {:ok, value} -> {:ok, value}
+      {:error, errors} -> {:error, message: Enum.map_join(errors, ", ", &Exception.message/1)}
+    end
+  end
+
+  @impl true
+  def load(nil, _loader, _params), do: {:ok, nil}
+
+  def load(data, _loader, {mod, type}) do
+    case Spectral.decode(data, mod, type, :json, [:pre_decoded]) do
+      {:ok, value} -> {:ok, value}
+      {:error, _errors} -> :error
+    end
+  end
+
+  @impl true
+  def dump(nil, _dumper, _params), do: {:ok, nil}
+
+  def dump(value, _dumper, {mod, type}) do
+    case Spectral.encode(value, mod, type, :json, [:pre_encoded]) do
+      {:ok, map} -> {:ok, map}
+      {:error, _errors} -> :error
+    end
+  end
+end
+```
+
+Used as `field :settings, MyApp.JSONB, module: MyApp.Settings, type: :t`.
+
+Two things to know about this wrapper:
+
+- **The `nil` clauses are required.** `Ecto.Type` dispatches to parameterized types *before*
+  its own `nil` shortcut, so a `NULL` column arrives as `nil` in `cast/2`, `load/3`, and
+  `dump/3`. Plain `Ecto.Type` modules never see `nil`, which makes this easy to miss.
+- **`load/3` and `dump/3` can only return `:error`**, with no reason, so Spectral's error
+  list is lost there. `cast/2` can return `{:error, message: ...}`, so validation errors
+  still reach the changeset. Bad data already in the column is a bug rather than user
+  input, so raising in `load/3` is often better than returning `:error`.
+
+### When the type varies per row
+
+An `Ecto.ParameterizedType` cannot pick the type from another column: `load/3` receives only
+the column value, and `init/1` runs at compile time. There are three ways to handle a
+column whose shape varies, and the right one depends on where the discriminator lives.
+
+| | Discriminator | Ecto field type | Cost per load |
+|---|---|---|---|
+| Self-describing union | inside the document | static | tries each variant in order |
+| Sibling column | its own column | plain `:map` | one lookup, chosen by you |
+| Discriminating codec | inside the document | static | one lookup |
+
+#### Self-describing union
+
+Put the tag in the document and pin it to a literal atom in each variant. The field type
+stays static, so the `Ecto.ParameterizedType` above works unchanged:
+
+```elixir
+defmodule MyApp.Shapes do
+  use Spectral
+
+  defmodule Circle do
+    use Spectral
+    defstruct [:kind, :radius]
+    @type t :: %Circle{kind: :circle, radius: float()}
+  end
+
+  defmodule Square do
+    use Spectral
+    defstruct [:kind, :side]
+    @type t :: %Square{kind: :square, side: float()}
+  end
+
+  @type shape :: Circle.t() | Square.t()
+end
+```
+
+**The literal `kind` field is not decoration.** Unions are first-match-wins and extra JSON
+keys are ignored, so an untagged variant whose fields are a subset of another's will swallow
+documents meant for the later variant and silently drop the extra keys. The literal atom is
+what makes the alternatives mutually exclusive.
+
+Use this when you control the document shape. It is the only option that survives the value
+being copied out of the database, since the payload describes itself.
+
+#### Type chosen by a sibling column
+
+When the row already carries the discriminator in its own column, leave the payload column
+as a plain `:map` and pass the type reference at call time. `type_ref` is an ordinary
+runtime argument, so naming each type after the discriminator value is enough:
+
+```elixir
+defmodule MyApp.Notification do
+  use Spectral
+
+  alias MyApp.Notification.Email
+  alias MyApp.Notification.Sms
+
+  @type email :: Email.t()
+  @type sms :: Sms.t()
+end
+
+# schema
+field :kind, Ecto.Enum, values: [:email, :sms]
+field :payload, :map
+
+def payload(%__MODULE__{kind: kind, payload: payload}) do
+  Spectral.decode(payload, MyApp.Notification, kind, :json, [:pre_decoded])
+end
+```
+
+Use this when the discriminator must be queryable or indexable, or when you do not control
+the document shape. The tradeoff is that decoding becomes an explicit step the schema does
+not enforce for you.
+
+#### Discriminating codec
+
+A union tries each alternative until one matches, which costs more as variants are added and
+produces a `no_match` error listing every failure. A codec reads the tag and jumps straight
+to the right variant:
+
+```elixir
+defmodule MyApp.ShapeCodec do
+  use Spectral.Codec
+  use Spectral
+
+  alias MyApp.Shapes.Circle
+  alias MyApp.Shapes.Square
+
+  @variants %{"circle" => Circle, "square" => Square}
+  @shape_ref {:type, :shape, 0}
+
+  @type shape :: Circle.t() | Square.t()
+
+  @impl Spectral.Codec
+  def decode(format, _caller_type_info, @shape_ref, _target_type, %{"kind" => kind} = input, config)
+      when is_map_key(@variants, kind) do
+    mod = Map.fetch!(@variants, kind)
+    type_info = mod.__spectra_type_info__()
+    type = Spectral.TypeInfo.get_type(type_info, :t, 0)
+    Spectral.Codec.decode(format, type_info, type, input, config)
+  end
+
+  def decode(_format, _caller_type_info, _type_ref, _target_type, _input, _config), do: :continue
+end
+```
+
+Two details are easy to get wrong here:
+
+- **Recursive codec calls take a resolved type node**, not a `{:type, name, arity}`
+  reference. Look the variant up with `Spectral.TypeInfo.get_type/3` first. Passing the
+  reference tuple produces a confusing `type_mismatch` error naming a type you did not
+  expect.
+- **Give `schema/5` a fallthrough clause too.** A codec-owned type has no structural schema
+  fallback, so implement the callback for the discriminated type. Any *other* type in the
+  same module still reaches the callback, and without a catch-all returning `:continue` it
+  raises a `FunctionClauseError` during schema generation.
+
+Use this when the variant count is large enough for the linear scan to matter, or when you
+want an error that names the unknown tag instead of listing every variant that failed.
+
+All three patterns are exercised in `test/spectral_jsonb_test.exs`, including a real JSON
+round trip standing in for the database driver.
+
 ## Type Parameters
 
 The `type_parameters` key in a `spectral` attribute attaches a static value to a type. This value is available to codecs as the `params` argument (6th argument to `encode/7` and `decode/7`, 5th to `schema/6`). When `type_parameters` is absent, `params` is `:undefined`.

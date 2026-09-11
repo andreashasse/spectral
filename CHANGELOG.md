@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Documentation and tests for storing Spectral-typed values in database JSON columns (`jsonb`). Covers the `Ecto.ParameterizedType` wrapper and three ways to handle a column whose type varies per row: a self-describing tagged union, a type reference taken from a sibling column, and a discriminating codec. No library code changed — `:pre_encoded` and `:pre_decoded` already provide everything needed.
+
 ## [0.13.0] - 2026-05-07
 
 ### Added
