@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `Spectral.Codec.encode/5`, `Spectral.Codec.decode/5`, and `Spectral.Codec.schema/4` now accept a `{:type, name, arity}` or `{:record, name}` reference, as their `sp_type_or_ref()` specs always claimed. Previously only a resolved `sp_type()` node worked and a reference failed with a `type_mismatch` naming an unexpected type.
+- The `schema/5` callback is declared to return `map() | :continue`. Returning `:continue` for types a codec does not handle was already documented and supported, but the callback spec said `map()`.
+
+### Added
+- A "Spectral and Ecto" README section on storing Spectral-typed values in `jsonb` columns, including two ways to handle a column whose type varies per row: a self-describing tagged union, and a type reference taken from a sibling column. Packaging the `Ecto.ParameterizedType` wrapper itself is left to a separate `spectral_ecto` library, which can depend on Ecto and test against a real database.
+
 ## [0.13.0] - 2026-05-07
 
 ### Added
