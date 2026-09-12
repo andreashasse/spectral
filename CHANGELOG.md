@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `schema/5` callback is declared to return `map() | :continue`. Returning `:continue` for types a codec does not handle was already documented and supported, but the callback spec said `map()`.
 
 ### Added
-- Documentation and tests for storing Spectral-typed values in database JSON columns (`jsonb`). Covers two ways to handle a column whose type varies per row: a self-describing tagged union, and a type reference taken from a sibling column. Packaging the `Ecto.ParameterizedType` wrapper itself is left to a separate `spectral_ecto` library, which can depend on Ecto and test against a real database.
+- A "Spectral and Ecto" README section on storing Spectral-typed values in `jsonb` columns, including two ways to handle a column whose type varies per row: a self-describing tagged union, and a type reference taken from a sibling column. Packaging the `Ecto.ParameterizedType` wrapper itself is left to a separate `spectral_ecto` library, which can depend on Ecto and test against a real database.
 
 ## [0.13.0] - 2026-05-07
 

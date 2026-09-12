@@ -381,34 +381,22 @@ config :spectra, :codecs, %{
 
 ## Spectral and Ecto
 
-Spectral handles `jsonb` columns. The column type in Ecto is `:map`, and the database
-driver does its own JSON serialization, so it hands Ecto an already-decoded map rather than
-a JSON string. Use `:pre_encoded` and `:pre_decoded` to meet it there:
+Ecto encodes and decodes `jsonb` values as Elixir maps. To convert those maps to and from
+your types, use `:pre_encoded` and `:pre_decoded`:
 
 ```elixir
-# What Ecto.Type.dump/3 should return — a map the driver will encode
+# Ecto.Type.dump/3 returns a map for Ecto to store
 {:ok, map} = Spectral.encode(value, MyApp.Settings, :t, :json, [:pre_encoded])
 
-# What Ecto.Type.load/3 receives — the map the driver already decoded
+# Ecto.Type.load/3 receives the map Ecto read back
 {:ok, value} = Spectral.decode(map, MyApp.Settings, :t, :json, [:pre_decoded])
 ```
 
-That is the whole integration. Spectral has no Ecto dependency and needs none.
-
-Packaging this as an `Ecto.ParameterizedType`, so that a schema can just declare
-`field :settings, SpectralEcto.JSONB, module: MyApp.Settings, type: :t`, is the job of a
-separate `spectral_ecto` library. It belongs there rather than here because it needs a real
-Ecto dependency and a real Postgres instance to test against.
-
-Two things worth knowing before writing that wrapper yourself:
-
-- **`nil` clauses are required.** `Ecto.Type` dispatches to parameterized types *before* its
-  own `nil` shortcut, so a `NULL` column arrives as `nil` in `cast/2`, `load/3` and
-  `dump/3`. Plain `Ecto.Type` modules never see `nil`, which makes this easy to miss.
-- **`load/3` and `dump/3` can only return `:error`**, with no reason, so Spectral's error
-  list is lost there. `cast/2` can return `{:error, message: ...}`, so validation errors
-  still reach the changeset. Bad data already in the column is a bug rather than user input,
-  so raising in `load/3` is often better than returning `:error`.
+Packaging that into an `Ecto.ParameterizedType`, so a schema can declare
+`field :settings, SpectralEcto.JSONB, module: MyApp.Settings, type: :t`, is the job of the
+separate `spectral_ecto` library. It lives there because it needs a real Ecto dependency and
+a real Postgres instance to test against. Spectral itself has no Ecto dependency and needs
+none.
 
 ### When the type varies per row
 
@@ -488,8 +476,6 @@ end
 Use this when the discriminator must be queryable or indexable, or when you do not control
 the document shape. The tradeoff is that decoding becomes an explicit step the schema does
 not enforce for you.
-
-Both patterns are exercised in `test/spectral_jsonb_test.exs`.
 
 ## Type Parameters
 
