@@ -395,8 +395,8 @@ your types, use `:pre_encoded` and `:pre_decoded`:
 ```
 
 Packaging that into an `Ecto.ParameterizedType`, so a schema can declare
-`field :settings, SpectralEcto.JSONB, module: MyApp.Settings, type: :t`, is the job of the
-separate `spectral_ecto` library. It lives there because it needs a real Ecto dependency and
+`field :settings, EctoSpectral.JSONB, module: MyApp.Settings, type: :t`, is the job of the
+separate `ecto_spectral` library. It lives there because it needs a real Ecto dependency and
 a real Postgres instance to test against. Spectral itself has no Ecto dependency and needs
 none.
 

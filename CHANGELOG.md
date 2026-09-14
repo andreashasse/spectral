@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The README's custom codec example used the pre-0.12.0 callback signatures (`encode/7`, `decode/7`, `schema/6` with a separate `params` argument). Copying it produced callbacks that did not match the behaviour. The example and the `type_parameters` section now show the current `encode/6`, `decode/6`, and `schema/5`, and read `type_parameters` via `:spectra_type.parameters/1`.
 
 ### Added
-- A "Spectral and Ecto" README section on storing Spectral-typed values in `jsonb` columns, including two ways to handle a column whose type varies per row: a self-describing tagged union, and a type reference taken from a sibling column. Packaging the `Ecto.ParameterizedType` wrapper itself is left to a separate `spectral_ecto` library, which can depend on Ecto and test against a real database.
+- A "Spectral and Ecto" README section on storing Spectral-typed values in `jsonb` columns, including two ways to handle a column whose type varies per row: a self-describing tagged union, and a type reference taken from a sibling column. Packaging the `Ecto.ParameterizedType` wrapper itself is left to a separate `ecto_spectral` library, which can depend on Ecto and test against a real database.
 
 ## [0.13.0] - 2026-05-07
 
