@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- `Spectral.AbstractCode` now handles the Elixir non-empty list shorthand, `[elem_type, ...]` (and bare `[...]`), matching the existing `nonempty_list(elem_type)` support. Previously these types failed to compile with `unsupported type AST`.
 - `Spectral.Codec.encode/5`, `Spectral.Codec.decode/5`, and `Spectral.Codec.schema/4` now accept a `{:type, name, arity}` or `{:record, name}` reference, as their `sp_type_or_ref()` specs always claimed. Previously only a resolved `sp_type()` node worked and a reference failed with a `type_mismatch` naming an unexpected type.
 - The `schema/5` callback is declared to return `map() | :continue`. Returning `:continue` for types a codec does not handle was already documented and supported, but the callback spec said `map()`.
 - The README's custom codec example used the pre-0.12.0 callback signatures (`encode/7`, `decode/7`, `schema/6` with a separate `params` argument). Copying it produced callbacks that did not match the behaviour. The example and the `type_parameters` section now show the current `encode/6`, `decode/6`, and `schema/5`, and read `type_parameters` via `:spectra_type.parameters/1`.
