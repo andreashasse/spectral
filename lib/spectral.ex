@@ -697,6 +697,10 @@ defmodule Spectral do
         raise ArgumentError,
               "type not supported: #{inspect(type_info)} (#{operation})"
 
+      {:invalid_example, type, example, _errors} ->
+        raise ArgumentError,
+              "invalid example #{inspect(example)} for #{describe_type(type)} (#{operation})"
+
       _other ->
         # Not a known configuration error — re-raise as-is with the original
         # stacktrace instead of losing where it happened.
@@ -710,5 +714,12 @@ defmodule Spectral do
   # than falling through to a FunctionClauseError in this module.
   defp handle_erlang_error(error, stacktrace, _operation, _module, _type_ref) do
     reraise error, stacktrace
+  end
+
+  defp describe_type(type) do
+    case :spectra_type.get_meta(type) do
+      %{name: {:type, name, arity}} -> "type #{name}/#{arity}"
+      _meta -> "type #{inspect(type)}"
+    end
   end
 end

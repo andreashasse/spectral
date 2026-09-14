@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-14
+
+### Changed
+- Upgraded spectra dependency to `~> 0.14.0` (now resolving to `0.14.1`). Doc annotations (`title`, `description`, `deprecated`, `examples`, `examples_function`) set with the `spectral/1` macro now propagate into every schema the type is inlined into — struct and map field values, list and non-empty list elements, union branches, optional map values, and remote types from other modules. Previously only the type that schema generation was entered with kept its annotations, so `deprecated: true` on a type used as a struct field produced nothing in the output. Generated JSON Schema and OpenAPI output changes accordingly for annotated sub-schemas.
+- Where a type alias and the type it resolves to set the same key, the annotation nearest the use site wins; keys only one of them sets are kept from both.
+- `examples` are now validated at every position the type is inlined into, and `examples_function` is invoked once per position rather than once per schema.
+
 ### Fixed
+- An `examples` value that does not encode as its own type now raises `ArgumentError` with the offending example and type name instead of a raw `ErlangError`. This error is reachable from many more places now that examples are validated at every inlined position.
 - `Spectral.AbstractCode` now handles the Elixir non-empty list shorthand, `[elem_type, ...]` (and bare `[...]`), matching the existing `nonempty_list(elem_type)` support. Previously these types failed to compile with `unsupported type AST`.
 - `encode/4-5`, `decode/4-5`, and `schema/3-4` rescue `error in ErlangError` to translate a few known spectra configuration errors into `ArgumentError`, but that rescue clause also binds every other exception Elixir normalizes a raw BEAM error into (e.g. `%BadMapError{}`, `%KeyError{}`), not just literal `%ErlangError{}` structs. Any unrelated crash inside spectra therefore hit `handle_erlang_error/4`'s single `%ErlangError{}` clause and failed with a misleading `FunctionClauseError` pointing at Spectral itself, discarding the original exception and stacktrace. Such crashes now reraise unchanged, with their original stacktrace intact.
+- Encoding a struct with data that isn't a map (a string, integer, list, or atom) crashed with a raw `badmap` error instead of returning `{:error, [%Spectral.Error{}]}` (spectra 0.14.1). Only the struct branch of encoding was affected; plain map types, list types, record types, and decoding were unaffected.
 - `Spectral.Codec.encode/5`, `Spectral.Codec.decode/5`, and `Spectral.Codec.schema/4` now accept a `{:type, name, arity}` or `{:record, name}` reference, as their `sp_type_or_ref()` specs always claimed. Previously only a resolved `sp_type()` node worked and a reference failed with a `type_mismatch` naming an unexpected type.
 - The `schema/5` callback is declared to return `map() | :continue`. Returning `:continue` for types a codec does not handle was already documented and supported, but the callback spec said `map()`.
 - The README's custom codec example used the pre-0.12.0 callback signatures (`encode/7`, `decode/7`, `schema/6` with a separate `params` argument). Copying it produced callbacks that did not match the behaviour. The example and the `type_parameters` section now show the current `encode/6`, `decode/6`, and `schema/5`, and read `type_parameters` via `:spectra_type.parameters/1`.
