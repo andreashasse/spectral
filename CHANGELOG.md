@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `Spectral.AbstractCode` now handles the Elixir non-empty list shorthand, `[elem_type, ...]` (and bare `[...]`), matching the existing `nonempty_list(elem_type)` support. Previously these types failed to compile with `unsupported type AST`.
+
 ## [0.13.0] - 2026-05-07
 
 ### Added
