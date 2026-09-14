@@ -39,4 +39,40 @@ defmodule SpectralUnexpectedCrashTest do
 
     assert %KeyError{key: :missing_key} = error
   end
+
+  test "schema/2 reraises an unexpected crash unchanged, not as a FunctionClauseError" do
+    error =
+      assert_raise KeyError, fn ->
+        Spectral.schema(CrashingCodec, :t)
+      end
+
+    assert %KeyError{key: :missing_key} = error
+  end
+
+  test "schema/4 reraises an unexpected crash unchanged, not as a FunctionClauseError" do
+    error =
+      assert_raise KeyError, fn ->
+        Spectral.schema(CrashingCodec, :t, :json_schema, [])
+      end
+
+    assert %KeyError{key: :missing_key} = error
+  end
+
+  test "an ErlangError with an unrecognized original is reraised unchanged, with its original stacktrace" do
+    error =
+      assert_raise ErlangError, fn ->
+        Spectral.encode("data", CrashingCodec, :t2)
+      end
+
+    assert %ErlangError{original: {:unexpected_codec_failure, :detail}} = error
+
+    stacktrace =
+      try do
+        Spectral.encode("data", CrashingCodec, :t2)
+      rescue
+        _ -> __STACKTRACE__
+      end
+
+    assert Enum.any?(stacktrace, fn {mod, _fun, _arity, _location} -> mod == CrashingCodec end)
+  end
 end
