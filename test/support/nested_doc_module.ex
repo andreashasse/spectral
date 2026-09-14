@@ -35,4 +35,18 @@ defmodule NestedDocModule do
   @type label :: tag()
 
   @type labelled :: %{label: label()}
+
+  spectral(title: "Counted", examples_function: {__MODULE__, :counted_examples, []})
+  @type counted :: non_neg_integer()
+
+  @type two_counted :: %{first: counted(), second: counted()}
+
+  @doc false
+  def counted_examples do
+    Process.put(:counted_examples_calls, counted_examples_calls() + 1)
+    [7]
+  end
+
+  @doc false
+  def counted_examples_calls, do: Process.get(:counted_examples_calls, 0)
 end
