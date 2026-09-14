@@ -673,31 +673,42 @@ defmodule Spectral do
     {:error, Spectral.Error.from_erlang_list(erlang_errors)}
   end
 
-  defp handle_erlang_error(error, stacktrace, operation, module, type_ref) do
-    case error do
-      %ErlangError{original: {:module_types_not_found, ^module, _reason}} ->
+  defp handle_erlang_error(
+         %ErlangError{original: original} = error,
+         stacktrace,
+         operation,
+         module,
+         type_ref
+       ) do
+    case original do
+      {:module_types_not_found, ^module, _reason} ->
         raise ArgumentError,
               "module #{inspect(module)} not found, not loaded, or not compiled with debug_info (#{operation})"
 
-      %ErlangError{original: {:type_or_record_not_found, ^type_ref}} ->
+      {:type_or_record_not_found, ^type_ref} ->
         raise ArgumentError,
               "type #{inspect(type_ref)} not found in module #{inspect(module)} (#{operation})"
 
-      %ErlangError{original: {:type_not_found, type_name, _arity}} when type_name == type_ref ->
+      {:type_not_found, type_name, _arity} when type_name == type_ref ->
         raise ArgumentError,
               "type #{inspect(type_ref)} not found in module #{inspect(module)} (#{operation})"
 
-      %ErlangError{original: {:type_not_supported, type_info}} ->
+      {:type_not_supported, type_info} ->
         raise ArgumentError,
               "type not supported: #{inspect(type_info)} (#{operation})"
 
       _other ->
-        # Not a known configuration error — this covers both unrecognized
-        # %ErlangError{} originals and every other exception Elixir normalizes
-        # a raw BEAM error into (e.g. %BadMapError{}, %BadStructError{}), since
-        # `rescue error in ErlangError` binds those here too. Re-raise as-is
-        # with the original stacktrace instead of losing where it happened.
+        # Not a known configuration error — re-raise as-is with the original
+        # stacktrace instead of losing where it happened.
         reraise error, stacktrace
     end
+  end
+
+  # `rescue error in ErlangError` also binds every other exception Elixir
+  # normalizes a raw BEAM error into (e.g. %BadMapError{}, %BadStructError{}),
+  # not just literal %ErlangError{} structs. Re-raise those as-is too, rather
+  # than falling through to a FunctionClauseError in this module.
+  defp handle_erlang_error(error, stacktrace, _operation, _module, _type_ref) do
+    reraise error, stacktrace
   end
 end
