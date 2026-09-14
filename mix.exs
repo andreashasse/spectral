@@ -78,6 +78,8 @@ defmodule Spectral.MixProject do
           DefaultValues,
           DefaultValues.Config,
           EctoUser,
+          CodecRefModule,
+          CodecRefModule.Inner,
           Perf.Address,
           Perf.User
         ]
