@@ -256,6 +256,16 @@ defmodule Spectral.AbstractCode do
     sp_function(args: args, return: return)
   end
 
+  # Shorthand non-empty list type  [...]  — means nonempty_list()
+  defp convert_type([{:..., _meta, _}]) do
+    sp_nonempty_list(type: sp_simple_type(type: :term))
+  end
+
+  # Shorthand non-empty list type  [elem_type, ...]  — means nonempty_list(elem_type)
+  defp convert_type([elem_ast, {:..., _meta, _}]) do
+    sp_nonempty_list(type: convert_type(elem_ast))
+  end
+
   # Shorthand list type  [elem_type]  — means list(elem_type), i.e. possibly empty
   defp convert_type([elem_ast]) do
     sp_list(type: convert_type(elem_ast))

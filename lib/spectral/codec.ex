@@ -120,11 +120,17 @@ defmodule Spectral.Codec do
   Preserves the runtime `config` (cache mode, codecs) across the traversal,
   unlike `Spectral.encode/5` which starts a fresh traversal.
 
+  `type_ref` may be a resolved `sp_type()` node, such as one from
+  `Spectral.Type.type_args/1`, or a `{:type, name, arity}` / `{:record, name}` reference,
+  which is looked up in `type_info`.
+
   Returns `{:ok, term()}` (a pre-encoded term) or `{:error, [Spectral.Error.t()]}`.
   """
   @spec encode(atom(), Spectral.type_info(), Spectral.sp_type_or_ref(), term(), term()) ::
           {:ok, term()} | {:error, [Spectral.Error.t()]}
   def encode(format, type_info, type_ref, data, config) do
+    type_ref = resolve_type_ref(type_info, type_ref)
+
     result =
       case format do
         :json ->
@@ -158,6 +164,8 @@ defmodule Spectral.Codec do
   @spec decode(atom(), Spectral.type_info(), Spectral.sp_type_or_ref(), term(), term()) ::
           {:ok, term()} | {:error, [Spectral.Error.t()]}
   def decode(format, type_info, type_ref, input, config) do
+    type_ref = resolve_type_ref(type_info, type_ref)
+
     result =
       case format do
         :json ->
@@ -184,8 +192,23 @@ defmodule Spectral.Codec do
   """
   @spec schema(atom(), Spectral.type_info(), Spectral.sp_type_or_ref(), term()) :: dynamic()
   def schema(:json_schema, type_info, type_ref, config) do
-    :spectra_json_schema.to_schema(type_info, type_ref, config)
+    :spectra_json_schema.to_schema(type_info, resolve_type_ref(type_info, type_ref), config)
   end
+
+  # The traversal functions take a resolved `sp_type()` node. A `{:type, name, arity}`
+  # or `{:record, name}` reference is also a valid `sp_type_or_ref()`, so look it up in
+  # `type_info` first rather than letting it fall through as an unrecognised term.
+  defp resolve_type_ref(type_info, {:type, name, arity})
+       when is_atom(name) and is_integer(arity) do
+    type = :spectra_type_info.get_type(type_info, name, arity)
+    :spectra_util.type_replace_vars(type_info, type, %{})
+  end
+
+  defp resolve_type_ref(type_info, {:record, name}) when is_atom(name) do
+    :spectra_type_info.get_record(type_info, name)
+  end
+
+  defp resolve_type_ref(_type_info, type), do: type
 
   @doc """
   Encodes `data` of the given `target_type_ref` to `format`.
@@ -242,6 +265,11 @@ defmodule Spectral.Codec do
   `{:schema_not_implemented, module, type_ref}` when schema generation is requested
   for a type owned by this codec.
 
+  Once implemented, the callback receives *every* type defined in the codec module, not
+  only the ones the codec handles. Give it a catch-all clause returning `:continue` for
+  the rest, exactly as with `encode/6` and `decode/6`, or schema generation for those
+  types raises a `FunctionClauseError`.
+
   `caller_type_info` is the type info of the module driving the traversal.
   `target_type` is the type node; use `:spectra_type.parameters/1` to read
   `type_parameters` (only reliable when invoked directly from a `Spectral` entry point).
@@ -253,7 +281,7 @@ defmodule Spectral.Codec do
               target_type_ref :: Spectral.sp_type_reference(),
               target_type :: Spectral.sp_type_or_ref(),
               config :: term()
-            ) :: map()
+            ) :: map() | :continue
 
   @optional_callbacks schema: 5
 

@@ -15,7 +15,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.13.0"}
+    {:spectral, "~> 0.14.0"}
   ]
 end
 ```
@@ -302,33 +302,35 @@ defmodule MyGeoModule do
   @opaque point :: {float(), float()}
 
   @impl Spectral.Codec
-  def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _sp_type, _params, _config)
+  def encode(_format, _caller_type_info, {:type, :point, 0}, _target_type, {x, y}, _config)
       when is_number(x) and is_number(y) do
     {:ok, [x, y]}
   end
 
-  def encode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params, _config) do
+  def encode(_format, _caller_type_info, {:type, :point, 0}, _target_type, data, _config) do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
   end
 
-  def encode(_format, _module, _type_ref, _data, _sp_type, _params, _config), do: :continue
+  def encode(_format, _caller_type_info, _type_ref, _target_type, _data, _config), do: :continue
 
   @impl Spectral.Codec
-  def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _sp_type, _params, _config)
+  def decode(_format, _caller_type_info, {:type, :point, 0}, _target_type, [x, y], _config)
       when is_number(x) and is_number(y) do
     {:ok, {x, y}}
   end
 
-  def decode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params, _config) do
+  def decode(_format, _caller_type_info, {:type, :point, 0}, _target_type, data, _config) do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
   end
 
-  def decode(_format, _module, _type_ref, _input, _sp_type, _params, _config), do: :continue
+  def decode(_format, _caller_type_info, _type_ref, _target_type, _input, _config), do: :continue
 
   @impl Spectral.Codec
-  def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _sp_type, _params, _config) do
+  def schema(:json_schema, _caller_type_info, {:type, :point, 0}, _target_type, _config) do
     %{type: "array", items: %{type: "number"}, minItems: 2, maxItems: 2}
   end
+
+  def schema(_format, _caller_type_info, _type_ref, _target_type, _config), do: :continue
 end
 ```
 
@@ -340,9 +342,9 @@ For container types that need to recursively encode or decode their elements, us
 
 Construct `%Spectral.Error{}` structs and always return them in `{:error, [%Spectral.Error{}]}` tuples (as shown above). Spectral collects errors from multiple locations and attaches path information as it traverses nested structures. See existing usages of `%Spectral.Error{}` in the codebase for examples.
 
-### Optional `schema/6` callback
+### Optional `schema/5` callback
 
-The `schema/6` callback is optional. If a codec module does not export it, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. Return `:continue` for types the codec does not handle.
+The `schema/5` callback is optional. If a codec module does not export it, calling `Spectral.schema/3` for a type owned by that codec raises `{:schema_not_implemented, Module, TypeRef}`. Once you do export it, it receives every type defined in the codec module, so give it a catch-all clause returning `:continue` for the types the codec does not handle, exactly as with `encode/6` and `decode/6`.
 
 ### Codecs for third-party types
 
@@ -379,9 +381,112 @@ config :spectra, :codecs, %{
 
 `Range` and `Stream` do not have built-in codecs. Implement a custom `Spectral.Codec` if needed — PRs welcome.
 
+## Spectral and Ecto
+
+Ecto encodes and decodes `jsonb` values as Elixir maps. To convert those maps to and from
+your types, use `:pre_encoded` and `:pre_decoded`:
+
+```elixir
+# The map to hand back from Ecto.Type.dump/3 as {:ok, map}
+{:ok, map} = Spectral.encode(value, MyApp.Settings, :t, :json, [:pre_encoded])
+
+# The map Ecto.Type.load/3 receives from the database
+{:ok, value} = Spectral.decode(map, MyApp.Settings, :t, :json, [:pre_decoded])
+```
+
+Packaging that into an `Ecto.ParameterizedType`, so a schema can declare
+`field :settings, SpectralEcto.JSONB, module: MyApp.Settings, type: :t`, is the job of the
+separate `spectral_ecto` library. It lives there because it needs a real Ecto dependency and
+a real Postgres instance to test against. Spectral itself has no Ecto dependency and needs
+none.
+
+### When the type varies per row
+
+An `Ecto.ParameterizedType` cannot pick the type from another column: `load/3` receives only
+the column value, and `init/1` runs at compile time. Where the discriminator lives decides
+how to handle it.
+
+| | Discriminator | Ecto field type |
+|---|---|---|
+| Self-describing union | inside the document | static |
+| Sibling column | its own column | plain `:map` |
+
+#### Self-describing union
+
+Put the tag in the document, pin it to a literal atom in the type, and carry that atom as
+the struct default so callers never write it by hand:
+
+```elixir
+defmodule MyApp.Shapes do
+  use Spectral
+
+  defmodule Circle do
+    use Spectral
+    defstruct kind: :circle, radius: nil
+    @type t :: %Circle{kind: :circle, radius: float()}
+  end
+
+  defmodule Square do
+    use Spectral
+    defstruct kind: :square, side: nil
+    @type t :: %Square{kind: :square, side: float()}
+  end
+
+  @type shape :: Circle.t() | Square.t()
+end
+
+{:ok, %{"kind" => "circle", "radius" => 1.5}} =
+  Spectral.encode(%MyApp.Shapes.Circle{radius: 1.5}, MyApp.Shapes, :shape, :json, [:pre_encoded])
+```
+
+The field type stays static, so an `Ecto.ParameterizedType` handles the column unchanged.
+
+**The literal `kind` field is not decoration.** Unions are first-match-wins and extra JSON
+keys are ignored, so an untagged variant whose fields are a subset of another's will swallow
+documents meant for the later variant and silently drop the extra keys. The literal atom is
+what makes the alternatives mutually exclusive.
+
+Use this when you control the document shape. It is the only option that survives the value
+being copied out of the database, since the payload describes itself.
+
+#### Type chosen by a sibling column
+
+When the row already carries the discriminator in its own column, leave the payload column
+as a plain `:map` and pass the type reference at call time. `type_ref` is an ordinary
+runtime argument, so naming each type after the discriminator value is enough:
+
+```elixir
+defmodule MyApp.Notification do
+  use Spectral
+
+  alias MyApp.Notification.Email
+  alias MyApp.Notification.Sms
+
+  @type email :: Email.t()
+  @type sms :: Sms.t()
+end
+
+defmodule MyApp.Message do
+  use Ecto.Schema
+
+  schema "messages" do
+    field :kind, Ecto.Enum, values: [:email, :sms]
+    field :payload, :map
+  end
+
+  def decode_payload(%__MODULE__{kind: kind, payload: payload}) do
+    Spectral.decode(payload, MyApp.Notification, kind, :json, [:pre_decoded])
+  end
+end
+```
+
+Use this when the discriminator must be queryable or indexable, or when you do not control
+the document shape. The tradeoff is that decoding becomes an explicit step the schema does
+not enforce for you.
+
 ## Type Parameters
 
-The `type_parameters` key in a `spectral` attribute attaches a static value to a type. This value is available to codecs as the `params` argument (6th argument to `encode/7` and `decode/7`, 5th to `schema/6`). When `type_parameters` is absent, `params` is `:undefined`.
+The `type_parameters` key in a `spectral` attribute attaches a static value to a type. Codecs read it inside `encode/6`, `decode/6`, and `schema/5` by calling `:spectra_type.parameters/1` on the `target_type` argument. When `type_parameters` is absent, that call returns `:undefined`.
 
 ### String and binary constraints
 
@@ -507,6 +612,38 @@ The generated schema will include the title and description:
 schema = Spectral.schema(Person, :t) |> IO.iodata_to_binary() |> Jason.decode!()
 # %{"title" => "Person", "description" => "A person with name and age", "type" => "object", ...}
 ```
+
+**Annotations follow the type wherever it is used.** A type annotated with `title`,
+`description`, `deprecated`, `examples` or `examples_function` carries that metadata into
+every schema it is inlined into — struct and map field values, list and non-empty list
+elements, union branches, optional map values, and types referenced from another module:
+
+```elixir
+defmodule Payment do
+  use Spectral
+
+  spectral title: "Payer", deprecated: true
+  @type payer :: String.t()
+
+  @type request :: %{payer: payer(), amount: non_neg_integer()}
+end
+
+Spectral.schema(Payment, :request) |> IO.iodata_to_binary() |> Jason.decode!()
+# properties.payer is %{"type" => "string", "title" => "Payer", "deprecated" => true}
+```
+
+When a type alias and the type it resolves to set the same key, the annotation nearest the
+use site wins; keys only one of them sets are kept from both.
+
+Three positions do not carry the annotation: a union whose members all resolve to literals
+(it collapses into a single `enum` schema), a type whose schema comes from a custom codec,
+and a parameterized type. An annotation on the union type itself, or on a plain type that
+aliases a codec-handled type, is still kept.
+
+Because an annotation reaches every position its type appears in, `examples` are validated
+at each of them and an `examples_function` is called once per position — keep such functions
+cheap and free of side effects. An example that does not encode as its own type raises
+`ArgumentError` from schema generation.
 
 **Multiple types in one module** — only types with a `spectral` call will have title/description in their schemas:
 
