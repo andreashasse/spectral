@@ -56,6 +56,8 @@ defmodule AllTypesModule do
   @type t_list_shorthand :: [atom()]
   @type t_nonempty_list :: nonempty_list(integer())
   @type t_nonempty_list_any :: nonempty_list()
+  @type t_nonempty_list_shorthand :: [integer(), ...]
+  @type t_nonempty_list_shorthand_any :: [...]
 
   # Tuple types
   @type t_tuple_any :: tuple()

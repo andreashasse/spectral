@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - An `examples` value that does not encode as its own type now raises `ArgumentError` with the offending example and type name instead of a raw `ErlangError`. This error is reachable from many more places now that examples are validated at every inlined position.
+- `Spectral.AbstractCode` now handles the Elixir non-empty list shorthand, `[elem_type, ...]` (and bare `[...]`), matching the existing `nonempty_list(elem_type)` support. Previously these types failed to compile with `unsupported type AST`.
 
 ## [0.13.0] - 2026-05-07
 
