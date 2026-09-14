@@ -20,7 +20,7 @@ defmodule CrashingCodec do
 
   @impl Spectral.Codec
   def encode(_format, _caller_type_info, {:type, :t, 0}, _target_type, _data, _config) do
-    Map.fetch!(Map.new(), :missing_key)
+    raise KeyError, key: :missing_key, term: %{}
   end
 
   def encode(_format, _caller_type_info, {:type, :t2, 0}, _target_type, _data, _config) do
@@ -31,13 +31,13 @@ defmodule CrashingCodec do
 
   @impl Spectral.Codec
   def decode(_format, _caller_type_info, {:type, :t, 0}, _target_type, _input, _config) do
-    Map.fetch!(Map.new(), :missing_key)
+    raise KeyError, key: :missing_key, term: %{}
   end
 
   def decode(_format, _caller_type_info, _type_ref, _target_type, _input, _config), do: :continue
 
   @impl Spectral.Codec
   def schema(_format, _caller_type_info, {:type, :t, 0}, _target_type, _config) do
-    Map.fetch!(Map.new(), :missing_key)
+    raise KeyError, key: :missing_key, term: %{}
   end
 end
