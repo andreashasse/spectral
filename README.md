@@ -302,33 +302,35 @@ defmodule MyGeoModule do
   @opaque point :: {float(), float()}
 
   @impl Spectral.Codec
-  def encode(_format, MyGeoModule, {:type, :point, 0}, {x, y}, _sp_type, _params, _config)
+  def encode(_format, _caller_type_info, {:type, :point, 0}, _target_type, {x, y}, _config)
       when is_number(x) and is_number(y) do
     {:ok, [x, y]}
   end
 
-  def encode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params, _config) do
+  def encode(_format, _caller_type_info, {:type, :point, 0}, _target_type, data, _config) do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
   end
 
-  def encode(_format, _module, _type_ref, _data, _sp_type, _params, _config), do: :continue
+  def encode(_format, _caller_type_info, _type_ref, _target_type, _data, _config), do: :continue
 
   @impl Spectral.Codec
-  def decode(_format, MyGeoModule, {:type, :point, 0}, [x, y], _sp_type, _params, _config)
+  def decode(_format, _caller_type_info, {:type, :point, 0}, _target_type, [x, y], _config)
       when is_number(x) and is_number(y) do
     {:ok, {x, y}}
   end
 
-  def decode(_format, MyGeoModule, {:type, :point, 0}, data, _sp_type, _params, _config) do
+  def decode(_format, _caller_type_info, {:type, :point, 0}, _target_type, data, _config) do
     {:error, [%Spectral.Error{type: :type_mismatch, location: [], context: %{type: {:type, :point, 0}, value: data}}]}
   end
 
-  def decode(_format, _module, _type_ref, _input, _sp_type, _params, _config), do: :continue
+  def decode(_format, _caller_type_info, _type_ref, _target_type, _input, _config), do: :continue
 
   @impl Spectral.Codec
-  def schema(:json_schema, MyGeoModule, {:type, :point, 0}, _sp_type, _params, _config) do
+  def schema(:json_schema, _caller_type_info, {:type, :point, 0}, _target_type, _config) do
     %{type: "array", items: %{type: "number"}, minItems: 2, maxItems: 2}
   end
+
+  def schema(_format, _caller_type_info, _type_ref, _target_type, _config), do: :continue
 end
 ```
 
@@ -385,10 +387,10 @@ Ecto encodes and decodes `jsonb` values as Elixir maps. To convert those maps to
 your types, use `:pre_encoded` and `:pre_decoded`:
 
 ```elixir
-# Ecto.Type.dump/3 returns a map for Ecto to store
+# The map to hand back from Ecto.Type.dump/3 as {:ok, map}
 {:ok, map} = Spectral.encode(value, MyApp.Settings, :t, :json, [:pre_encoded])
 
-# Ecto.Type.load/3 receives the map Ecto read back
+# The map Ecto.Type.load/3 receives from the database
 {:ok, value} = Spectral.decode(map, MyApp.Settings, :t, :json, [:pre_decoded])
 ```
 
@@ -434,7 +436,7 @@ defmodule MyApp.Shapes do
 end
 
 {:ok, %{"kind" => "circle", "radius" => 1.5}} =
-  Spectral.encode(%Circle{radius: 1.5}, MyApp.Shapes, :shape, :json, [:pre_encoded])
+  Spectral.encode(%MyApp.Shapes.Circle{radius: 1.5}, MyApp.Shapes, :shape, :json, [:pre_encoded])
 ```
 
 The field type stays static, so an `Ecto.ParameterizedType` handles the column unchanged.
@@ -464,12 +466,17 @@ defmodule MyApp.Notification do
   @type sms :: Sms.t()
 end
 
-# schema
-field :kind, Ecto.Enum, values: [:email, :sms]
-field :payload, :map
+defmodule MyApp.Message do
+  use Ecto.Schema
 
-def decode_payload(%__MODULE__{kind: kind, payload: payload}) do
-  Spectral.decode(payload, MyApp.Notification, kind, :json, [:pre_decoded])
+  schema "messages" do
+    field :kind, Ecto.Enum, values: [:email, :sms]
+    field :payload, :map
+  end
+
+  def decode_payload(%__MODULE__{kind: kind, payload: payload}) do
+    Spectral.decode(payload, MyApp.Notification, kind, :json, [:pre_decoded])
+  end
 end
 ```
 
@@ -479,7 +486,7 @@ not enforce for you.
 
 ## Type Parameters
 
-The `type_parameters` key in a `spectral` attribute attaches a static value to a type. This value is available to codecs as the `params` argument (6th argument to `encode/7` and `decode/7`, 5th to `schema/6`). When `type_parameters` is absent, `params` is `:undefined`.
+The `type_parameters` key in a `spectral` attribute attaches a static value to a type. Codecs read it inside `encode/6`, `decode/6`, and `schema/5` by calling `:spectra_type.parameters/1` on the `target_type` argument. When `type_parameters` is absent, that call returns `:undefined`.
 
 ### String and binary constraints
 
