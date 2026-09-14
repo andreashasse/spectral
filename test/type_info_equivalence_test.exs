@@ -206,6 +206,8 @@ defmodule TypeInfoEquivalenceTest do
       :t_list_typed,
       :t_list_shorthand,
       :t_nonempty_list,
+      :t_nonempty_list_shorthand,
+      :t_nonempty_list_shorthand_any,
       :t_tuple_any,
       :t_tuple2,
       :t_tuple3,
