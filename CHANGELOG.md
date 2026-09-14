@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2026-09-11
+## [0.14.0] - 2026-09-14
 
 ### Changed
 - Upgraded spectra dependency to `~> 0.14.0` (now resolving to `0.14.1`). Doc annotations (`title`, `description`, `deprecated`, `examples`, `examples_function`) set with the `spectral/1` macro now propagate into every schema the type is inlined into — struct and map field values, list and non-empty list elements, union branches, optional map values, and remote types from other modules. Previously only the type that schema generation was entered with kept its annotations, so `deprecated: true` on a type used as a struct field produced nothing in the output. Generated JSON Schema and OpenAPI output changes accordingly for annotated sub-schemas.
