@@ -472,7 +472,7 @@ defmodule Spectral do
     |> convert_result()
   rescue
     error in ErlangError ->
-      handle_erlang_error(error, :encode, module, type_ref)
+      handle_erlang_error(error, __STACKTRACE__, :encode, module, type_ref)
   end
 
   @doc """
@@ -518,7 +518,7 @@ defmodule Spectral do
     |> convert_result()
   rescue
     error in ErlangError ->
-      handle_erlang_error(error, :decode, module, type_ref)
+      handle_erlang_error(error, __STACKTRACE__, :decode, module, type_ref)
   end
 
   @doc """
@@ -545,7 +545,7 @@ defmodule Spectral do
     :spectra.schema(format, module, type_ref)
   rescue
     error in ErlangError ->
-      handle_erlang_error(error, :schema, module, type_ref)
+      handle_erlang_error(error, __STACKTRACE__, :schema, module, type_ref)
   end
 
   @doc """
@@ -578,7 +578,7 @@ defmodule Spectral do
     :spectra.schema(format, module, type_ref, opts)
   rescue
     error in ErlangError ->
-      handle_erlang_error(error, :schema, module, type_ref)
+      handle_erlang_error(error, __STACKTRACE__, :schema, module, type_ref)
   end
 
   @doc """
@@ -673,7 +673,13 @@ defmodule Spectral do
     {:error, Spectral.Error.from_erlang_list(erlang_errors)}
   end
 
-  defp handle_erlang_error(%ErlangError{original: original} = error, operation, module, type_ref) do
+  defp handle_erlang_error(
+         %ErlangError{original: original} = error,
+         stacktrace,
+         operation,
+         module,
+         type_ref
+       ) do
     case original do
       {:module_types_not_found, ^module, _reason} ->
         raise ArgumentError,
@@ -692,8 +698,17 @@ defmodule Spectral do
               "type not supported: #{inspect(type_info)} (#{operation})"
 
       _other ->
-        # Re-raise the original ErlangError if it's not a known configuration error
-        raise error
+        # Not a known configuration error — re-raise as-is with the original
+        # stacktrace instead of losing where it happened.
+        reraise error, stacktrace
     end
+  end
+
+  # `rescue error in ErlangError` also binds every other exception Elixir
+  # normalizes a raw BEAM error into (e.g. %BadMapError{}, %BadStructError{}),
+  # not just literal %ErlangError{} structs. Re-raise those as-is too, rather
+  # than falling through to a FunctionClauseError in this module.
+  defp handle_erlang_error(error, stacktrace, _operation, _module, _type_ref) do
+    reraise error, stacktrace
   end
 end

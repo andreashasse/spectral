@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `Spectral.AbstractCode` now handles the Elixir non-empty list shorthand, `[elem_type, ...]` (and bare `[...]`), matching the existing `nonempty_list(elem_type)` support. Previously these types failed to compile with `unsupported type AST`.
+- `encode/4-5`, `decode/4-5`, and `schema/3-4` rescue `error in ErlangError` to translate a few known spectra configuration errors into `ArgumentError`, but that rescue clause also binds every other exception Elixir normalizes a raw BEAM error into (e.g. `%BadMapError{}`, `%KeyError{}`), not just literal `%ErlangError{}` structs. Any unrelated crash inside spectra therefore hit `handle_erlang_error/4`'s single `%ErlangError{}` clause and failed with a misleading `FunctionClauseError` pointing at Spectral itself, discarding the original exception and stacktrace. Such crashes now reraise unchanged, with their original stacktrace intact.
 
 ## [0.13.0] - 2026-05-07
 
