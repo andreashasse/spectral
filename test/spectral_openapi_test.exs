@@ -238,6 +238,166 @@ defmodule Spectral.OpenAPITest do
     end
   end
 
+  describe "webhook/2,3" do
+    test "creates a basic webhook" do
+      webhook = Spectral.OpenAPI.webhook("userCreated", :post)
+
+      assert webhook.name == "userCreated"
+      assert webhook.method == :post
+      assert webhook.responses == %{}
+      assert webhook.parameters == []
+    end
+
+    test "creates a webhook with documentation" do
+      webhook = Spectral.OpenAPI.webhook("userCreated", :post, %{summary: "User created"})
+
+      assert webhook.doc == %{summary: "User created"}
+    end
+
+    test "builds through the same modifiers as an endpoint" do
+      webhook =
+        Spectral.OpenAPI.webhook("userCreated", :post)
+        |> Spectral.OpenAPI.with_request_body(Person, {:type, :t, 0})
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "Acknowledged"))
+
+      assert webhook.request_body.module == Person
+      assert %{200 => %{description: "Acknowledged"}} = webhook.responses
+    end
+
+    test "rejects path and query parameters" do
+      webhook = Spectral.OpenAPI.webhook("userCreated", :post)
+
+      for location <- [:path, :query] do
+        assert_raise ErlangError, fn ->
+          Spectral.OpenAPI.with_parameter(webhook, Person, %{
+            name: "id",
+            in: location,
+            required: true,
+            schema: {:type, :t, 0}
+          })
+        end
+      end
+    end
+  end
+
+  describe "to_openapi/4" do
+    test "emits webhooks at the top level" do
+      webhook =
+        Spectral.OpenAPI.webhook("userCreated", :post)
+        |> Spectral.OpenAPI.with_request_body(Person, {:type, :t, 0})
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "Acknowledged"))
+
+      {:ok, json} =
+        Spectral.OpenAPI.to_openapi(%{title: "API", version: "1.0.0"}, [], [webhook], [])
+
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+
+      assert %{
+               "webhooks" => %{
+                 "userCreated" => %{
+                   "post" => %{
+                     "requestBody" => %{"content" => %{"application/json" => %{"schema" => _}}},
+                     "responses" => %{"200" => %{"description" => "Acknowledged"}}
+                   }
+                 }
+               }
+             } = spec
+    end
+
+    test "shares component schemas between endpoints and webhooks" do
+      endpoint =
+        Spectral.OpenAPI.endpoint(:get, "/users")
+        |> Spectral.OpenAPI.add_response(
+          Spectral.OpenAPI.response(200, "A user")
+          |> Spectral.OpenAPI.response_with_body(Person, {:type, :t, 0})
+        )
+
+      webhook =
+        Spectral.OpenAPI.webhook("userCreated", :post)
+        |> Spectral.OpenAPI.with_request_body(Person, {:type, :t, 0})
+
+      {:ok, json} =
+        Spectral.OpenAPI.to_openapi(%{title: "API", version: "1.0.0"}, [endpoint], [webhook], [])
+
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+
+      assert map_size(spec["components"]["schemas"]) == 1
+    end
+
+    test "omits the webhooks key when there are no webhooks" do
+      endpoint =
+        Spectral.OpenAPI.endpoint(:get, "/users")
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "OK"))
+
+      {:ok, json} =
+        Spectral.OpenAPI.to_openapi(%{title: "API", version: "1.0.0"}, [endpoint], [], [])
+
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+
+      refute Map.has_key?(spec, "webhooks")
+    end
+
+    test "returns a map with the pre_encoded option" do
+      webhook = Spectral.OpenAPI.webhook("userCreated", :post)
+
+      {:ok, spec} =
+        Spectral.OpenAPI.to_openapi(%{title: "API", version: "1.0.0"}, [], [webhook], [
+          :pre_encoded
+        ])
+
+      assert is_map(spec)
+      assert Map.has_key?(spec, "webhooks")
+    end
+  end
+
+  describe "per-operation security" do
+    @security_metadata %{
+      title: "API",
+      version: "1.0.0",
+      security_schemes: %{
+        "bearer_auth" => %{type: "http", scheme: "bearer"},
+        "webhook_signature" => %{type: "apiKey", in: "header", name: "x-signature"}
+      },
+      security: [%{"bearer_auth" => []}]
+    }
+
+    test "a webhook can override the global requirement with its own" do
+      webhook =
+        Spectral.OpenAPI.webhook("userCreated", :post, %{
+          security: [%{"webhook_signature" => []}]
+        })
+
+      {:ok, json} = Spectral.OpenAPI.to_openapi(@security_metadata, [], [webhook], [])
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+
+      assert spec["security"] == [%{"bearer_auth" => []}]
+
+      assert spec["webhooks"]["userCreated"]["post"]["security"] == [
+               %{"webhook_signature" => []}
+             ]
+    end
+
+    test "an empty list opts a webhook out of the global requirement" do
+      webhook = Spectral.OpenAPI.webhook("userCreated", :post, %{security: []})
+
+      {:ok, json} = Spectral.OpenAPI.to_openapi(@security_metadata, [], [webhook], [])
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+
+      assert spec["webhooks"]["userCreated"]["post"]["security"] == []
+    end
+
+    test "endpoints take it too - it is a per-operation field, not webhook-specific" do
+      endpoint =
+        Spectral.OpenAPI.endpoint(:get, "/public", %{security: []})
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "OK"))
+
+      {:ok, json} = Spectral.OpenAPI.to_openapi(@security_metadata, [endpoint], [], [])
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+
+      assert spec["paths"]["/public"]["get"]["security"] == []
+    end
+  end
+
   describe "endpoints_to_openapi/2" do
     test "generates basic OpenAPI spec" do
       metadata = %{title: "Test API", version: "1.0.0"}
