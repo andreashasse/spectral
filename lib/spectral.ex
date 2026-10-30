@@ -375,12 +375,10 @@ defmodule Spectral do
   end
 
   defp validate_only(only) when is_list(only) do
-    case Enum.all?(only, &is_atom/1) do
-      true ->
-        only
-
-      false ->
-        raise ArgumentError, "spectral :only must be a list of atoms, got: #{inspect(only)}"
+    if Enum.all?(only, &is_atom/1) do
+      only
+    else
+      raise ArgumentError, "spectral :only must be a list of atoms, got: #{inspect(only)}"
     end
   end
 

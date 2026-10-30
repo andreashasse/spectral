@@ -161,7 +161,7 @@ defmodule Spectral.OpenAPITest do
           schema: :string
         })
 
-      assert length(endpoint.parameters) == 1
+      assert [_] = endpoint.parameters
       param = hd(endpoint.parameters)
       assert param.name == "id"
       assert param.in == :path
@@ -215,7 +215,7 @@ defmodule Spectral.OpenAPITest do
           schema: :integer
         })
 
-      assert length(endpoint.parameters) == 2
+      assert [_, _] = endpoint.parameters
     end
 
     test "description in rendered output comes from type spectral annotation, not parameter spec" do
@@ -446,7 +446,7 @@ defmodule Spectral.OpenAPITest do
       spec = json |> IO.iodata_to_binary() |> :json.decode()
 
       assert is_list(spec["servers"])
-      assert length(spec["servers"]) == 2
+      assert [_, _] = spec["servers"]
       assert hd(spec["servers"])["url"] == "https://api.example.com"
     end
 
@@ -478,18 +478,19 @@ defmodule Spectral.OpenAPITest do
 
   describe "type_doc follows type references" do
     defp param_for_schema(schema) do
+      alias Spectral.OpenAPI
+
       endpoint =
-        Spectral.OpenAPI.endpoint(:get, "/test/{id}")
-        |> Spectral.OpenAPI.with_parameter(EndpointHandler, %{
+        OpenAPI.endpoint(:get, "/test/{id}")
+        |> OpenAPI.with_parameter(EndpointHandler, %{
           name: "id",
           in: :path,
           required: true,
           schema: schema
         })
-        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "OK"))
+        |> OpenAPI.add_response(OpenAPI.response(200, "OK"))
 
-      {:ok, json} =
-        Spectral.OpenAPI.endpoints_to_openapi(%{title: "API", version: "1.0"}, [endpoint])
+      {:ok, json} = OpenAPI.endpoints_to_openapi(%{title: "API", version: "1.0"}, [endpoint])
 
       spec = json |> IO.iodata_to_binary() |> :json.decode()
       [param] = spec["paths"]["/test/{id}"]["get"]["parameters"]
