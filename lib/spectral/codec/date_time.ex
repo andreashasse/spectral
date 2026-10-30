@@ -9,12 +9,9 @@ defmodule Spectral.Codec.DateTime do
 
   ## Registration
 
-  Register this codec in your application's `config/config.exs` or
-  `application.ex` start callback before encoding/decoding `DateTime` values:
-
-      Application.put_env(:spectra, :codecs, %{
-        {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime
-      })
+  Registered automatically when the `:spectral` application starts. To use a
+  different codec for `DateTime.t()`, set it in `config :spectra, :codecs`;
+  user-configured codecs take precedence over the built-ins.
   """
 
   use Spectral.Codec

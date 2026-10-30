@@ -19,12 +19,9 @@ defmodule Spectral.Codec.String do
 
   ## Registration
 
-  Register this codec in your application's `config/config.exs` or
-  `application.ex` start callback before encoding/decoding `String.t()` values:
-
-      Application.put_env(:spectra, :codecs, %{
-        {String, {:type, :t, 0}} => Spectral.Codec.String
-      })
+  Registered automatically when the `:spectral` application starts. To use a
+  different codec for `String.t()`, set it in `config :spectra, :codecs`;
+  user-configured codecs take precedence over the built-ins.
   """
 
   use Spectral.Codec
@@ -32,21 +29,21 @@ defmodule Spectral.Codec.String do
   @impl Spectral.Codec
   def encode(_format, _caller_type_info, {:type, :t, 0}, target_type, data, _config)
       when is_binary(data) do
-    validate(data, :spectra_type.parameters(target_type))
+    validate(data, target_type)
   end
 
-  def encode(_format, _caller_type_info, {:type, :t, 0}, _target_type, data, _config) do
-    Spectral.Error.type_mismatch({:type, :t, 0}, data)
+  def encode(_format, _caller_type_info, {:type, :t, 0}, target_type, data, _config) do
+    Spectral.Error.type_mismatch(type_name(target_type), data)
   end
 
   @impl Spectral.Codec
   def decode(_format, _caller_type_info, {:type, :t, 0}, target_type, input, _config)
       when is_binary(input) do
-    validate(input, :spectra_type.parameters(target_type))
+    validate(input, target_type)
   end
 
-  def decode(_format, _caller_type_info, {:type, :t, 0}, _target_type, input, _config) do
-    Spectral.Error.type_mismatch({:type, :t, 0}, input)
+  def decode(_format, _caller_type_info, {:type, :t, 0}, target_type, input, _config) do
+    Spectral.Error.type_mismatch(type_name(target_type), input)
   end
 
   @impl Spectral.Codec
@@ -66,19 +63,33 @@ defmodule Spectral.Codec.String do
     end
   end
 
-  defp validate(input, :undefined), do: {:ok, input}
+  defp validate(input, target_type) do
+    case :spectra_type.parameters(target_type) do
+      :undefined -> {:ok, input}
+      params -> validate(input, type_name(target_type), params)
+    end
+  end
 
-  defp validate(input, params) do
-    with :ok <- check_min_length(input, params[:min_length]),
-         :ok <- check_max_length(input, params[:max_length]),
-         :ok <- check_pattern(input, params[:pattern]) do
+  defp validate(input, name, params) do
+    with :ok <- check_min_length(input, name, params[:min_length]),
+         :ok <- check_max_length(input, name, params[:max_length]),
+         :ok <- check_pattern(input, name, params[:pattern]) do
       {:ok, input}
     end
   end
 
-  defp check_min_length(_input, nil), do: :ok
+  # Errors name the user's alias (e.g. `item_id/0`) when the type has one, so
+  # a pattern failure points at the annotated type, not at `String.t/0`.
+  defp type_name(target_type) do
+    case :spectra_type.get_meta(target_type) do
+      %{name: name} -> name
+      _ -> {:type, :t, 0}
+    end
+  end
 
-  defp check_min_length(input, min) do
+  defp check_min_length(_input, _name, nil), do: :ok
+
+  defp check_min_length(input, name, min) do
     if String.length(input) >= min,
       do: :ok,
       else:
@@ -87,14 +98,14 @@ defmodule Spectral.Codec.String do
            %Spectral.Error{
              type: :type_mismatch,
              location: [],
-             context: %{type: {:type, :t, 0}, value: input, reason: :min_length, min_length: min}
+             context: %{type: name, value: input, reason: :min_length, min_length: min}
            }
          ]}
   end
 
-  defp check_max_length(_input, nil), do: :ok
+  defp check_max_length(_input, _name, nil), do: :ok
 
-  defp check_max_length(input, max) do
+  defp check_max_length(input, name, max) do
     if String.length(input) <= max,
       do: :ok,
       else:
@@ -103,14 +114,14 @@ defmodule Spectral.Codec.String do
            %Spectral.Error{
              type: :type_mismatch,
              location: [],
-             context: %{type: {:type, :t, 0}, value: input, reason: :max_length, max_length: max}
+             context: %{type: name, value: input, reason: :max_length, max_length: max}
            }
          ]}
   end
 
-  defp check_pattern(_input, nil), do: :ok
+  defp check_pattern(_input, _name, nil), do: :ok
 
-  defp check_pattern(input, pattern) when is_binary(pattern) do
+  defp check_pattern(input, name, pattern) when is_binary(pattern) do
     if Regex.match?(Regex.compile!(pattern), input),
       do: :ok,
       else:
@@ -119,7 +130,7 @@ defmodule Spectral.Codec.String do
            %Spectral.Error{
              type: :type_mismatch,
              location: [],
-             context: %{type: {:type, :t, 0}, value: input, reason: :pattern, pattern: pattern}
+             context: %{type: name, value: input, reason: :pattern, pattern: pattern}
            }
          ]}
   end

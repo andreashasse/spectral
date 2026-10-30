@@ -11,13 +11,9 @@ defmodule Spectral.Codec.MapSet do
 
   ## Registration
 
-  Register this codec in your application's `config/config.exs` or
-  `application.ex` start callback before encoding/decoding `MapSet` values:
-
-      Application.put_env(:spectra, :codecs, %{
-        {MapSet, {:type, :t, 0}} => Spectral.Codec.MapSet,
-        {MapSet, {:type, :t, 1}} => Spectral.Codec.MapSet
-      })
+  Registered automatically when the `:spectral` application starts. To use a
+  different codec for `MapSet.t()`, set it in `config :spectra, :codecs`;
+  user-configured codecs take precedence over the built-ins.
   """
 
   use Spectral.Codec

@@ -137,7 +137,8 @@ defmodule Spectral.OpenAPI do
 
   ## Parameters
 
-  - `status_code` - HTTP status code (e.g., `200`, `404`, `500`)
+  - `status_code` - HTTP status code (e.g., `200`, `404`, `500`), or an OpenAPI
+    status code range from `"1XX"` to `"5XX"`
   - `description` - Human-readable description of the response
 
   ## Returns

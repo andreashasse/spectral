@@ -17,6 +17,8 @@ defmodule Spectral.Application do
       {{MapSet, {:type, :t, 1}}, Spectral.Codec.MapSet},
       {{Date, {:type, :t, 0}}, Spectral.Codec.Date},
       {{DateTime, {:type, :t, 0}}, Spectral.Codec.DateTime},
+      {{NaiveDateTime, {:type, :t, 0}}, Spectral.Codec.NaiveDateTime},
+      {{Time, {:type, :t, 0}}, Spectral.Codec.Time},
       {{String, {:type, :t, 0}}, Spectral.Codec.String}
     ]
 

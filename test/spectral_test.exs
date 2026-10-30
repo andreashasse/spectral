@@ -344,7 +344,7 @@ defmodule SpectralTest do
     assert %Spectral.Error{
              location: [],
              type: :type_mismatch,
-             message: "type_mismatch at root"
+             message: "type_mismatch at root: Struct mismatch"
            } = exception
   end
 
