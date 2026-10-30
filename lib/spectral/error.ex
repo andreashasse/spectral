@@ -14,6 +14,14 @@ defmodule Spectral.Error do
   - `:context` - Additional context information about the error (runtime-determined type)
   - `:message` - Human-readable error message (auto-generated for exceptions)
 
+  ## Inspecting errors
+
+  `context.value` holds the input that failed, which may contain personal data.
+  `inspect/2` (and so `Logger` and IEx) shows it as `**redacted**`, also inside
+  the nested errors of a `:no_match` union error. The field itself is unchanged,
+  so code can still read `error.context.value`. `Exception.message/1` never
+  includes the value.
+
   ## Example
 
       %Spectral.Error{
@@ -100,4 +108,47 @@ defmodule Spectral.Error do
 
     "#{type} at #{location_str}"
   end
+end
+
+defmodule Spectral.Error.Redacted do
+  @moduledoc false
+  # Stands in for `context.value` when a `Spectral.Error` is inspected.
+  defstruct []
+
+  defimpl Inspect do
+    def inspect(_redacted, _opts), do: "**redacted**"
+  end
+end
+
+defimpl Inspect, for: Spectral.Error do
+  def inspect(%Spectral.Error{context: context} = error, opts) do
+    Inspect.Any.inspect(%{error | context: redact(context)}, opts)
+  end
+
+  defp redact(%{} = context) do
+    context
+    |> redact_value()
+    |> redact_nested_errors()
+  end
+
+  defp redact(context), do: context
+
+  defp redact_value(%{value: _} = context), do: %{context | value: %Spectral.Error.Redacted{}}
+  defp redact_value(context), do: context
+
+  defp redact_nested_errors(%{errors: errors} = context) when is_list(errors) do
+    %{context | errors: Enum.map(errors, &redact_branch/1)}
+  end
+
+  defp redact_nested_errors(context), do: context
+
+  defp redact_branch({type, errors}) when is_list(errors),
+    do: {type, Enum.map(errors, &redact_error/1)}
+
+  defp redact_branch(other), do: other
+
+  defp redact_error({:sp_error, location, type, ctx}),
+    do: {:sp_error, location, type, redact(ctx)}
+
+  defp redact_error(other), do: other
 end

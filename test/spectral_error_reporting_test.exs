@@ -37,4 +37,47 @@ defmodule SpectralErrorReportingTest do
                ])
     end
   end
+
+  describe "error values are hidden from inspect" do
+    @email "person@example.com"
+
+    test "a wrong struct does not leak its fields" do
+      contact = %ErrorFieldsModule.Contact{email: @email}
+
+      assert {:error, [error]} = Spectral.encode(contact, ErrorFieldsModule, :t, :json)
+
+      assert error.context.value == contact
+      refute inspect(error) =~ @email
+      assert inspect(error) =~ "redacted"
+      assert inspect(error) =~ "Spectral.Error"
+      refute Exception.message(error) =~ @email
+    end
+
+    test "nested union errors do not leak the value" do
+      value = %{@valid | kind: %ErrorFieldsModule.Contact{email: @email}}
+
+      assert {:error, [%Spectral.Error{type: :no_match, location: [:kind]} = error]} =
+               Spectral.encode(value, ErrorFieldsModule, :t, :json)
+
+      assert [_ | _] = error.context.errors
+      refute inspect(error) =~ @email
+      refute inspect({:error, [error]}, pretty: true, limit: :infinity) =~ @email
+      refute Exception.message(error) =~ @email
+    end
+
+    test "a raised error does not leak the value" do
+      exception =
+        assert_raise Spectral.Error, fn ->
+          Spectral.encode!(%ErrorFieldsModule.Contact{email: @email}, ErrorFieldsModule, :t)
+        end
+
+      refute inspect(exception) =~ @email
+      refute Exception.message(exception) =~ @email
+    end
+
+    test "errors without a map context still inspect" do
+      assert inspect(%Spectral.Error{type: :decode_error, location: [], context: nil}) =~
+               "decode_error"
+    end
+  end
 end
