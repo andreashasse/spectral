@@ -99,15 +99,20 @@ defmodule Spectral.Error do
     sp_error(type: type, location: location, ctx: ctx || %{})
   end
 
-  defp format_error(%__MODULE__{location: location, type: type}) do
+  defp format_error(%__MODULE__{location: location, type: type, context: context}) do
     location_str =
       case location do
         [] -> "root"
         path -> Enum.join(path, ".")
       end
 
-    "#{type} at #{location_str}"
+    "#{type} at #{location_str}" <> format_hint(context)
   end
+
+  # spectra puts human-readable hints in `context.message`, sometimes as a
+  # charlist; `String.Chars` handles both.
+  defp format_hint(%{message: message}), do: ": #{message}"
+  defp format_hint(_context), do: ""
 end
 
 defmodule Spectral.Error.Redacted do

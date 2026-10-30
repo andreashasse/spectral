@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `inspect/2` on a `Spectral.Error` shows `context.value` as `**redacted**`, also in nested union errors, so logs do not print input data such as personal fields. The field itself is unchanged.
+- `Exception.message/1` on a `Spectral.Error` appends `context.message` when spectra provides one, e.g. `"type_mismatch at root: Struct mismatch"`.
 
 ## [0.15.0] - 2026-10-30
 

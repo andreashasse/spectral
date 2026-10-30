@@ -80,4 +80,34 @@ defmodule SpectralErrorReportingTest do
                "decode_error"
     end
   end
+
+  describe "message hints in the context" do
+    test "Exception.message includes context.message" do
+      error = %Spectral.Error{
+        type: :not_matched_fields,
+        location: [:tags],
+        context: %{value: %{}, message: "map must have at least one entry"}
+      }
+
+      assert Exception.message(error) ==
+               "not_matched_fields at tags: map must have at least one entry"
+
+      assert Spectral.Error.exception(error).message == Exception.message(error)
+    end
+
+    test "a charlist message from spectra is included" do
+      error = %Spectral.Error{
+        type: :type_mismatch,
+        location: [:name],
+        context: %{value: <<255>>, message: ~c"unicode conversion failed"}
+      }
+
+      assert Exception.message(error) == "type_mismatch at name: unicode conversion failed"
+    end
+
+    test "Exception.message is unchanged without a context message" do
+      error = %Spectral.Error{type: :type_mismatch, location: [], context: %{value: 1}}
+      assert Exception.message(error) == "type_mismatch at root"
+    end
+  end
 end
