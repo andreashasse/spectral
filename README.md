@@ -15,7 +15,7 @@ Add `spectral` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spectral, "~> 0.15.0"}
+    {:spectral, "~> 0.16.0"}
   ]
 end
 ```
@@ -203,6 +203,17 @@ Spectral.decode(~s({"name":"Alice"}), Person, :t, :json)
 Spectral.decode(~s({"name":"Alice","age":null}), Person, :t, :json)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
+
+To write `null` instead of leaving the field out, set spectra's `nil_fields` option:
+
+```elixir
+# config/config.exs
+config :spectra, :nil_fields, :null
+```
+
+The encoder then writes `"age": null`, and the schema lists `age` as required with type
+`["integer", "null"]`, so the documented contract matches what you send. Fields whose type does
+not allow `nil` are unaffected. The default, `:omit`, keeps the behaviour above.
 
 ### Struct defaults
 

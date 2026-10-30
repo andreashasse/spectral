@@ -30,6 +30,20 @@ defmodule Spectral.OpenAPITest do
       assert response.description == "Success"
     end
 
+    test "accepts a status code range" do
+      endpoint =
+        Spectral.OpenAPI.endpoint(:post, "/hooks")
+        |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response("2XX", "Accepted"))
+
+      {:ok, spec} =
+        Spectral.OpenAPI.endpoints_to_openapi(%{title: "API", version: "1.0"}, [endpoint], [
+          :pre_encoded
+        ])
+
+      assert %{"paths" => %{"/hooks" => %{"post" => %{"responses" => %{"2XX" => _}}}}} =
+               spec
+    end
+
     test "adds body to response" do
       response =
         Spectral.OpenAPI.response(200, "User found")
