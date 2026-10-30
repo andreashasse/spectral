@@ -1005,6 +1005,8 @@ endpoints = [
 
 #### Webhooks
 
+> **Note:** The author of this library has not reviewed the webhook support. Treat it as experimental.
+
 OpenAPI 3.1 [webhooks](https://spec.openapis.org/oas/v3.1.0#oasWebhooks) describe requests your API *sends out*, rather than requests it receives. Build them with `Spectral.OpenAPI.webhook/2,3` and pass them to `to_openapi/4`; they are emitted under the spec's top-level `webhooks` key.
 
 A webhook is keyed by an **event name** instead of a URL path, because the consumer owns the URL your API calls. The direction is inverted relative to an endpoint: the request body is the payload your API *sends*, and the responses describe what the consumer is expected to *return*.

@@ -268,14 +268,18 @@ defmodule Spectral.OpenAPITest do
       webhook = Spectral.OpenAPI.webhook("userCreated", :post)
 
       for location <- [:path, :query] do
-        assert_raise ErlangError, fn ->
-          Spectral.OpenAPI.with_parameter(webhook, Person, %{
-            name: "id",
-            in: location,
-            required: true,
-            schema: {:type, :t, 0}
-          })
-        end
+        error =
+          assert_raise ErlangError, fn ->
+            Spectral.OpenAPI.with_parameter(webhook, Person, %{
+              name: "id",
+              in: location,
+              required: true,
+              schema: {:type, :t, 0}
+            })
+          end
+
+        assert error.original ==
+                 {:parameter_location_not_supported_on_webhook, "userCreated", location}
       end
     end
   end
@@ -386,7 +390,7 @@ defmodule Spectral.OpenAPITest do
       assert spec["webhooks"]["userCreated"]["post"]["security"] == []
     end
 
-    test "endpoints take it too - it is a per-operation field, not webhook-specific" do
+    test "an endpoint can override the global requirement" do
       endpoint =
         Spectral.OpenAPI.endpoint(:get, "/public", %{security: []})
         |> Spectral.OpenAPI.add_response(Spectral.OpenAPI.response(200, "OK"))
