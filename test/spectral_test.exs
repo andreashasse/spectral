@@ -683,7 +683,6 @@ defmodule SpectralTest do
     type_info(types: types) = TypeWithParams.__spectra_type_info__()
     assert Map.has_key?(types, {:generic, 1})
 
-    # Verify the type has documentation
     # Use :spectra_type.get_meta/1 to extract meta from any sp_type
     type = types[{:generic, 1}]
     meta = :spectra_type.get_meta(type)

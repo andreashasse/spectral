@@ -55,7 +55,6 @@ defmodule Spectral.TypeInfoTest do
       empty_type_info: type_info,
       person_type: person_type
     } do
-      # Add a type twice
       updated1 = Spectral.TypeInfo.add_type(type_info, :my_type, 0, person_type)
       updated2 = Spectral.TypeInfo.add_type(updated1, :my_type, 0, person_type)
 
@@ -66,7 +65,6 @@ defmodule Spectral.TypeInfoTest do
 
   describe "record operations" do
     setup do
-      # Get a real record from Person module if it has any
       person_type_info = Person.__spectra_type_info__()
 
       %{
@@ -110,7 +108,6 @@ defmodule Spectral.TypeInfoTest do
     end
 
     test "add_function/4 and find_function/3 work together", %{empty_type_info: type_info} do
-      # Create a simple mock function spec
       mock_spec = [{:sp_function_spec, [], []}]
 
       updated = Spectral.TypeInfo.add_function(type_info, :my_func, 2, mock_spec)

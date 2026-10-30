@@ -151,7 +151,6 @@ defmodule Spectral.AbstractCode do
     convert_spec(resolved)
   end
 
-  # Build a map from short alias atom to full module atom.
   # env.aliases entries: {aliased_as_full_module, target_full_module}
   # __aliases__ AST uses short atom segments like :Address, not :"Elixir.Address"
   defp build_alias_map(aliases) do

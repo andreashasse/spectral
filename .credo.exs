@@ -44,6 +44,16 @@
           {ExSlop.Check.Refactor.SortThenAt, []},
           {ExSlop.Check.Refactor.SortForTopK, []},
           {ExSlop.Check.Refactor.ExplicitSumReduce, []},
+          {ExSlop.Check.Refactor.LengthComparison, []},
+          {ExSlop.Check.Refactor.LengthInGuard, []},
+          {ExSlop.Check.Refactor.ListFold, []},
+          {ExSlop.Check.Refactor.ListLast, []},
+          {ExSlop.Check.Refactor.PreferEnumSlice, []},
+          {ExSlop.Check.Refactor.UseMapJoin, []},
+          {ExSlop.Check.Refactor.CaseTrueFalse, []},
+          {ExSlop.Check.Readability.StepComment, []},
+          {ExSlop.Check.Readability.UnaliasedModuleUse, []},
+          {ExSlop.Check.Readability.ObviousComment, []},
 
           ## Consistency Checks
           {Credo.Check.Consistency.ExceptionNames, []},
