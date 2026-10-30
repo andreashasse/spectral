@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Built-in `Spectral.Codec.NaiveDateTime` and `Spectral.Codec.Time` codecs (ISO 8601, registered automatically). Encoding a struct with such a field used to raise an opaque `ArgumentError`. Their schemas use a `pattern`, since JSON Schema `date-time` and `time` formats require an offset.
+
 ## [0.15.0] - 2026-10-30
 
 ### Added

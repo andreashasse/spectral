@@ -364,10 +364,12 @@ Spectral ships with codecs for Elixir's standard types. They are registered auto
 |---|---|---|
 | `Spectral.Codec.DateTime` | `DateTime.t()` | ISO 8601 / RFC 3339 string, e.g. `"2012-04-23T18:25:43.511Z"` |
 | `Spectral.Codec.Date` | `Date.t()` | ISO 8601 date string, e.g. `"2023-04-01"` |
+| `Spectral.Codec.NaiveDateTime` | `NaiveDateTime.t()` | ISO 8601 string without offset, e.g. `"2023-04-01T12:30:00"` |
+| `Spectral.Codec.Time` | `Time.t()` | ISO 8601 time string without offset, e.g. `"12:30:00"` |
 | `Spectral.Codec.MapSet` | `MapSet.t()` / `MapSet.t(elem)` | JSON array with `uniqueItems: true` in its schema |
 | `Spectral.Codec.String` | `String.t()` | UTF-8 string, optionally validated by `type_parameters` constraints |
 
-The date/time codecs handle `:json` and `:binary_string` formats. A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context.
+The date/time codecs handle `:json` and `:binary_string` formats. A string that fails to parse returns a `type_mismatch` error with `%{reason: :invalid_format}` in the error context. The `NaiveDateTime` and `Time` schemas use a `pattern` rather than `format: "date-time"` or `format: "time"`, because those JSON Schema formats require a UTC offset.
 
 User-configured codecs always take precedence over the built-ins. To override a built-in or register additional codecs, set `:spectra, :codecs` in `config/config.exs` before the application starts:
 
@@ -1065,7 +1067,7 @@ config :spectra,
   use_module_types_cache: true,
 
   # Register codecs for third-party types, or override built-in codecs.
-  # Built-in codecs (Date, DateTime, MapSet, String) are registered automatically
+  # Built-in codecs (Date, DateTime, NaiveDateTime, Time, MapSet, String) are registered automatically
   # at startup — only set this if you need to add or replace them.
   # See the Built-in Codecs and Custom Codecs sections for details.
   codecs: %{
