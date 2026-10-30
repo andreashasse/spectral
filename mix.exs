@@ -31,8 +31,7 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      # TODO: revert to a hex version once spectra's webhook support is released.
-      {:spectra, github: "andreashasse/spectra", branch: "claude/openapi-webhook-support-sz755w"},
+      {:spectra, "~> 0.15.0"},
       {:stream_data, "~> 1.1", only: :test},
       {:cover_diff, "~> 0.1.0", only: :test, runtime: false},
       # Code quality tools
