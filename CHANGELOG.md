@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `Spectral.Codec.String` errors name the alias type (e.g. `{:type, :item_id, 0}`) instead of always `{:type, :t, 0}`, so a failed `pattern` or length check points at the annotated type.
+- The codec moduledocs and README no longer tell you to register built-in codecs by hand with `Application.put_env/3`, which would replace the whole codecs map. Built-ins register at startup; override them with `config :spectra, :codecs`.
+- The README says that encoding and decoding stop at the first error.
 
 ### Changed
 - `inspect/2` on a `Spectral.Error` shows `context.value` as `**redacted**`, also in nested union errors, so logs do not print input data such as personal fields. The field itself is unchanged.

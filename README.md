@@ -176,8 +176,12 @@ Bang functions (`encode!/3-5`, `decode!/3-5`) raise for any error, including dat
 Each `%Spectral.Error{}` has:
 - `location` — path to the failing value, e.g. `["user", "age"]`
 - `type` — `:type_mismatch`, `:missing_data`, `:no_match`, or `:not_matched_fields`
-- `context` — additional context, e.g. `%{expected: :integer, got: "not a number"}`
-- `message` — human-readable error message
+- `context` — additional context, e.g. `%{type: ..., value: "not a number"}`
+- `message` — human-readable error message, e.g. `"type_mismatch at user.age"`. When spectra adds a hint in `context.message`, it is appended.
+
+Encoding and decoding stop at the first error, so the list holds the error for the first invalid value found, not every invalid value in the input. Fix it and run again to find the next one.
+
+`context.value` holds the input that failed and may contain personal data. `inspect/2` (and so `Logger`) shows it as `**redacted**`; read the field directly if you need it. `Exception.message/1` never includes it.
 
 ## Nil Values, Extra Fields, and Unsupported Types
 
@@ -348,13 +352,15 @@ The `schema/5` callback is optional. If a codec module does not export it, calli
 
 ### Codecs for third-party types
 
-To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally (Note: you are configuring the Erlang library `spectra` here, not `spectral`):
+To handle types from modules you cannot annotate (stdlib, third-party libraries), register a codec globally in `config/config.exs` (Note: you are configuring the Erlang library `spectra` here, not `spectral`):
 
 ```elixir
-Application.put_env(:spectra, :codecs, %{
+config :spectra, :codecs, %{
   {SomeLibrary, {:type, :some_type, 0}} => MyCodec
-})
+}
 ```
+
+Avoid `Application.put_env(:spectra, :codecs, ...)` at runtime: it replaces the whole map, including the built-in codecs registered at startup.
 
 ## Built-in Codecs
 
@@ -780,7 +786,7 @@ defmodule MyApp.User do
   end
 
   # Works for both input (timestamps absent/nil) and output (timestamps set by DB).
-  # Register Spectral.Codec.DateTime to handle the DateTime.t() fields.
+  # The DateTime.t() fields use the built-in Spectral.Codec.DateTime codec.
   @type t :: %MyApp.User{
           name: String.t() | nil,
           email: String.t() | nil,
@@ -806,8 +812,8 @@ Spectral.encode(%MyApp.User{name: "Alice", email: "alice@example.com"}, MyApp.Us
 # {:ok, ~s({"email":"alice@example.com","name":"Alice"})}
 ```
 
-`DateTime.t() | nil` requires the `Spectral.Codec.DateTime` codec to be registered — see
-[Built-in Codecs](#built-in-codecs).
+`DateTime.t() | nil` is handled by the built-in `Spectral.Codec.DateTime` codec, which is
+registered automatically — see [Built-in Codecs](#built-in-codecs).
 
 ### Field Aliases
 

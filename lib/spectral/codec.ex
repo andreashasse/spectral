@@ -100,11 +100,14 @@ defmodule Spectral.Codec do
   ## Global Codec Registry
 
   To use a codec for types defined in a *different* module (e.g., a stdlib or
-  third-party type you cannot annotate), register it via the application environment:
+  third-party type you cannot annotate), register it in `config/config.exs`:
 
-      Application.put_env(:spectra, :codecs, %{
-        {DateTime, {:type, :t, 0}} => Spectral.Codec.DateTime
-      })
+      config :spectra, :codecs, %{
+        {SomeLibrary, {:type, :some_type, 0}} => MyApp.Codec.SomeType
+      }
+
+  The built-in codecs (`Date`, `DateTime`, `NaiveDateTime`, `Time`, `MapSet`,
+  `String`) are registered automatically; entries here take precedence over them.
   """
 
   @typedoc "Return value for `encode/6` callback."
