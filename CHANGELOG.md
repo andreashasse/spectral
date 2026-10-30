@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Built-in `Spectral.Codec.NaiveDateTime` and `Spectral.Codec.Time` codecs (ISO 8601, registered automatically). Encoding a struct with such a field used to raise an opaque `ArgumentError`. Their schemas use a `pattern`, since JSON Schema `date-time` and `time` formats require an offset.
+- Built-in `Spectral.Codec.NaiveDateTime` and `Spectral.Codec.Time` codecs (ISO 8601, registered automatically). Encoding a struct with such a field used to raise an opaque `ArgumentError`. Their schemas use a `pattern`, since JSON Schema `date-time` and `time` formats require an offset. Decoding accepts only strings that match that pattern, so an offset, a `Z`, a space separator or a leading `T` is rejected with `reason: :invalid_format` rather than silently dropped.
 
 ### Fixed
 - `Spectral.Codec.String` errors name the alias type (e.g. `{:type, :item_id, 0}`) instead of always `{:type, :t, 0}`, so a failed `pattern` or length check points at the annotated type.

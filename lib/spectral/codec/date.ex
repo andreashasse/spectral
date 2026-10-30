@@ -15,41 +15,16 @@ defmodule Spectral.Codec.Date do
 
   use Spectral.Codec
 
-  @type_ref {:type, :t, 0}
+  alias Spectral.Codec.ISO8601
 
   @impl Spectral.Codec
-  def encode(format, _caller_type_info, {:type, :t, 0}, _target_type, %Date{} = d, _config)
-      when format in [:json, :binary_string] do
-    {:ok, Date.to_iso8601(d)}
-  end
-
-  def encode(:string, _caller_type_info, {:type, :t, 0}, _target_type, %Date{} = d, _config) do
-    {:ok, String.to_charlist(Date.to_iso8601(d))}
-  end
-
-  def encode(_format, _caller_type_info, {:type, :t, 0}, _target_type, data, _config) do
-    Spectral.Error.type_mismatch(@type_ref, data)
+  def encode(format, _caller_type_info, {:type, :t, 0}, _target_type, data, _config) do
+    ISO8601.encode(Date, format, data)
   end
 
   @impl Spectral.Codec
-  def decode(format, _caller_type_info, {:type, :t, 0}, _target_type, input, _config)
-      when format in [:json, :binary_string] and is_binary(input) do
-    case Date.from_iso8601(input) do
-      {:ok, d} -> {:ok, d}
-      {:error, _} -> Spectral.Error.type_mismatch(@type_ref, input, :invalid_format)
-    end
-  end
-
-  def decode(:string, _caller_type_info, {:type, :t, 0}, _target_type, input, _config)
-      when is_list(input) do
-    case Date.from_iso8601(List.to_string(input)) do
-      {:ok, d} -> {:ok, d}
-      {:error, _} -> Spectral.Error.type_mismatch(@type_ref, input, :invalid_format)
-    end
-  end
-
-  def decode(_format, _caller_type_info, {:type, :t, 0}, _target_type, data, _config) do
-    Spectral.Error.type_mismatch(@type_ref, data)
+  def decode(format, _caller_type_info, {:type, :t, 0}, _target_type, input, _config) do
+    ISO8601.decode(Date, format, input)
   end
 
   @impl Spectral.Codec

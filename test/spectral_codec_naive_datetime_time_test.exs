@@ -56,6 +56,41 @@ defmodule SpectralCodecNaiveDateTimeTimeTest do
                Spectral.decode(json, TimeValuesModule, :t, :json, [:pre_decoded])
     end
 
+    for naive <- [
+          "2024-01-02T03:04:05+02:00",
+          "2024-01-02T03:04:05Z",
+          "2024-01-02 03:04:05"
+        ] do
+      test "decode rejects the NaiveDateTime #{inspect(naive)} that the schema pattern rejects" do
+        json = %{@json | "naive" => unquote(naive)}
+
+        assert {:error,
+                [%Spectral.Error{location: [:naive], context: %{reason: :invalid_format}}]} =
+                 Spectral.decode(json, TimeValuesModule, :t, :json, [:pre_decoded])
+      end
+    end
+
+    for time <- ["13:14:15+02:00", "13:14:15Z", "T13:14:15"] do
+      test "decode rejects the Time #{inspect(time)} that the schema pattern rejects" do
+        json = %{@json | "time" => unquote(time)}
+
+        assert {:error, [%Spectral.Error{location: [:time], context: %{reason: :invalid_format}}]} =
+                 Spectral.decode(json, TimeValuesModule, :t, :json, [:pre_decoded])
+      end
+    end
+
+    test "decode rejects an offset in :string format" do
+      assert {:error, [{:sp_error, [], :type_mismatch, %{reason: :invalid_format}}]} =
+               Spectral.Codec.Time.decode(
+                 :string,
+                 :undefined,
+                 {:type, :t, 0},
+                 :undefined,
+                 ~c"13:14:15+02:00",
+                 :undefined
+               )
+    end
+
     test "decode rejects non-string input" do
       json = %{@json | "time" => 12}
 

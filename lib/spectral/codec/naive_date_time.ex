@@ -30,7 +30,7 @@ defmodule Spectral.Codec.NaiveDateTime do
 
   @impl Spectral.Codec
   def decode(format, _caller_type_info, {:type, :t, 0}, _target_type, input, _config) do
-    ISO8601.decode(NaiveDateTime, format, input)
+    ISO8601.decode(NaiveDateTime, format, input, @pattern)
   end
 
   @impl Spectral.Codec
