@@ -181,7 +181,7 @@ Each `%Spectral.Error{}` has:
 
 Encoding and decoding stop at the first error, so the list holds the error for the first invalid value found, not every invalid value in the input. Fix it and run again to find the next one.
 
-`context.value` holds the input that failed and may contain personal data. `inspect/2` (and so `Logger`) shows it as `**redacted**`; read the field directly if you need it. `Exception.message/1` never includes it.
+`context.value` holds the input that failed and may contain personal data. `inspect/2` (and so `Logger`) shows it as `**redacted**`; read the field directly if you need it. `Exception.message/1` does not include it. Other parts can still carry input data: `location` holds map keys from the input (a map keyed by email addresses gives `"type_mismatch at alice@example.com"`), and a `:decode_error` context keeps a short piece of the input bytes. Redaction only applies through Elixir's `Inspect`; `inspect(error, structs: false)` and Erlang `~p` formatting print the value.
 
 ## Nil Values, Extra Fields, and Unsupported Types
 

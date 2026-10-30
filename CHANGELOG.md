@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The README says that encoding and decoding stop at the first error.
 
 ### Changed
-- `inspect/2` on a `Spectral.Error` shows `context.value` as `**redacted**`, also in nested union errors, so logs do not print input data such as personal fields. The field itself is unchanged.
+- `inspect/2` on a `Spectral.Error` shows `context.value` as `**redacted**`, also in nested union errors, so logs do not print input values such as personal fields. The field itself is unchanged. Map keys in `location` and the input fragment in a `:decode_error` context are not redacted, and `inspect(error, structs: false)` or Erlang `~p` still print the value.
 - `Exception.message/1` on a `Spectral.Error` appends `context.message` when spectra provides one, e.g. `"type_mismatch at root: Struct mismatch"`.
 
 ## [0.15.0] - 2026-10-30
