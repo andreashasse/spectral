@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-31
+
 ### Added
 - Built-in `Spectral.Codec.NaiveDateTime` and `Spectral.Codec.Time` codecs (ISO 8601, registered automatically). Encoding a struct with such a field used to raise an opaque `ArgumentError`. Their schemas use a `pattern`, since JSON Schema `date-time` and `time` formats require an offset. Decoding accepts only strings that match that pattern, so an offset, a `Z`, a space separator or a leading `T` is rejected with `reason: :invalid_format` rather than silently dropped.
 
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The README says that encoding and decoding stop at the first error.
 
 ### Changed
+- Upgraded spectra dependency to `~> 0.16.0`. Typed map values now appear in the schema as `additionalProperties`, map keys typed `String.t()` no longer crash schema generation, a bad enum value gives one `type_mismatch` error that lists the allowed values instead of `no_match`, `Spectral.OpenAPI.response/2` accepts the status code ranges `"1XX"` to `"5XX"`, and `config :spectra, :nil_fields, :null` encodes `nil` fields as `null` (see the README).
 - `inspect/2` on a `Spectral.Error` shows `context.value` as `**redacted**`, also in nested union errors, so logs do not print input values such as personal fields. The field itself is unchanged. Map keys in `location` and the input fragment in a `:decode_error` context are not redacted, and `inspect(error, structs: false)` or Erlang `~p` still print the value.
 - `Exception.message/1` on a `Spectral.Error` appends `context.message` when spectra provides one, e.g. `"type_mismatch at root: Struct mismatch"`.
 
