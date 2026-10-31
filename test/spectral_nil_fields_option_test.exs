@@ -83,8 +83,16 @@ defmodule Spectral.NilFieldsOptionTest do
   test "nil_fields: :null raises ArgumentError when the global setting is :omit" do
     Application.put_env(:spectra, :nil_fields, :omit)
 
-    assert_raise ArgumentError, ~r/global nil_fields is omit/, fn ->
+    assert_raise ArgumentError, ~r/nil_fields setting is omit/, fn ->
       Spectral.encode(nested_value(), NilFieldsModule, :t, :json, nil_fields: :null)
+    end
+  end
+
+  test "nil_fields: :omit raises ArgumentError when the global setting is :null" do
+    Application.put_env(:spectra, :nil_fields, :null)
+
+    assert_raise ArgumentError, ~r/nil_fields setting is null/, fn ->
+      Spectral.encode(nested_value(), NilFieldsModule, :t, :json, nil_fields: :omit)
     end
   end
 

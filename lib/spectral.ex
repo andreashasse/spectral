@@ -44,7 +44,8 @@ defmodule Spectral do
   - `{:nil_fields, :null | :omit}` - For this call only, write a `nil` field whose type allows
     `nil` as JSON `null` (`:null`) or leave it out (`:omit`), nested values included. The
     schema does not change; it follows `config :spectra, :nil_fields`. Raises `ArgumentError`
-    for `:null` when that setting is `:omit`, since that schema does not allow `null`.
+    when the option would break that schema: `:null` under `:omit` (no `null` allowed) and
+    `:omit` under `:null` (the field is required).
   """
   @type encode_option ::
           :pre_encoded | {:pre_encoded, boolean()} | {:nil_fields, :null | :omit}

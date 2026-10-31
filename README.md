@@ -223,8 +223,9 @@ Spectral.encode(person, Person, :t, :json, nil_fields: :null)
 
 The option applies to nested structs, maps and lists too, and `nil_fields: :omit` leaves `nil`
 fields out for that call. It changes only the encoding; the schema and the OpenAPI spec follow
-the global setting. With the global setting `:omit` the schema does not allow `null`, so
-`nil_fields: :null` raises `ArgumentError`.
+the global setting, so an option that would break that schema raises `ArgumentError`:
+`nil_fields: :null` under `:omit`, where the schema does not allow `null`, and
+`nil_fields: :omit` under `:null`, where the schema requires the field.
 
 To always write `null`, and list the field as required in the schema:
 
