@@ -154,8 +154,8 @@ defmodule Spectral.Error do
     "#{type} at #{location_str}" <> format_hint(context)
   end
 
-  # spectra puts human-readable hints in `context.message`, sometimes as a
-  # charlist; `String.Chars` handles both.
+  # spectra puts human-readable hints in `context.message` as binaries.
+  # Interpolation also accepts a charlist, so hand-built errors may use one.
   defp format_hint(%{message: message}), do: ": #{message}"
   defp format_hint(_context), do: ""
 end

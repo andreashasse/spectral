@@ -25,4 +25,6 @@ defmodule NilFieldsModule do
           items: [Item.t()],
           active: boolean()
         }
+
+  @type labels :: [String.t() | nil]
 end

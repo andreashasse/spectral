@@ -20,4 +20,16 @@ defmodule Spectral.NilFieldsOmitTest do
 
     refute Map.has_key?(term, "note")
   end
+
+  test "pre_encoded writes a nil list element as nil, which JSON.encode! writes as null" do
+    assert {:ok, ["a", nil] = term} =
+             Spectral.encode(["a", nil], NilFieldsModule, :labels, :json, [:pre_encoded])
+
+    assert JSON.encode!(term) == ~s(["a",null])
+  end
+
+  test "iodata encoding writes a nil list element as null" do
+    assert {:ok, iodata} = Spectral.encode(["a", nil], NilFieldsModule, :labels, :json)
+    assert IO.iodata_to_binary(iodata) == ~s(["a",null])
+  end
 end
