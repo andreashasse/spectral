@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-31
+
 ### Added
 - `Spectral.encode/5` and `encode!/5` accept `nil_fields: :null | :omit`. For that call only, a `nil` field whose type allows `nil` is written as `null` or left out, nested values included. The schema does not change. With `config :spectra, :nil_fields, :omit`, `nil_fields: :null` raises `ArgumentError`.
 - `Spectral.OpenAPI.with_nil_fields(webhook, :null)` marks a webhook whose payload is encoded with `nil_fields: :null`. Its payload schema lists every field that allows `nil` in `required` and allows `null`, nested types included. If the same type is also used without the option, the webhook gets a second schema with `Nullable` added to its name.
 
 ### Changed
-- spectra is temporarily taken from its `andreashasse/nil-fields-per-call` branch on GitHub, until spectra 0.17 is released. Its `nil_fields` setting has a new default, `:omit_or_null`: the schema of a field whose type allows `nil` now allows `null` (`"type": ["integer", "null"]`), and the field stays optional. Encoding still leaves `nil` fields out. To keep the old schema, set `config :spectra, :nil_fields, :omit`.
+- Requires spectra 0.17. Its `nil_fields` setting has a new default, `:omit_or_null`: the schema of a field whose type allows `nil` now allows `null` (`"type": ["integer", "null"]`), and the field stays optional. Encoding still leaves `nil` fields out. To keep the old schema, set `config :spectra, :nil_fields, :omit`.
 - From spectra: a `nil` element in a list (`[integer() | nil]`) encodes as `null`, error `context.message` is always a binary, and a documented OpenAPI parameter or header no longer repeats its description inside its `schema`.
 
 ### Fixed
