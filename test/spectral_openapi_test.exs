@@ -370,6 +370,27 @@ defmodule Spectral.OpenAPITest do
       refute Map.has_key?(schemas["AllTypesModule"], "required")
     end
 
+    test "to_openapi/4 raises ArgumentError for a null webhook under the omit setting" do
+      previous = Application.fetch_env(:spectra, :nil_fields)
+      Application.put_env(:spectra, :nil_fields, :omit)
+
+      on_exit(fn ->
+        case previous do
+          {:ok, value} -> Application.put_env(:spectra, :nil_fields, value)
+          :error -> Application.delete_env(:spectra, :nil_fields)
+        end
+      end)
+
+      webhook =
+        Spectral.OpenAPI.webhook("thingCreated", :post)
+        |> Spectral.OpenAPI.with_request_body(AllTypesModule, {:type, :t, 0})
+        |> Spectral.OpenAPI.with_nil_fields(:null)
+
+      assert_raise ArgumentError, ~r/nil_fields setting is omit/, fn ->
+        Spectral.OpenAPI.to_openapi(%{title: "API", version: "1.0.0"}, [], [webhook], [])
+      end
+    end
+
     test "with_nil_fields/2 rejects values other than :null" do
       webhook = Spectral.OpenAPI.webhook("thingCreated", :post)
 
