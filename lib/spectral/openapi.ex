@@ -350,6 +350,33 @@ defmodule Spectral.OpenAPI do
   end
 
   @doc """
+  Marks a webhook whose payload is encoded with `nil_fields: :null`.
+
+  Use it when the code that sends the webhook calls `Spectral.encode/5` with
+  `nil_fields: :null`. The payload schema then lists every field whose type can be
+  `nil` in `required` and allows `null`, nested types included. Headers and
+  responses do not change.
+
+  The payload type keeps its normal schema name. If the same type is also used
+  without this option, the webhook gets a second schema with `Nullable` added to
+  the name. With `config :spectra, :nil_fields, :null` the option changes nothing.
+  With `:omit`, `to_openapi/4` raises `ArgumentError`, and so it does when the
+  `Nullable` name is already taken. Any value other than `:null` raises
+  `ArgumentError`.
+
+  ## Example
+
+      webhook = Spectral.OpenAPI.webhook("paymentDone", :post)
+        |> Spectral.OpenAPI.with_request_body(Payment, {:type, :t, 0})
+        |> Spectral.OpenAPI.with_nil_fields(:null)
+  """
+  @spec with_nil_fields(:spectra_openapi.webhook_spec(), :null) ::
+          :spectra_openapi.webhook_spec()
+  def with_nil_fields(webhook, nil_fields) do
+    :spectra_openapi.with_nil_fields(webhook, nil_fields)
+  end
+
+  @doc """
   Converts a list of endpoints to a complete OpenAPI specification.
 
   ## Parameters

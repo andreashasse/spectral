@@ -227,6 +227,12 @@ the global setting, so an option that would break that schema raises `ArgumentEr
 `nil_fields: :null` under `:omit`, where the schema does not allow `null`, and
 `nil_fields: :omit` under `:null`, where the schema requires the field.
 
+A webhook payload is the one place where the schema can follow the option. If the code that
+sends a webhook encodes the payload with `nil_fields: :null`, mark the webhook with
+`Spectral.OpenAPI.with_nil_fields(webhook, :null)`. Its payload schema then lists every field
+that allows `nil` in `required` and allows `null`. If the same type is also used without the
+option, the webhook gets a second schema with `Nullable` added to its name.
+
 To always write `null`, and list the field as required in the schema:
 
 ```elixir
