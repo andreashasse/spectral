@@ -342,6 +342,63 @@ defmodule Spectral.OpenAPITest do
       assert map_size(spec["components"]["schemas"]) == 1
     end
 
+    test "gives a null webhook payload its own schema when the type is also used elsewhere" do
+      endpoint =
+        Spectral.OpenAPI.endpoint(:get, "/things")
+        |> Spectral.OpenAPI.add_response(
+          Spectral.OpenAPI.response(200, "A thing")
+          |> Spectral.OpenAPI.response_with_body(AllTypesModule, {:type, :t, 0})
+        )
+
+      webhook =
+        Spectral.OpenAPI.webhook("thingCreated", :post)
+        |> Spectral.OpenAPI.with_request_body(AllTypesModule, {:type, :t, 0})
+        |> Spectral.OpenAPI.with_nil_fields(:null)
+
+      {:ok, json} =
+        Spectral.OpenAPI.to_openapi(%{title: "API", version: "1.0.0"}, [endpoint], [webhook], [])
+
+      spec = json |> IO.iodata_to_binary() |> :json.decode()
+      schemas = spec["components"]["schemas"]
+
+      assert %{"$ref" => "#/components/schemas/AllTypesModuleNullable"} =
+               spec["webhooks"]["thingCreated"]["post"]["requestBody"]["content"][
+                 "application/json"
+               ]["schema"]
+
+      assert Enum.sort(schemas["AllTypesModuleNullable"]["required"]) == ["id", "name"]
+      refute Map.has_key?(schemas["AllTypesModule"], "required")
+    end
+
+    test "to_openapi/4 raises ArgumentError for a null webhook under the omit setting" do
+      previous = Application.fetch_env(:spectra, :nil_fields)
+      Application.put_env(:spectra, :nil_fields, :omit)
+
+      on_exit(fn ->
+        case previous do
+          {:ok, value} -> Application.put_env(:spectra, :nil_fields, value)
+          :error -> Application.delete_env(:spectra, :nil_fields)
+        end
+      end)
+
+      webhook =
+        Spectral.OpenAPI.webhook("thingCreated", :post)
+        |> Spectral.OpenAPI.with_request_body(AllTypesModule, {:type, :t, 0})
+        |> Spectral.OpenAPI.with_nil_fields(:null)
+
+      assert_raise ArgumentError, ~r/nil_fields setting is omit/, fn ->
+        Spectral.OpenAPI.to_openapi(%{title: "API", version: "1.0.0"}, [], [webhook], [])
+      end
+    end
+
+    test "with_nil_fields/2 rejects values other than :null" do
+      webhook = Spectral.OpenAPI.webhook("thingCreated", :post)
+
+      assert_raise ArgumentError, ~r/must be null, got: omit/, fn ->
+        Spectral.OpenAPI.with_nil_fields(webhook, :omit)
+      end
+    end
+
     test "omits the webhooks key when there are no webhooks" do
       endpoint =
         Spectral.OpenAPI.endpoint(:get, "/users")

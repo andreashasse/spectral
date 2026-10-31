@@ -95,7 +95,7 @@ defmodule SpectralErrorReportingTest do
       assert Spectral.Error.exception(error).message == Exception.message(error)
     end
 
-    test "a charlist message from spectra is included" do
+    test "a hand-built charlist message is included" do
       error = %Spectral.Error{
         type: :type_mismatch,
         location: [:name],
