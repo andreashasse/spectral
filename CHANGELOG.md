@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- With `config :spectra, :nil_fields, :null`, `Spectral.encode/5` with `:pre_encoded` returns `nil` for nil fields, also nested ones, instead of the atom `:null`. Jason and `JSON` encoded that atom as the string `"null"`.
+
 ## [0.16.0] - 2026-10-31
 
 ### Added

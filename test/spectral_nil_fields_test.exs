@@ -22,4 +22,44 @@ defmodule Spectral.NilFieldsTest do
     assert "age" in schema["required"]
     assert %{"type" => ["integer", "null"]} = schema["properties"]["age"]
   end
+
+  describe "pre_encoded" do
+    test "writes nil, not the atom :null, for nil fields at any depth" do
+      {:ok, term} = Spectral.encode(nested_value(), NilFieldsModule, :t, :json, [:pre_encoded])
+
+      assert term == %{
+               "name" => "root",
+               "note" => nil,
+               "child" => %{"label" => "child", "count" => nil},
+               "items" => [
+                 %{"label" => "a", "count" => nil},
+                 %{"label" => "b", "count" => 2}
+               ],
+               "active" => false
+             }
+
+      assert JSON.encode!(term) =~ ~s("note":null)
+      assert JSON.encode!(term) =~ ~s("count":null)
+    end
+
+    test "matches the iodata encoding" do
+      {:ok, term} = Spectral.encode(nested_value(), NilFieldsModule, :t, :json, [:pre_encoded])
+      {:ok, json} = Spectral.encode(nested_value(), NilFieldsModule, :t, :json)
+
+      assert JSON.decode!(JSON.encode!(term)) == JSON.decode!(IO.iodata_to_binary(json))
+    end
+  end
+
+  defp nested_value do
+    %NilFieldsModule{
+      name: "root",
+      note: nil,
+      child: %NilFieldsModule.Item{label: "child", count: nil},
+      items: [
+        %NilFieldsModule.Item{label: "a", count: nil},
+        %NilFieldsModule.Item{label: "b", count: 2}
+      ],
+      active: false
+    }
+  end
 end

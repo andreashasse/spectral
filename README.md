@@ -213,7 +213,8 @@ config :spectra, :nil_fields, :null
 
 The encoder then writes `"age": null`, and the schema lists `age` as required with type
 `["integer", "null"]`, so the documented contract matches what you send. Fields whose type does
-not allow `nil` are unaffected. The default, `:omit`, keeps the behaviour above.
+not allow `nil` are unaffected. With `:pre_encoded`, the field is `nil` in the returned map, so
+Jason or `JSON` encode it as `null`. The default, `:omit`, keeps the behaviour above.
 
 ### Struct defaults
 

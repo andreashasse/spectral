@@ -438,6 +438,7 @@ defmodule Spectral do
   - `format` - Format to encode to (default: `:json`)
   - `opts` - Options list (default: `[]`). Supported options:
     - `:pre_encoded` - Return the intermediate JSON term (map/list) instead of iodata.
+      JSON null is `nil` in this term, so Elixir JSON libraries encode it as `null`.
 
   ## Returns
 
@@ -468,6 +469,7 @@ defmodule Spectral do
   def encode(data, module, type_ref, format \\ :json, opts \\ []) do
     :spectra.encode(format, module, type_ref, data, opts)
     |> convert_result()
+    |> nil_for_json_null(format, opts)
   rescue
     error in ErlangError ->
       handle_erlang_error(error, __STACKTRACE__, :encode, module, type_ref)
@@ -670,6 +672,23 @@ defmodule Spectral do
   defp convert_result({:error, erlang_errors}) when is_list(erlang_errors) do
     {:error, Spectral.Error.from_erlang_list(erlang_errors)}
   end
+
+  # spectra writes JSON null as the atom :null, the OTP json convention. Elixir JSON
+  # libraries expect nil and would encode :null as the string "null".
+  defp nil_for_json_null({:ok, term}, :json, opts) do
+    if :proplists.get_value(:pre_encoded, opts, false) do
+      {:ok, null_to_nil(term)}
+    else
+      {:ok, term}
+    end
+  end
+
+  defp nil_for_json_null(result, _format, _opts), do: result
+
+  defp null_to_nil(:null), do: nil
+  defp null_to_nil(map) when is_map(map), do: Map.new(map, fn {k, v} -> {k, null_to_nil(v)} end)
+  defp null_to_nil(list) when is_list(list), do: Enum.map(list, &null_to_nil/1)
+  defp null_to_nil(other), do: other
 
   defp handle_erlang_error(
          %ErlangError{original: original} = error,
