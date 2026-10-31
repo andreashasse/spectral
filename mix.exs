@@ -31,7 +31,8 @@ defmodule Spectral.MixProject do
 
   defp deps do
     [
-      {:spectra, "~> 0.16.0"},
+      # TODO: revert to a hex version once spectra 0.17 is released.
+      {:spectra, github: "andreashasse/spectra", branch: "andreashasse/nil-fields-per-call"},
       {:stream_data, "~> 1.1", only: :test},
       {:cover_diff, "~> 0.1.0", only: :test, runtime: false},
       # Code quality tools

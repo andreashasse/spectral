@@ -41,8 +41,13 @@ defmodule Spectral do
   - `:pre_encoded` - Skip the final JSON serialization step and return the intermediate
     JSON term (a map/list) instead of iodata. Equivalent to `{:pre_encoded, true}`.
   - `{:pre_encoded, boolean()}` - Explicit boolean form; `false` gives the default behaviour.
+  - `{:nil_fields, :null | :omit}` - For this call only, write a `nil` field whose type allows
+    `nil` as JSON `null` (`:null`) or leave it out (`:omit`), nested values included. The
+    schema does not change; it follows `config :spectra, :nil_fields`. Raises `ArgumentError`
+    for `:null` when that setting is `:omit`, since that schema does not allow `null`.
   """
-  @type encode_option :: :pre_encoded | {:pre_encoded, boolean()}
+  @type encode_option ::
+          :pre_encoded | {:pre_encoded, boolean()} | {:nil_fields, :null | :omit}
 
   @typedoc """
   Options for `decode/5` and `decode!/5`.
@@ -439,6 +444,8 @@ defmodule Spectral do
   - `opts` - Options list (default: `[]`). Supported options:
     - `:pre_encoded` - Return the intermediate JSON term (map/list) instead of iodata.
       JSON null is `nil` in this term, so Elixir JSON libraries encode it as `null`.
+    - `nil_fields: :null | :omit` - Write `nil` fields as `null` or leave them out, for this
+      call only. See `t:encode_option/0`.
 
   ## Returns
 
@@ -594,6 +601,8 @@ defmodule Spectral do
   - `format` - Format to encode to (default: `:json`)
   - `opts` - Options list (default: `[]`). Supported options:
     - `:pre_encoded` - Return the intermediate JSON term (map/list) instead of iodata.
+    - `nil_fields: :null | :omit` - Write `nil` fields as `null` or leave them out, for this
+      call only. See `t:encode_option/0`.
 
   ## Returns
 

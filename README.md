@@ -204,17 +204,45 @@ Spectral.decode(~s({"name":"Alice","age":null}), Person, :t, :json)
 # Returns: {:ok, %Person{name: "Alice", age: nil, address: nil}}
 ```
 
-To write `null` instead of leaving the field out, set spectra's `nil_fields` option:
+spectra's `nil_fields` setting decides how the schema describes a field whose type allows `nil`,
+and whether the encoder writes it as `null`:
+
+| `config :spectra, :nil_fields` | Schema | Encoding of a `nil` field |
+|---|---|---|
+| `:omit_or_null` (default) | not required, allows `null` | left out, or `null` with `nil_fields: :null` |
+| `:omit` | not required, does not allow `null` | left out |
+| `:null` | required, allows `null` | `null` |
+
+Under the default, the schema of `age` is `"type": ["integer", "null"]`, so clients accept both
+forms. Choose `null` for a single call:
+
+```elixir
+Spectral.encode(person, Person, :t, :json, nil_fields: :null)
+# {"address":null,"age":null,"name":"Alice"}
+```
+
+The option applies to nested structs, maps and lists too, and `nil_fields: :omit` leaves `nil`
+fields out for that call. It changes only the encoding; the schema and the OpenAPI spec follow
+the global setting. With the global setting `:omit` the schema does not allow `null`, so
+`nil_fields: :null` raises `ArgumentError`.
+
+To always write `null`, and list the field as required in the schema:
 
 ```elixir
 # config/config.exs
 config :spectra, :nil_fields, :null
 ```
 
-The encoder then writes `"age": null`, and the schema lists `age` as required with type
-`["integer", "null"]`, so the documented contract matches what you send. Fields whose type does
-not allow `nil` are unaffected. With `:pre_encoded`, the field is `nil` in the returned map, so
-Jason or `JSON` encode it as `null`. The default, `:omit`, keeps the behaviour above.
+To keep the schema from Spectral 0.16 and earlier, where a field that allows `nil` does not
+allow `null`:
+
+```elixir
+# config/config.exs
+config :spectra, :nil_fields, :omit
+```
+
+Fields whose type does not allow `nil` are unaffected. With `:pre_encoded`, a `null` field is
+`nil` in the returned map, so Jason or `JSON` encode it as `null`.
 
 ### Struct defaults
 

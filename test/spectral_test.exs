@@ -294,7 +294,7 @@ defmodule SpectralTest do
                 location: [],
                 type: :type_mismatch,
                 context: %{
-                  message: ~c"Struct mismatch",
+                  message: "Struct mismatch",
                   type: sp_map(struct_name: Person),
                   value: %{name: "Alice", age: "thirty"}
                 }
